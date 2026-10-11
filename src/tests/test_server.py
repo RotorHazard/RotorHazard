@@ -309,7 +309,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 8)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 9)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
@@ -653,6 +653,59 @@ class ServerTest(unittest.TestCase):
         self.assertFalse(server.RHAPI.db.pilotrun_alter(999999999))
 
         server.RHAPI.events.off(Evt.LAPS_RESAVE, 'test_pilotrun_alter_listener')
+
+    def test_calibration_suggestion(self):
+        import json
+        import calibration
+        # three clean gate passes over a flat noise floor
+        start = 1000.0
+        values, times = [], []
+        for tenth in range(0, 900):
+            t = tenth / 10.0
+            rssi = 45 + (tenth % 3)
+            for pass_time in (5.0, 35.0, 65.0):
+                if abs(t - pass_time) <= 1.5:
+                    rssi = 110 - int(abs(t - pass_time) * 30)
+            values.append(rssi)
+            times.append(start + t)
+        result = calibration.suggest_calibration(values, times, start, True, 0, 10000, 0, 0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result['lap_count'], 3)
+        self.assertTrue(47 < result['exit_at'] < result['enter_at'] < 110)
+        stamps = [lap['lap_time_stamp'] / 1000.0 for lap in result['laps'] if not lap['deleted']]
+        for stamp, pass_time in zip(stamps, (5.0, 35.0, 65.0)):
+            self.assertAlmostEqual(stamp, pass_time, delta=0.5)
+        self.assertIsNone(calibration.suggest_calibration([45, 46, 47] * 100, [start + i / 10.0 for i in range(300)],
+                                                          start, True, 0, 10000, 0, 0))
+
+        # the same trace stored on a saved pilot run, through RHAPI and the socket event
+        pilot = server.RHAPI.db.pilot_add()
+        heat = server.RHAPI.db.heat_add()
+        server.RHAPI.db.slot_alter(server.RHAPI.db.slots_by_heat(heat.id)[0].id, pilot=pilot.id)
+        server.RHAPI.race.raceformat = server.RHAPI.db.raceformat_add(name='no time limit', unlimited_time=1).id
+        server.RHAPI.race.heat = heat.id
+        server.RaceContext.race.stage(immediate=True)
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+        race = server.RHAPI.db.races[-1]
+        run = server.RHAPI.db.pilotruns_by_race(race.id)[0]
+        with server.RaceContext.rhdata.get_db_session_handle():
+            stored_run = server.RaceContext.rhdata.get_savedPilotRace(run.id)
+            stored_run.history_values = json.dumps(values)
+            stored_run.history_times = json.dumps([t - start + race.start_time for t in times])
+            server.RaceContext.rhdata.commit()
+        api_result = server.RHAPI.db.pilotrun_suggest_calibration(run.id)
+        self.assertEqual(api_result, {'enter_at': result['enter_at'], 'exit_at': result['exit_at'], 'lap_count': 3})
+
+        self.client.get_received()
+        self.client.emit('suggest_calibration', {'pilotrace_id': run.id, 'node': run.node_index})
+        replies = [r['args'][0] for r in self.client.get_received() if r['name'] == 'calibration_suggestion']
+        self.assertEqual(len(replies), 1)
+        self.assertEqual(replies[0]['pilotrace_id'], run.id)
+        self.assertEqual((replies[0]['enter_at'], replies[0]['exit_at'], replies[0]['lap_count']),
+                         (result['enter_at'], result['exit_at'], 3))
+
+        server.RHAPI.db.races_clear()  # a saved race would block the heat/pilot delete tests
 
     def test_resave_laps_socket(self):
         pilot = server.RHAPI.db.pilot_add()
