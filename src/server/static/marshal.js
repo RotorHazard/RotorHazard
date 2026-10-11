@@ -347,12 +347,25 @@ class RHMarshal {
 		self.refreshDisplay();
 	}
 
+	loadEnterExit(enter, exit) {
+		// applies a valid loaded pair unclamped, as saved values are on first display; returns whether it was applied
+		if (!Number.isInteger(enter) || !Number.isInteger(exit) || enter <= exit) {
+			return false;
+		}
+		self.applyEnterExit(enter, exit);
+		return true;
+	}
+
 	setEnterExit(enter, exit) {
 		enter = Math.min(Math.max(enter, self.graph.options.minValue), self.graph.options.maxValue);
 		exit = Math.min(Math.max(exit, self.graph.options.minValue), self.graph.options.maxValue);
 		if (exit > enter) {
 			exit = enter;
 		}
+		self.applyEnterExit(enter, exit);
+	}
+
+	applyEnterExit(enter, exit) {
 		if (enter == self.race.enter_at && exit == self.race.exit_at) {
 			return;
 		}

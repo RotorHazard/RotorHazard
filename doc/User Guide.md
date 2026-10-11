@@ -351,7 +351,7 @@ The Callout panel may be used to configure voice callouts, which can be triggere
 
 Adjust results of saved races.
 
-Select the round, heat, and pilot to adjust. Enter and Exit points are automatically loaded from the saved race data. Adjust the Enter and Exit points to recalibrate the race after the fact. "Load from Node" to copy current live calibration data over the active values. "Save to Node" to copy the active values over the current live values. "Recalculate Race" to use the active Enter/Exit values as calibration points for a "re-run" of the race. This will erase current laps and replace them with the recalculated information. Manually entered laps are preserved.
+Select the round, heat, and pilot to adjust. Enter and Exit points are automatically loaded from the saved race data. Adjust the Enter and Exit points to recalibrate the race after the fact. "Load from Node" to copy current live calibration data over the active values. "Save to Node" to copy the active values over the current live values. "Recalculate Race" to use the active Enter/Exit values as calibration points for a "re-run" of the race. This will erase current laps and replace them with the recalculated information. Manually entered laps are preserved. "Auto Adjust" analyzes the RSSI data and sets the Enter and Exit points to suggested values: above everything seen away from the gate passes and below the weakest pass, with the pair that gives the cleanest set of laps chosen. Nothing is saved until "Commit Changes"; use "Discard Changes" to return to the stored values.
 
 Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button.
 
