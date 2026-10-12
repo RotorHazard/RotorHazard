@@ -265,75 +265,75 @@ For example, you might add the "Speak" effect to the "Pilot Done" event in order
 
 The variables listed below may be used for the  effects.
 
-| Variable                  | Description                                                             |
-|---------------------------|-------------------------------------------------------------------------|
-| %PILOT%                   | Pilot callsign                                                          |
-| %HEAT%                    | Current heat name or ID value                                           |
-| %ROUND%                   | Current round number                                                    |
-| %ROUND_CALL%              | Current round number (with prompt)                                      |
-| %RACE_FORMAT%             | Current race format                                                     |
-| %LAP_COUNT%               | Current lap number for pilot                                            |
-| %LAP_COUNT_CALL%          | Current lap number for pilot (with "lap" or "laps")                     |
-| %LAST_LAP%                | Last lap time for pilot                                                 |
-| %LAST_LAP_CALL%           | Last lap time for pilot (with prompt)                                   |
-| %AVERAGE_LAP%             | Average lap time for pilot                                              |
-| %AVERAGE_LAP_CALL%        | Average lap time for pilot (with prompt)                                |
-| %FASTEST_LAP%             | Fastest lap time for pilot                                              |
-| %FASTEST_LAP_CALL%        | Fastest lap time for pilot (with prompt)                                |
-| %TIME_BEHIND%             | Amount of time behind race leader                                       |
-| %TIME_BEHIND_CALL%        | Amount of time behind race leader (with prompt)                         |
-| %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
-| %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                      |
-| %FASTEST_SPEED%           | Fastest speed for pilot                                                 |
-| %FASTEST_SPEED_CALL%      | Fastest speed for pilot (with prompt)                                   |
-| %LAST_SPEED%              | Last speed for pilot                                                    |
-| %LAST_SPEED_CALL%         | Last speed for pilot (with prompt)                                      |
-| %CONSECUTIVE%             | Fastest consecutive laps for pilot                                      |
-| %TOTAL_TIME%              | Total time since start of race for pilot                                |
-| %TOTAL_TIME_LAPS%         | Total time since start of first lap for pilot                           |
-| %POSITION%                | Race position for pilot                                                 |
-| %POSITION_CALL%           | Race position for pilot (with prompt)                                   |
-| %POSITION_PLACE%          | Race position (first, second, etc) for pilot                            |
-| %POSITION_PLACE_CALL%     | Race position (first, second, etc) for pilot (with prompt)              |
-| %FASTEST_RACE_LAP%        | Pilot/time for fastest lap in race                                      |
-| %FASTEST_RACE_LAP_CALL%   | Pilot/time for fastest lap in race (with prompt)                        |
-| %FASTEST_RACE_SPEED%      | Pilot/speed for fastest speed in race                                   |
-| %FASTEST_RACE_SPEED_CALL% | Pilot/speed for fastest speed in race (with prompt)                     |
-| %FASTEST_EVENT_LAP%       | Pilot/time for fastest lap of the event (all saved races)               |
-| %FASTEST_EVENT_LAP_CALL%  | Pilot/time for fastest lap of the event (with prompt)                   |
-| %FASTEST_EVENT_SPEED%     | Pilot/speed for fastest speed of the event (all saved races)            |
-| %FASTEST_EVENT_SPEED_CALL% | Pilot/speed for fastest speed of the event (with prompt)               |
-| %FASTEST_EVENT_LAP_PILOT% | Fastest lap time of the event for pilot (all saved races)               |
-| %FASTEST_EVENT_LAP_PILOT_CALL% | Pilot/time for fastest lap of the event for pilot, with heat and round (with prompt) |
-| %FASTEST_EVENT_SPEED_PILOT% | Fastest speed of the event for pilot (all saved races)                |
+| Variable                  | Description                                                                             |
+|---------------------------|-----------------------------------------------------------------------------------------|
+| %PILOT%                   | Pilot callsign                                                                          |
+| %HEAT%                    | Current heat name or ID value                                                           |
+| %ROUND%                   | Current round number                                                                    |
+| %ROUND_CALL%              | Current round number (with prompt)                                                      |
+| %RACE_FORMAT%             | Current race format                                                                     |
+| %LAP_COUNT%               | Current lap number for pilot                                                            |
+| %LAP_COUNT_CALL%          | Current lap number for pilot (with "lap" or "laps")                                     |
+| %LAST_LAP%                | Last lap time for pilot                                                                 |
+| %LAST_LAP_CALL%           | Last lap time for pilot (with prompt)                                                   |
+| %AVERAGE_LAP%             | Average lap time for pilot                                                              |
+| %AVERAGE_LAP_CALL%        | Average lap time for pilot (with prompt)                                                |
+| %FASTEST_LAP%             | Fastest lap time for pilot                                                              |
+| %FASTEST_LAP_CALL%        | Fastest lap time for pilot (with prompt)                                                |
+| %TIME_BEHIND%             | Amount of time behind race leader                                                       |
+| %TIME_BEHIND_CALL%        | Amount of time behind race leader (with prompt)                                         |
+| %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                                     |
+| %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                                        |
+| %FASTEST_SPEED%           | Fastest speed for pilot                                                                 |
+| %FASTEST_SPEED_CALL%      | Fastest speed for pilot (with prompt)                                                   |
+| %LAST_SPEED%              | Last speed for pilot                                                                    |
+| %LAST_SPEED_CALL%         | Last speed for pilot (with prompt)                                                      |
+| %CONSECUTIVE%             | Fastest consecutive laps for pilot                                                      |
+| %TOTAL_TIME%              | Total time since start of race for pilot                                                |
+| %TOTAL_TIME_LAPS%         | Total time since start of first lap for pilot                                           |
+| %POSITION%                | Race position for pilot                                                                 |
+| %POSITION_CALL%           | Race position for pilot (with prompt)                                                   |
+| %POSITION_PLACE%          | Race position (first, second, etc) for pilot                                            |
+| %POSITION_PLACE_CALL%     | Race position (first, second, etc) for pilot (with prompt)                              |
+| %FASTEST_RACE_LAP%        | Pilot/time for fastest lap in race                                                      |
+| %FASTEST_RACE_LAP_CALL%   | Pilot/time for fastest lap in race (with prompt)                                        |
+| %FASTEST_RACE_SPEED%      | Pilot/speed for fastest speed in race                                                   |
+| %FASTEST_RACE_SPEED_CALL% | Pilot/speed for fastest speed in race (with prompt)                                     |
+| %FASTEST_EVENT_LAP%       | Pilot/time for fastest lap of the event                                                 |
+| %FASTEST_EVENT_LAP_CALL%  | Pilot/time for fastest lap of the event (with prompt)                                   |
+| %FASTEST_EVENT_SPEED%     | Pilot/speed for fastest speed of the event                                              |
+| %FASTEST_EVENT_SPEED_CALL% | Pilot/speed for fastest speed of the event (with prompt)                                |
+| %FASTEST_EVENT_LAP_PILOT% | Fastest lap time of the event for pilot                                                 |
+| %FASTEST_EVENT_LAP_PILOT_CALL% | Pilot/time for fastest lap of the event for pilot, with heat and round (with prompt)    |
+| %FASTEST_EVENT_SPEED_PILOT% | Fastest speed of the event for pilot                                                    |
 | %FASTEST_EVENT_SPEED_PILOT_CALL% | Pilot/speed for fastest speed of the event for pilot, with heat and round (with prompt) |
-| %RACES_WON_PILOT%         | Number of races won by pilot (all saved races)                          |
-| %RACES_WON_PILOT_CALL%    | Number of races won by pilot, as "NAME has won N races"                |
-| %WINNER%                  | Pilot callsign for winner of race                                       |
-| %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                         |
-| %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                              |
-| %PREVIOUS_WINNER_CALL%    | Pilot callsign for winner of previous race (with prompt)                |
-| %RACE_TIME%               | Current race-clock time (empty if no race in progress)                  |
-| %RACE_TIME_CALL%          | Current race-clock time, tenths only under a minute (with prompt)       |
-| %PILOTS%                  | List of pilot callsigns (read out slower)                               |
-| %LINEUP%                  | List of pilot callsigns (read out faster)                               |
-| %FREQS%                   | List of pilot callsigns and frequency assignments                       |
-| %LEADER%                  | Callsign of pilot currently leading race                                |
-| %LEADER_CALL%             | Callsign of pilot currently leading race, in the form "NAME is leading" |
-| %SPLIT_TIME%              | Split time for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)          |
-| %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)         |
-| %RACE_RESULT%             | Race result status message (race winner or co-op result)                |
-| %RACE_RESULT_CALL%        | Full race result: winner, then each finisher with place and gap         |
-| %RACE_STATUS%             | Race state as one word (staging, racing, overtime, finished, stopped)   |
-| %RACE_STATUS_CALL%        | Race state and progress, shaped for timed, lap and co-op races          |
-| %COOP_RACE_INFO%          | Co-op race mode information (target time or laps)                       |
-| %COOP_RACE_LAP_TOTALS%    | Pilot lap counts for race in co-op mode                                 |
-| %CURRENT_TIME_AP%         | Current time (12-hour clock)                                            |
-| %CURRENT_TIME_24%         | Current time (24-hour clock)                                            |
-| %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                              |
-| %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)                              |
-| %DELAY_#_SECS%            | Delay voice callout by given number of seconds                          |
-| %PILOTS_INTERVAL_#_SECS%  | List of callsigns separated by interval seconds (must be only variable) |
+| %RACES_WON_PILOT%         | Number of races won by pilot (all saved races)                                          |
+| %RACES_WON_PILOT_CALL%    | Number of races won by pilot, as "NAME has won N races"                                 |
+| %WINNER%                  | Pilot callsign for winner of race                                                       |
+| %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                                         |
+| %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                                              |
+| %PREVIOUS_WINNER_CALL%    | Pilot callsign for winner of previous race (with prompt)                                |
+| %RACE_TIME%               | Current race-clock time (empty if no race in progress)                                  |
+| %RACE_TIME_CALL%          | Current race-clock time, tenths only under a minute (with prompt)                       |
+| %PILOTS%                  | List of pilot callsigns (read out slower)                                               |
+| %LINEUP%                  | List of pilot callsigns (read out faster)                                               |
+| %FREQS%                   | List of pilot callsigns and frequency assignments                                       |
+| %LEADER%                  | Callsign of pilot currently leading race                                                |
+| %LEADER_CALL%             | Callsign of pilot currently leading race, in the form "NAME is leading"                 |
+| %SPLIT_TIME%              | Split time for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)            |
+| %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)           |
+| %RACE_RESULT%             | Race result status message (race winner or co-op result)                                |
+| %RACE_RESULT_CALL%        | Full race result: winner, then each finisher with place and gap                         |
+| %RACE_STATUS%             | Race state as one word (staging, racing, overtime, finished, stopped)                   |
+| %RACE_STATUS_CALL%        | Race state and progress, shaped for timed, lap and co-op races                          |
+| %COOP_RACE_INFO%          | Co-op race mode information (target time or laps)                                       |
+| %COOP_RACE_LAP_TOTALS%    | Pilot lap counts for race in co-op mode                                                 |
+| %CURRENT_TIME_AP%         | Current time (12-hour clock)                                                            |
+| %CURRENT_TIME_24%         | Current time (24-hour clock)                                                            |
+| %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                                              |
+| %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)                                              |
+| %DELAY_#_SECS%            | Delay voice callout by given number of seconds                                          |
+| %PILOTS_INTERVAL_#_SECS%  | List of callsigns separated by interval seconds (must be only variable)                 |
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
