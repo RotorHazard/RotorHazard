@@ -105,6 +105,7 @@ class RHRace():
         self.prev_race_winner_name = ''
         self.prev_race_winner_phonetic = ''
         self.prev_race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+        self.prev_race_winner_race_id = None  # saved race the previous winner came from
 
         self.race_leader_lap = 0  # current race leader
         self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
@@ -672,7 +673,8 @@ class RHRace():
                 return False
 
             if self.db_id is None:
-                if self.race_winner_pilot_id != RHUtils.PILOT_ID_NONE:
+                winner_copied = self.race_winner_pilot_id != RHUtils.PILOT_ID_NONE
+                if winner_copied:
                     self.prev_race_winner_name = self.race_winner_name
                     self.prev_race_winner_phonetic = self.race_winner_phonetic
                     self.prev_race_winner_pilot_id = self.race_winner_pilot_id
@@ -713,6 +715,8 @@ class RHRace():
 
                 new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
                 self.db_id = new_race.id
+                if winner_copied:
+                    self.prev_race_winner_race_id = new_race.id
 
                 race_data = {}
 
@@ -1720,6 +1724,59 @@ class RHRace():
         return win_status_dict
 
 
+    def recheck_win_status(self):
+        '''Re-evaluates the winner of this finished race from its results, without announcing it; co-op races are left as they are. Returns whether the winner or status message changed.'''
+        if not self.format or self.format.team_racing_mode == RacingMode.COOP_ENABLED:
+            return False
+        win_status_dict = Results.check_win_condition_result(self._racecontext, race_obj=self)
+        win_status = win_status_dict['status'] if win_status_dict else WinStatus.NONE
+        winner_name = winner_phonetic = status_message = phonetic_status_msg = ''
+        winner_pilot_id = RHUtils.PILOT_ID_NONE
+        winner_lap_id = 0
+        if win_status == WinStatus.DECLARED:
+            win_data = win_status_dict['data']
+            if self.format.team_racing_mode == RacingMode.TEAM_ENABLED:
+                winner_name = winner_phonetic = self._racecontext.language.__('Team') + ' ' + win_data.get('name', '')
+            else:
+                winner_name = win_data.get('callsign', '')
+                winner_lap_id = win_data.get('laps', 0)
+                winner_pilot_id = win_data.get('pilot_id') or RHUtils.PILOT_ID_NONE
+                pilot = self._racecontext.rhdata.get_pilot(winner_pilot_id) if winner_pilot_id else None
+                winner_phonetic = (pilot.phonetic if pilot else '') or winner_name
+            status_message = self._racecontext.language.__('Winner is') + ' ' + winner_name
+            phonetic_status_msg = self._racecontext.language.__('Winner is') + ' ' + winner_phonetic
+        elif win_status == WinStatus.TIE:
+            status_message = phonetic_status_msg = self._racecontext.language.__('Race Tied')
+        elif win_status == WinStatus.OVERTIME:
+            status_message = phonetic_status_msg = self._racecontext.language.__('Race Tied: Overtime')
+        changed = winner_name != self.race_winner_name or status_message != self.status_message
+        self.win_status = win_status
+        self.race_winner_name = winner_name
+        self.race_winner_phonetic = winner_phonetic
+        self.race_winner_pilot_id = winner_pilot_id
+        self.race_winner_lap_id = winner_lap_id
+        self.status_message = status_message
+        self.phonetic_status_msg = phonetic_status_msg
+        if changed:
+            logger.info("Race status msg after edit:  {}".format(status_message if status_message else '<None>'))
+        return changed
+
+    def set_prev_race_winner_from(self, race_obj):
+        '''Takes the previous-race winner from a saved race object, or clears it if that race has no pilot winner and was its source.'''
+        if race_obj.race_winner_pilot_id != RHUtils.PILOT_ID_NONE:
+            self.prev_race_winner_name = race_obj.race_winner_name
+            self.prev_race_winner_phonetic = race_obj.race_winner_phonetic
+            self.prev_race_winner_pilot_id = race_obj.race_winner_pilot_id
+            self.prev_race_winner_race_id = race_obj.db_id
+        elif self.prev_race_winner_race_id == race_obj.db_id:
+            self.clear_prev_race_winner()
+
+    def clear_prev_race_winner(self):
+        self.prev_race_winner_name = ''
+        self.prev_race_winner_phonetic = ''
+        self.prev_race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+        self.prev_race_winner_race_id = None
+
     def get_active_laps(self, late_lap_flag=False):
         # return active (non-deleted) laps objects
         filtered = {}
@@ -1899,7 +1956,7 @@ class RHRace():
             self.clear_team_results(token)
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_team_leaderboard(self._racecontext)
+        build = Results.calc_team_leaderboard(self._racecontext, race_obj=self)
         self.set_team_results(token, build)
         return build
 
@@ -1916,7 +1973,7 @@ class RHRace():
             self.clear_team_results(token)
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_coop_leaderboard(self._racecontext)
+        build = Results.calc_coop_leaderboard(self._racecontext, race_obj=self)
         self.set_coop_results(token, build)
         return build
 
@@ -2096,9 +2153,7 @@ class RHRace():
         if self.race_status == RaceStatus.READY:
             if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
                 if self._format and getattr(self._format, 'id', -1) != race_format.id:
-                    self.prev_race_winner_name = ''  # if format changed then clear previous race winner
-                    self.prev_race_winner_phonetic = ''
-                    self.prev_race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+                    self.clear_prev_race_winner()  # if format changed then clear previous race winner
                 self._racecontext.rhdata.set_option('currentFormat', race_format.id)
                 # create a shared instance
                 self._format = RHRaceFormat.copy(race_format)

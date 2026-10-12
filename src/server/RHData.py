@@ -3634,6 +3634,12 @@ class RHData():
                     lap_objs.append(lap_data)
 
                 last_race.node_laps[pilotrace.node_index] = lap_objs
+                last_race.clear_team_results()
+
+                race = self._racecontext.race
+                if last_race.recheck_win_status() and \
+                        getattr(last_race.format, 'id', None) == getattr(race.format, 'id', None):
+                    race.set_prev_race_winner_from(last_race)
 
                 self._racecontext.rhui.emit_current_leaderboard()
                 self._racecontext.rhui.emit_current_laps()
