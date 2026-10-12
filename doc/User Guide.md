@@ -309,6 +309,8 @@ The variables listed below may be used for the  effects.
 | %FASTEST_EVENT_SPEED_PILOT_CALL% | Pilot/speed for fastest speed of the event for pilot, with heat and round (with prompt) |
 | %RACES_WON_PILOT%         | Number of races won by pilot (all saved races)                                          |
 | %RACES_WON_PILOT_CALL%    | Number of races won by pilot, as "NAME has won N races"                                 |
+| %LAPS_EVENT_PILOT%        | Number of laps flown by pilot over the event (saved races and the race in progress)     |
+| %LAPS_EVENT_PILOT_CALL%   | Number of laps flown by pilot over the event, as "NAME has flown N laps"                |
 | %WINNER%                  | Pilot callsign for winner of race                                                       |
 | %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                                         |
 | %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                                              |
