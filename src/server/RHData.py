@@ -4399,15 +4399,23 @@ def getResultSourceStr(rhapi, source, spoken_flag):
     joiner = ", " if spoken_flag else " / "
     return "{}{}{} {}".format(name_str, joiner, rhapi.__('Round'), source['round'])
 
-def getFastestEventSpeedRow(rhapi):
+def getEventResultsWithCurrent(rhapi):
+    # the event results with the race in progress merged in until it is saved, as saving will merge it
     event_results = rhapi.db.event_results()  # None until a race has been saved
+    race_results = rhapi.race.results
+    if rhapi.race.heat == RHUtils.HEAT_ID_NONE or not hasRaceResultsData(race_results):
+        return event_results
+    return Results.build_incremental(rhapi._racecontext, race_results, event_results)
+
+def getFastestEventSpeedRow(rhapi):
+    event_results = getEventResultsWithCurrent(rhapi)
     lboard_name = (event_results or {}).get('meta', {}).get('primary_leaderboard', '')
     rows = (event_results or {}).get(lboard_name) or []
     return max((r for r in rows if r.get('top_speed') is not None),
                default=None, key=lambda r: r['top_speed'])
 
 def getPilotEventRow(rhapi, pilot_id):
-    event_results = rhapi.db.event_results()  # None until a race has been saved
+    event_results = getEventResultsWithCurrent(rhapi)
     lboard_name = (event_results or {}).get('meta', {}).get('primary_leaderboard', '')
     rows = (event_results or {}).get(lboard_name) or []
     return next((r for r in rows if r.get('pilot_id') == pilot_id), None)
@@ -4746,7 +4754,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = text.replace('%FASTEST_RACE_SPEED_CALL%', fastest_str)
 
         if '%FASTEST_EVENT_LAP' in text:
-            event_results = rhapi.db.event_results()  # None until a race has been saved
+            event_results = getEventResultsWithCurrent(rhapi)
             fastest_lap_data = (event_results or {}).get('meta', {}).get('fastest_race_lap_data')
             if fastest_lap_data:
                 if spoken_flag:
