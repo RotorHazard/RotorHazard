@@ -4505,6 +4505,7 @@ OTHER_TOKENS = ('%HEAT%', '%PILOT%', '%PILOTS%', '%LINEUP%', '%FREQS%',
                 '%FASTEST_EVENT_LAP_PILOT%', '%FASTEST_EVENT_LAP_PILOT_CALL%',
                 '%FASTEST_EVENT_SPEED_PILOT%', '%FASTEST_EVENT_SPEED_PILOT_CALL%',
                 '%RACES_WON_PILOT%', '%RACES_WON_PILOT_CALL%',
+                '%LAPS_EVENT_PILOT%', '%LAPS_EVENT_PILOT_CALL%',
                 '%SPLIT_TIME%', '%SPLIT_SPEED%',
                 '%COOP_RACE_INFO%', '%COOP_RACE_LAP_TOTALS%',
                 '%CURRENT_TIME_AP%', '%CURRENT_TIME_24%',
@@ -4829,6 +4830,22 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                 name_str = (pilot_obj.phonetic or pilot_obj.callsign) if spoken_flag else pilot_obj.callsign
                 text = text.replace('%RACES_WON_PILOT_CALL%', "{} {} {} {}".format(name_str,
                         rhapi.__('has won'), wins_str, rhapi.__('race' if wins_str == '1' else 'races')))
+
+        if '%LAPS_EVENT_PILOT' in text:
+            # keyed on the pilot rather than the seat; empty only when the id is not a pilot
+            pilot_obj = rhapi.db.pilot_by_id(RHUtils.getNumericEntry(args, 'pilot_id', -1))
+            if pilot_obj:
+                pilot_row = getPilotEventRow(rhapi, pilot_obj.id) or {}
+                laps_str = str(pilot_row.get('laps') or 0)
+            else:
+                laps_str = ''
+            # %LAPS_EVENT_PILOT% : Number of laps flown by pilot over the event
+            text = text.replace('%LAPS_EVENT_PILOT%', laps_str)
+            # %LAPS_EVENT_PILOT_CALL% : Pilot NAME has flown N laps
+            if laps_str:
+                name_str = (pilot_obj.phonetic or pilot_obj.callsign) if spoken_flag else pilot_obj.callsign
+                text = text.replace('%LAPS_EVENT_PILOT_CALL%', "{} {} {} {}".format(name_str,
+                        rhapi.__('has flown'), laps_str, rhapi.__('lap' if laps_str == '1' else 'laps')))
 
         if '%WINNER' in text:
             winner_str = rhapi.race.race_winner_phonetic if spoken_flag else rhapi.race.race_winner_name
