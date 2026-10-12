@@ -1509,7 +1509,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
                         break
 
                 if pilots_can_pass == 0:
-                    return check_win_laps_and_time(raceObj, interfaceObj, forced=True, **kwargs)
+                    return check_win_laps_and_time(raceObj, interfaceObj, **dict(kwargs, forced=True))
 
     return {
         'status': WinStatus.NONE
@@ -1590,11 +1590,11 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                 # call race if possible
                 if pilots_can_pass == 0:
                     if pilots_can_tie == 0 and pilots_tied == 0:
-                        return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
+                        return check_win_most_laps(raceObj, interfaceObj, **dict(kwargs, forced=True))
                     elif pilots_tied > 0: # add "and pilots_can_tie == 0" to wait for 3+-way?
                         node_index = leaderboard[0]['node']
                         if raceObj.get_node_finished_flag(node_index) == True:
-                            return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
+                            return check_win_most_laps(raceObj, interfaceObj, **dict(kwargs, forced=True))
 
     return {
         'status': WinStatus.NONE
@@ -1616,7 +1616,7 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
             if pilot_crossed_after_time:
                 return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
             else:
-                win_status = check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
+                win_status = check_win_most_laps(raceObj, interfaceObj, **dict(kwargs, forced=True))
                 if win_status['status'] == WinStatus.TIE and raceObj.race_status == RaceStatus.RACING:
                     # ties here change status to overtime
                     win_status['status'] = WinStatus.OVERTIME
@@ -1830,7 +1830,7 @@ def check_win_team_laps_and_time(racecontext, race_obj=None, **kwargs):
 
                 if 'overtime' in kwargs:
                     if team_members_finished[team_leaderboard[0]['name']]:
-                        return check_win_team_laps_and_time(racecontext, race_obj=raceObj, forced=True, **kwargs)
+                        return check_win_team_laps_and_time(racecontext, race_obj=raceObj, **dict(kwargs, forced=True))
 
                 for line in team_leaderboard[1:]:
                     max_potential_laps = line['laps'] + line['members'] - team_members_finished[line['name']]
@@ -1841,7 +1841,7 @@ def check_win_team_laps_and_time(racecontext, race_obj=None, **kwargs):
                         max_consideration = max(max_consideration, time_to_complete)
 
                 if teams_can_pass == 0:
-                    return check_win_team_laps_and_time(racecontext, race_obj=raceObj, forced=True, **kwargs)
+                    return check_win_team_laps_and_time(racecontext, race_obj=raceObj, **dict(kwargs, forced=True))
                 elif leader_has_finished:
                     return {
                         'status': WinStatus.NONE,
@@ -1962,7 +1962,7 @@ def check_win_team_laps_and_overtime(racecontext, race_obj=None, **kwargs):
             if pilot_crossed_after_time:
                 return check_win_team_laps_and_time(racecontext, race_obj=raceObj, overtime=True, **kwargs)
             else:
-                win_status = check_win_team_most_laps(racecontext, race_obj=raceObj, forced=True, **kwargs)
+                win_status = check_win_team_most_laps(racecontext, race_obj=raceObj, **dict(kwargs, forced=True))
                 if win_status['status'] == WinStatus.TIE and raceObj.race_status == RaceStatus.RACING:
                     # ties here change status to overtime
                     win_status['status'] = WinStatus.OVERTIME
