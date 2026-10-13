@@ -1852,26 +1852,148 @@ class RHRace():
 
     def get_splits(self, node_idx, lap_id):
         splits = []
-        if self._racecontext.cluster:
-            for secondary_index in range(len(self._racecontext.cluster.secondaries)):
-                if self._racecontext.cluster.isSplitSecondaryAvailable(secondary_index):
-                    split = self._racecontext.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
-                    if split:
-                        # rebuild the formatted time
-                        split_payload = {
-                            'split_id': secondary_index,
-                            'split_raw': split.split_time,
-                            'split_time': RHUtils.format_split_time_to_str(split.split_time, \
-                                        self._racecontext.serverconfig.get_item('UI', 'timeFormat')),
-                            'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
-                        }
-                    else:
-                        split_payload = {
-                            'split_id': secondary_index,
-                            'split_time': '-'
-                        }
-                    splits.append(split_payload)
+        for split_id, timer in sorted(self._racecontext.split_timers.items()):
+            if timer.is_available():
+                split = self._racecontext.rhdata.get_lapSplit_by_params(node_idx, lap_id, split_id)
+                if split:
+                    # rebuild the formatted time
+                    split_payload = {
+                        'split_id': split_id,
+                        'split_raw': split.split_time,
+                        'split_time': RHUtils.format_split_time_to_str(split.split_time, \
+                                    self._racecontext.serverconfig.get_item('UI', 'timeFormat')),
+                        'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
+                    }
+                else:
+                    split_payload = {
+                        'split_id': split_id,
+                        'split_time': '-'
+                    }
+                splits.append(split_payload)
         return splits
+
+    @catchLogExceptionsWrapper
+    def record_split(self, split_id, node_index, split_ts):
+        '''Records a pass on split timer 'split_id' as a split of the pilot's current lap.
+        'split_ts' is the time of the pass in milliseconds since the race start. Runs on
+        the pass queue, so a lap pass that came first is recorded first.'''
+        APP.app_context().push()
+
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+
+            timer = self._racecontext.split_timers.get(split_id)
+            if not timer:
+                logger.warning('Ignoring pass on split {0}: no split timer with that number'.format(split_id+1))
+                return
+            if self.race_status is not RaceStatus.RACING:
+                logger.debug('Ignoring split {0} for node {1} because race not running'.format(split_id+1, node_index+1))
+                return
+            pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
+            if pilot_id == RHUtils.PILOT_ID_NONE:
+                logger.debug('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
+                return
+
+            pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
+            callsign = pilot_obj.callsign if pilot_obj else None
+            time_format = self._racecontext.serverconfig.get_item('UI', 'timeFormat')
+            split_ts_str = RHUtils.format_split_time_to_str(split_ts, time_format)
+
+            # a speed after the pilot is done is called out but not stored
+            pilot_done_flag = bool(self.get_node_finished_flag(node_index))
+
+            act_laps_list = self.get_active_laps(late_lap_flag=True)[node_index]
+            lap_count = max(0, len(act_laps_list) - 1)
+
+            # get timestamp for last lap pass (including lap 0)
+            if len(act_laps_list) > 0:
+                last_lap_ts = act_laps_list[-1].lap_time_stamp
+                lap_split = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_count)
+
+                if len(lap_split) <= 0: # first split for this lap
+                    if split_id == 0:
+                        last_split_ts = last_lap_ts
+                    else:
+                        logger.debug('Ignoring (first) out-of-order split {} for node {}, time {}, pilot {}'.\
+                                     format(split_id+1, node_index+1, split_ts_str, callsign))
+                        last_split_ts = None
+                else:
+                    last_split_id = lap_split[-1].split_id
+                    if split_id > last_split_id:
+                        if split_id == last_split_id + 1:
+                            last_split_ts = lap_split[-1].split_time_stamp
+                        else:
+                            logger.debug('Ignoring split due to missing splits between {} and {} for node {}, time {}, pilot {}'.\
+                                         format(last_split_id+1, split_id+1, node_index+1, split_ts_str, callsign))
+                            last_split_ts = None
+                    else:
+                        logger.debug('Ignoring out-of-order split {} for node {}, time {}, pilot {}'.\
+                                     format(split_id+1, node_index+1, split_ts_str, callsign))
+                        last_split_ts = None
+            else:
+                logger.debug('Ignoring split {} before zero lap for node {}, time {}, pilot {}'.\
+                             format(split_id+1, node_index+1, split_ts_str, callsign))
+                last_split_ts = None
+
+            duration = int(timer.settings.get('toneDuration', 0))
+            if duration > 0:
+                frequency = int(timer.settings.get('toneFrequency', 0))
+                volume = int(timer.settings.get('toneVolume', 100))
+                toneType = timer.settings.get('toneType', 'square')
+                if frequency > 0 and volume > 0:
+                    self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
+
+            # if usual tracking (above) does not give a split, see about using the timestamp from the
+            #  previous split timer, for a speed value (to allow for speed callouts on practice runs between split timers)
+            speed_only_flag = last_split_ts is None and timer.distance > 0.0 and \
+                              (timer.prev_pass_stamps.get(node_index) or 0) > 0.0
+            if speed_only_flag:
+                last_split_ts = timer.prev_pass_stamps[node_index]
+
+            split_time = round(split_ts - last_split_ts, 3) if last_split_ts is not None else None
+
+            if split_time is not None and split_time <= 0.0:
+                logger.info('Ignoring split {} with non-positive time {} for node {}, time {}, pilot {}'.\
+                             format(split_id+1, split_time, node_index+1, split_ts_str, callsign))
+
+            elif split_time is not None:
+                split_speed = round(timer.distance / float(split_time), 2) if timer.distance > 0.0 else None
+                split_time_str = RHUtils.format_split_time_to_str(split_time, time_format)
+                logger.info('Split pass record{}: Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
+                    .format(' (for speed)' if speed_only_flag else '', node_index+1, callsign, lap_count+1, split_id+1,
+                            split_time_str, split_ts_str, ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
+
+                split_data = {
+                    'node_index': node_index,
+                    'pilot_id': pilot_id,
+                    'lap_id': lap_count,
+                    'split_id': split_id,
+                    'split_time_stamp': split_ts,
+                    'split_time': split_time,
+                    'split_time_formatted': split_time_str,
+                    'split_speed': split_speed,
+                    'time_callout_flag': timer.timeCalloutFlag,
+                    'speed_callout_flag': timer.speedCalloutFlag,
+                    'name_callout_flag': timer.nameCalloutFlag
+                }
+
+                if speed_only_flag:
+                    if not pilot_done_flag:
+                        self.add_split_speed_record(split_data)
+                    self._racecontext.rhui.emit_phonetic_split(split_data)
+                else:
+                    self._racecontext.rhdata.add_lapSplit(
+                            dict(split_data, split_speed=None) if pilot_done_flag else split_data)
+                    self._racecontext.rhui.emit_split_pass_info(split_data)
+                eventStr = timer.settings.get('event')
+                if eventStr:
+                    self._racecontext.events.trigger(eventStr, split_data)
+
+            next_timer = self._racecontext.split_timers.get(split_id + 1)
+            if next_timer and next_timer.distance > 0.0:  # if next timer needs it then save timestamp in its object
+                next_timer.prev_pass_stamps[node_index] = split_ts
+
+            # if there's a timestamp from a previous split timer saved, clear it now
+            timer.prev_pass_stamps.pop(node_index, None)
 
     def add_split_speed_record(self, split_data):
         '''Stores a speed-only split record, which is not tracked in the lap-splits table.'''

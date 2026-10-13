@@ -16,6 +16,7 @@ class RaceContext():
         self.interface = None
         self.sensors = None
         self.cluster = None
+        self.split_timers = {}  # SplitTimer objects, by split number (from secondary timers and plugins)
         self.calibration = None
 
         self.race = None

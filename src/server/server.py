@@ -3879,8 +3879,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
-        # start from no interfaces, so plugins can add theirs as they load
+        # start from no interfaces or split timers, so plugins can add theirs as they load
         RaceContext.interface.clear_interfaces()
+        RaceContext.split_timers.clear()
 
         # Plugin handling
         plugin_modules = []
@@ -4054,7 +4055,6 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
         hasMirrors = False
-        secondary = None
 
         # process mirrors last
         all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
@@ -4083,7 +4083,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     )
                     break
                 secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
-                                          RELEASE_VERSION, secondary)
+                                          RELEASE_VERSION)
                 RaceContext.cluster.addSecondary(secondary)
         except:
             logger.exception("Error adding secondary to cluster")
