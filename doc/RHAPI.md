@@ -1375,6 +1375,17 @@ Replace all laps of a seat in the current race, as the Marshal page does for the
 - `seat_index` (int): seat whose laps to replace
 - `laps` (list[dict]): replacement lap list, in order; each item requires `lap_time_stamp` and `lap_time` (both in milliseconds), and may also include `source` (default `LapSource.API`) and `deleted` (default `False`)
 
+#### race.split_timer_add(split_id, settings=None)
+Add a split timer, so passes from timing hardware part way round the course can be recorded as split times (see [Secondary / Split Timers](Cluster.md)). Its splits are shown on the race page, announced and saved with the race. Add split timers while the plugin initializes. Returns `True` if added, or `False` if the split number is already in use, for instance by a secondary timer.
+- `split_id` (int): split number, from 0 for the first split after the start/finish; secondary timers in split mode use their position in the secondaries list
+- `settings` _(optional)_ (dict): `distance`, `callout`, `toneDuration`, `toneFrequency`, `toneVolume` and `toneType`, as for a secondary timer, and `event`, the name of an event to trigger on each split (its action is set up on the *Settings* page; unlike a secondary timer's, none is created from these settings)
+
+#### race.split_add(seat_index, split_id, timestamp)
+Add a pass on a split timer. It is recorded as a split of the pilot's current lap, by the same rules as a secondary timer's passes: the first split after the lap's pass, then each split after the one before; others are ignored. Passes are processed in order with laps. No return value.
+- `seat_index` (int): seat of the pilot
+- `split_id` (int): split timer number, as given to `race.split_timer_add()`
+- `timestamp` (float): time of the pass, in server monotonic time
+
 #### race.results
 _Read only_
 Calculated race results. Returns `dict`.

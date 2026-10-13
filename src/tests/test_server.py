@@ -309,7 +309,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 9)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 10)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
@@ -794,6 +794,69 @@ class ServerTest(unittest.TestCase):
         readings = sensor.getReadings()
         self.assertEqual(readings['counter']['value'], count+1)
 
-        
+    def test_split_timer_add(self):
+        self.assertTrue(server.RHAPI.race.split_timer_add(0))
+        self.assertFalse(server.RHAPI.race.split_timer_add(0))  # number taken
+        self.assertTrue(server.RHAPI.race.split_timer_add(1, {'distance': 30}))
+        timer = server.RaceContext.split_timers[1]
+        self.assertEqual(timer.distance, 30000.0)
+        self.assertTrue(timer.speedCalloutFlag)  # speed by default when there is a distance
+        self.assertFalse(timer.timeCalloutFlag)
+
+    def test_split_timers_cleared_on_initialize(self):
+        server.RHAPI.race.split_timer_add(5)
+        server.rh_program_initialize(reg_endpoints_flag=False)
+        self.assertNotIn(5, server.RaceContext.split_timers)
+
+    def _split_race(self):
+        # a race with pilots on seats 0 and 1, and split timers 0 and 1 (30 m apart)
+        server.RHAPI.race.split_timer_add(0)
+        server.RHAPI.race.split_timer_add(1, {'distance': 30})
+        heat = server.RHAPI.db.heat_add()
+        slots = server.RHAPI.db.slots_by_heat(heat.id)
+        for seat in (0, 1):
+            server.RHAPI.db.slot_alter(slots[seat].id, pilot=server.RHAPI.db.pilot_add().id)
+        server.RHAPI.race.heat = heat.id
+        server.RaceContext.race.stage(immediate=True)
+        return server.RaceContext.race.start_time_monotonic
+
+    def _add_split(self, seat, split_id, timestamp):
+        server.RHAPI.race.split_add(seat, split_id, timestamp)
+        server.RaceContext.race.pass_invoke_func_queue_obj.waitForQueueEmpty()
+
+    def test_split_add(self):
+        start = self._split_race()
+        self._add_split(0, 0, start + 0.5)  # before the start pass: no split, but it times split 2 for speed
+        server.RHAPI.race.lap_add(0, start + 1.0)  # start pass (lap 0)
+        server.RHAPI.race.lap_add(1, start + 1.0)
+        self._add_split(0, 1, start + 2.0)  # split 2 before split 1: speed only, 1.5 s from the pass at 0.5 s
+        self.assertEqual([(s['split_time'], s['split_speed']) for s in server.RaceContext.race.node_split_speeds[0]],
+                         [(1500.0, 20.0)])
+        self._add_split(0, 0, start + 3.0)  # 2.0 s after the start pass
+        self._add_split(0, 0, start + 3.5)  # split 1 again: ignored
+        self._add_split(0, 1, start + 4.5)  # 1.5 s after split 1, 30 m: 20 m/s
+        self._add_split(1, 1, start + 4.0)  # split 2 with split 1 missed: ignored
+        self._add_split(1, 7, start + 4.0)  # no such split timer: ignored
+        self.assertEqual(
+            [(s.node_index, s.lap_id, s.split_id, s.split_time, s.split_speed) for s in server.RHAPI.db.lap_splits()],
+            [(0, 0, 0, 2000.0, None), (0, 0, 1, 1500.0, 20.0)])
+
+        laps = server.RaceContext.race.build_laps_list()['node_index']
+        self.assertEqual([s['split_raw'] for s in laps[0]['laps'][0]['splits']], [2000.0, 1500.0])
+        self.assertEqual([s['split_time'] for s in laps[1]['laps'][0]['splits']], ['-', '-'])
+
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+        race = server.RHAPI.db.races[-1]
+        self.assertEqual([(s.split_id, s.split_time, s.speed_only) for s in server.RHAPI.db.saved_lap_splits_by_race(race.id)],
+                         [(0, 2000.0, False), (1, 1500.0, False), (1, 1500.0, True)])
+
+    def test_split_add_needs_running_race(self):
+        server.RHAPI.race.split_timer_add(0)
+        num_splits = len(server.RHAPI.db.lap_splits())
+        self._add_split(0, 0, 1.0)
+        self.assertEqual(len(server.RHAPI.db.lap_splits()), num_splits)
+
+
 if __name__ == '__main__':
     unittest.main()

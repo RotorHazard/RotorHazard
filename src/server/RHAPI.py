@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 9
+API_VERSION_MINOR = 10
 
 import dataclasses
 import json
@@ -14,6 +14,7 @@ import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from interface_mapper import InterfaceType
+from SplitTimer import SplitTimer, add_split_timer
 
 logger = logging.getLogger(__name__)
 
@@ -1211,6 +1212,14 @@ class RaceAPI():
                 'deleted': lap.get('deleted', False),
             } for lap in laps],
         })
+
+    def split_timer_add(self, split_id, settings=None):
+        return add_split_timer(self._racecontext.split_timers, SplitTimer(split_id, settings))
+
+    def split_add(self, seat_index, split_id, timestamp):
+        race = self._racecontext.race
+        race.pass_invoke_func_queue_obj.put(race.record_split, split_id, seat_index, \
+                                            (timestamp - race.start_time_monotonic) * 1000)
 
     @property
     @callWithDatabaseWrapper
