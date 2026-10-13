@@ -97,9 +97,10 @@ class SecondaryNode:
             self.secondaryModeStr = SecondaryNode.SPLIT_MODE
             if modeStr != SecondaryNode.SPLIT_MODE:
                 logger.warning("Invalid 'mode' value in secondary timer config: {}".format(modeStr))
-            # its splits are shown once this secondary has connected
-            add_split_timer(RaceContext.split_timers, SplitTimer(idVal, info, \
-                            lambda: self.lastContactTime > 0 or self.numDisconnects > 0))
+            # Keep a conflicting source from submitting passes under another timer's settings.
+            if not add_split_timer(RaceContext.split_timers, SplitTimer(idVal, info,
+                                  lambda: self.lastContactTime > 0 or self.numDisconnects > 0)):
+                raise ValueError('Secondary split number {} is already registered'.format(idVal + 1))
         self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
         self.startConnectTime = 0
         self.lastContactTime = -1
@@ -449,10 +450,11 @@ class SecondaryNode:
                             split_ts_epoch_ms -= self.timeDiffMedianMs
 
                         if not self.isActionMode:
-                            # recorded on the pass queue, after any lap pass that came before it
+                            # The shared pass queue preserves arrival order, not device timestamp order.
                             race = self._racecontext.race
                             race.pass_invoke_func_queue_obj.put(race.record_split, self.id, node_index, \
-                                                                split_ts_epoch_ms - race.start_time_epoch_ms)
+                                                                split_ts_epoch_ms - race.start_time_epoch_ms,
+                                                                race_start=race.start_time_monotonic)
 
                         else:  # Action mode
                             pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)

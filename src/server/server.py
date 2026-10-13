@@ -3882,6 +3882,12 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # start from no interfaces or split timers, so plugins can add theirs as they load
         RaceContext.interface.clear_interfaces()
         RaceContext.split_timers.clear()
+        ordered_secondaries = sorted(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'),
+            key=lambda info: isinstance(info, dict) and str(info.get('mode', 'split')).lower() == 'mirror')
+        RaceContext.reserved_split_ids = {
+            index for index, info in enumerate(ordered_secondaries)
+            if not isinstance(info, dict) or str(info.get('mode', 'split')).lower() not in ('mirror', 'action')
+        }
 
         # Plugin handling
         plugin_modules = []
@@ -4058,7 +4064,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # process mirrors last
         all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
-        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror' if 'mode' in x else False))
+        all_secondaries.sort(key=lambda info: isinstance(info, dict) and str(info.get('mode', 'split')).lower() == 'mirror')
 
         try:
             for sec_idx, secondary_info in enumerate(all_secondaries):

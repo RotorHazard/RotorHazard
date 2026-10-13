@@ -1,6 +1,7 @@
 '''Split timers: points on the course where a pass is recorded as a split of the pilot's lap'''
 
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -17,15 +18,23 @@ class SplitTimer:
     NONE_CALLOUT = "none"
 
     def __init__(self, split_id, settings=None, is_available=None):
+        if type(split_id) is not int or split_id < 0:
+            raise ValueError('Split number must be a non-negative integer')
+        if settings is not None and not isinstance(settings, dict):
+            raise ValueError('Split timer settings must be a dictionary')
         self.split_id = split_id
-        self.settings = settings or {}
+        self.settings = dict(settings or {})
         self.distance = float(self.settings.get('distance', 0.0)) * 1000.0
+        if not math.isfinite(self.distance) or self.distance < 0:
+            raise ValueError('Split distance must be finite and non-negative')
         # timestamps of passes on the split timer before this one, by node, for speed-only records
         self.prev_pass_stamps = {}
         # whether the race page shows this timer's splits
         self.is_available = is_available or (lambda: True)
         calloutStr = self.settings.get('callout')
         if calloutStr is not None:
+            if not isinstance(calloutStr, str):
+                raise ValueError('Split callout must be a string')
             calloutStr = calloutStr.lower()
         if calloutStr == SplitTimer.TIME_CALLOUT:
             self.timeCalloutFlag = True

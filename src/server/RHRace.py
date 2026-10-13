@@ -1457,6 +1457,8 @@ class RHRace():
         '''Resets database current laps to default.'''
         self.node_laps = {}
         self.node_split_speeds = {}
+        for timer in self._racecontext.split_timers.values():
+            timer.prev_pass_stamps.clear()
         for idx in range(self.num_nodes):
             self.node_laps[idx] = []
             self.node_split_speeds[idx] = []
@@ -1873,23 +1875,28 @@ class RHRace():
         return splits
 
     @catchLogExceptionsWrapper
-    def record_split(self, split_id, node_index, split_ts):
+    def record_split(self, split_id, node_index, split_ts, race_start=None):
         '''Records a pass on split timer 'split_id' as a split of the pilot's current lap.
         'split_ts' is the time of the pass in milliseconds since the race start. Runs on
-        the pass queue, so a lap pass that came first is recorded first.'''
-        APP.app_context().push()
-
-        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        the pass queue, which preserves the arrival order of lap and split records.'''
+        with APP.app_context(), self._racecontext.rhdata.get_db_session_handle():
 
             timer = self._racecontext.split_timers.get(split_id)
             if not timer:
                 logger.warning('Ignoring pass on split {0}: no split timer with that number'.format(split_id+1))
                 return
-            if self.race_status is not RaceStatus.RACING:
+            if race_start is not None and race_start != self.start_time_monotonic:
+                logger.debug('Ignoring split from an earlier race')
+                return
+            if split_ts < 0:
+                return
+            before_stop = self.race_status == RaceStatus.DONE and \
+                          self.start_time_monotonic + split_ts / 1000 < self.end_time
+            if self.race_status != RaceStatus.RACING and not before_stop:
                 logger.debug('Ignoring split {0} for node {1} because race not running'.format(split_id+1, node_index+1))
                 return
             pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
-            if pilot_id == RHUtils.PILOT_ID_NONE:
+            if pilot_id is None or pilot_id == RHUtils.PILOT_ID_NONE:
                 logger.debug('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
                 return
 

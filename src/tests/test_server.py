@@ -3,6 +3,8 @@ import os
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 import gevent
 from datetime import datetime
 from flask.blueprints import Blueprint
@@ -856,6 +858,95 @@ class ServerTest(unittest.TestCase):
         num_splits = len(server.RHAPI.db.lap_splits())
         self._add_split(0, 0, 1.0)
         self.assertEqual(len(server.RHAPI.db.lap_splits()), num_splits)
+
+    def test_split_queue_preserves_pass_before_stop(self):
+        from gevent.event import Event
+        from RHRace import RaceStatus
+        server.RaceContext.rhdata.clear_lapSplits()
+        server.RHAPI.race.split_timer_add(0)
+        heat = server.RHAPI.db.heat_add()
+        pilot = server.RHAPI.db.pilot_add()
+        slot = server.RHAPI.db.slots_by_heat(heat.id)[0]
+        server.RHAPI.db.slot_alter(slot.id, pilot=pilot.id)
+        server.RHAPI.race.heat = heat.id
+        race = server.RaceContext.race
+        race.start_time_monotonic = 100.0
+        race.race_status = RaceStatus.RACING
+        release = Event()
+        race.pass_invoke_func_queue_obj.put(release.wait)
+        with patch.object(race, 'get_active_laps', return_value={0: [SimpleNamespace(lap_time_stamp=1000)]}), \
+             patch.object(race, 'get_node_finished_flag', return_value=False):
+            server.RHAPI.race.split_add(0, 0, 102.0)
+            race.race_status = RaceStatus.DONE
+            race.end_time = 110.0
+            release.set()
+            race.pass_invoke_func_queue_obj.waitForQueueEmpty()
+            splits = server.RHAPI.db.lap_splits()
+            self.assertEqual([(s.split_time, s.split_id) for s in splits], [(1000.0, 0)])
+            server.RHAPI.race.split_add(0, 0, 111.0)
+            race.pass_invoke_func_queue_obj.waitForQueueEmpty()
+            self.assertEqual(len(server.RHAPI.db.lap_splits()), 1)
+
+    def test_split_queue_rejects_previous_race(self):
+        from RHRace import RaceStatus
+        server.RHAPI.race.split_timer_add(0)
+        race = server.RaceContext.race
+        race.start_time_monotonic = 200.0
+        race.race_status = RaceStatus.RACING
+        with patch.object(server.RaceContext.rhdata, 'get_pilot_from_heatNode') as lookup:
+            race.record_split(0, 0, 2000, race_start=100.0)
+            lookup.assert_not_called()
+
+    def test_split_does_not_leak_app_context(self):
+        from flask.globals import _cv_app
+        before = _cv_app.get()
+        for _ in range(10):
+            server.RaceContext.race.record_split(99, 0, 1000)
+        self.assertIs(_cv_app.get(), before)
+
+    def test_split_speed_timestamps_reset_with_laps(self):
+        server.RHAPI.race.split_timer_add(1, {'distance': 30})
+        timer = server.RaceContext.split_timers[1]
+        timer.prev_pass_stamps[0] = 1000.0
+        server.RaceContext.race.reset_current_laps()
+        self.assertEqual(timer.prev_pass_stamps, {})
+
+    def test_split_timer_secondary_reservation(self):
+        from ClusterNodeSet import SecondaryNode
+        config = server.RaceContext.serverconfig.config['GENERAL']
+        previous = config['SECONDARIES']
+        config['SECONDARIES'] = [{'address': '127.0.0.1', 'mode': 'split', 'distance': 30}]
+        try:
+            with patch.object(SecondaryNode, 'start_connection'):
+                server.rh_program_initialize(reg_endpoints_flag=False)
+            self.assertFalse(server.RHAPI.race.split_timer_add(0, {'distance': 10}))
+            self.assertEqual(server.RaceContext.split_timers[0].distance, 30000.0)
+            self.assertTrue(server.RHAPI.race.split_timer_add(1))
+        finally:
+            config['SECONDARIES'] = previous
+
+    def test_split_timer_collision_does_not_connect_secondary(self):
+        from ClusterNodeSet import SecondaryNode
+        server.RHAPI.race.split_timer_add(0, {'distance': 10})
+        with patch.object(SecondaryNode, 'start_connection') as connect:
+            with self.assertRaises(ValueError):
+                SecondaryNode(0, {'address': '127.0.0.1'}, server.RaceContext,
+                              server.RaceContext.serverstate.monotonic_to_epoch_millis, 'test')
+            connect.assert_not_called()
+        self.assertEqual(server.RaceContext.split_timers[0].distance, 10000.0)
+
+    def test_split_api_rejects_invalid_values(self):
+        for split_id in (-1, True, '0'):
+            with self.assertRaises(ValueError):
+                server.RHAPI.race.split_timer_add(split_id)
+        for distance in (-1, float('nan'), float('inf')):
+            with self.assertRaises(ValueError):
+                server.RHAPI.race.split_timer_add(0, {'distance': distance})
+        for timestamp in (True, float('nan'), float('inf')):
+            with self.assertRaises(ValueError):
+                server.RHAPI.race.split_add(0, 0, timestamp)
+        with self.assertRaises(ValueError):
+            server.RHAPI.race.split_add(-1, 0, 1.0)
 
 
 if __name__ == '__main__':

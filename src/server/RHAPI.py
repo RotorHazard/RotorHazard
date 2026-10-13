@@ -10,6 +10,7 @@ import json
 import inspect
 import copy
 import logging
+import math
 import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
@@ -1214,12 +1215,23 @@ class RaceAPI():
         })
 
     def split_timer_add(self, split_id, settings=None):
-        return add_split_timer(self._racecontext.split_timers, SplitTimer(split_id, settings))
+        timer = SplitTimer(split_id, settings)
+        if split_id in self._racecontext.reserved_split_ids:
+            logger.warning('Split timer %s not added: number reserved by a secondary timer', split_id + 1)
+            return False
+        return add_split_timer(self._racecontext.split_timers, timer)
 
     def split_add(self, seat_index, split_id, timestamp):
         race = self._racecontext.race
+        if type(seat_index) is not int or not 0 <= seat_index < race.num_nodes:
+            raise ValueError('Seat index is out of range')
+        if type(split_id) is not int or split_id < 0:
+            raise ValueError('Split number must be a non-negative integer')
+        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)) or not math.isfinite(timestamp):
+            raise ValueError('Split timestamp must be a finite monotonic time')
         race.pass_invoke_func_queue_obj.put(race.record_split, split_id, seat_index, \
-                                            (timestamp - race.start_time_monotonic) * 1000)
+                                            (timestamp - race.start_time_monotonic) * 1000,
+                                            race_start=race.start_time_monotonic)
 
     @property
     @callWithDatabaseWrapper

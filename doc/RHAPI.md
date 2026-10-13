@@ -1381,10 +1381,12 @@ Add a split timer, so passes from timing hardware part way round the course can 
 - `settings` _(optional)_ (dict): `distance`, `callout`, `toneDuration`, `toneFrequency`, `toneVolume` and `toneType`, as for a secondary timer, and `event`, the name of an event to trigger on each split (its action is set up on the *Settings* page; unlike a secondary timer's, none is created from these settings)
 
 #### race.split_add(seat_index, split_id, timestamp)
-Add a pass on a split timer. It is recorded as a split of the pilot's current lap, by the same rules as a secondary timer's passes: the first split after the lap's pass, then each split after the one before; others are ignored. Passes are processed in order with laps. No return value.
+Add a pass on a split timer. It is recorded as a split of the pilot's current lap, by the same rules as a secondary timer's passes: the first split after the lap's pass, then each split after the one before; others are ignored. The shared lap/split queue preserves arrival order; it does not reorder independent device streams by timestamp. A queued pass timestamped before race stop can still be recorded while that race is ending. Records from an earlier race are ignored. No return value.
 - `seat_index` (int): seat of the pilot
 - `split_id` (int): split timer number, as given to `race.split_timer_add()`
 - `timestamp` (float): time of the pass, in server monotonic time
+
+Invalid seat indices, split numbers, settings, and non-finite timestamps raise `ValueError`. Configured secondary split timers reserve their course positions before plugins initialize; `split_timer_add()` returns `False` for a reserved number even before that secondary connects.
 
 #### race.results
 _Read only_
