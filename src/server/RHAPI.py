@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 10
+API_VERSION_MINOR = 11
 
 import dataclasses
 import json
@@ -84,6 +84,13 @@ class UserInterfaceAPI():
     # Markdown
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
+
+    def register_sensor_tuning(self, name, label, data_fn, set_levels_fn, capture_fn=None):
+        '''Show additional receivers in Settings > Sensor Tuning without adding race seats.'''
+        return self._racecontext.rhui.register_sensor_tuning(name, label, data_fn, set_levels_fn, capture_fn)
+
+    def unregister_sensor_tuning(self, name):
+        return self._racecontext.rhui.unregister_sensor_tuning(name)
 
     # Blueprint
     def blueprint_add(self, blueprint):

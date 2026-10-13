@@ -65,7 +65,7 @@ import signal
 import werkzeug
 import urllib3
 
-from flask import Flask, send_from_directory, request, make_response, Response, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_from_directory, request, make_response, Response, templating, redirect, abort, copy_current_request_context, jsonify
 from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
@@ -584,9 +584,37 @@ def render_settings():
                            vrx_enabled=RaceContext.vrx_manager.isEnabled() if RaceContext.vrx_manager else False,
                            num_nodes=RaceContext.race.num_nodes,
                            server_messages=RaceContext.rhui.get_ui_server_messages_str(),
+                           sensor_tuning_available=RaceContext.rhui.sensor_tuning_available,
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
                            node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi())
+
+@APP.route('/sensor-tuning/data')
+@requires_auth
+def sensor_tuning_data():
+    response = jsonify({'providers': RaceContext.rhui.get_sensor_tuning_data()})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+@APP.route('/sensor-tuning/<name>/<int:node_index>', methods=['POST'])
+@requires_auth
+def set_sensor_tuning_levels(name, node_index):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or any(type(data.get(key)) is not int for key in ('enter', 'exit')):
+        return jsonify({'ok': False, 'message': __('EnterAt and ExitAt must be whole numbers.')}), 400
+    if not 0 <= data['exit'] < data['enter']:
+        return jsonify({'ok': False, 'message': __('EnterAt must be higher than ExitAt, and both must be non-negative.')}), 400
+    result, status = RaceContext.rhui.set_sensor_tuning_levels(name, node_index, data['enter'], data['exit'])
+    return jsonify(result), status
+
+@APP.route('/sensor-tuning/<name>/<int:node_index>/capture', methods=['POST'])
+@requires_auth
+def capture_sensor_tuning_level(name, node_index):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or data.get('level') not in ('enter', 'exit'):
+        return jsonify({'ok': False, 'message': __('Choose EnterAt or ExitAt to capture.')}), 400
+    result, status = RaceContext.rhui.capture_sensor_tuning_level(name, node_index, data['level'])
+    return jsonify(result), status
 
 @APP.route('/advanced-settings')
 @requires_auth
@@ -3882,6 +3910,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # start from no interfaces or split timers, so plugins can add theirs as they load
         RaceContext.interface.clear_interfaces()
         RaceContext.split_timers.clear()
+        RaceContext.rhui.clear_sensor_tuning()
         ordered_secondaries = sorted(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'),
             key=lambda info: isinstance(info, dict) and str(info.get('mode', 'split')).lower() == 'mirror')
         RaceContext.reserved_split_ids = {

@@ -166,6 +166,22 @@ Panels are represented with the `UIPanel` class, which has the following propert
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
+#### ui.register_sensor_tuning(name, label, data_fn, set_levels_fn, capture_fn=None)
+
+Added in RHAPI 1.11. Displays additional receivers (for example, split gates) in **Settings > Sensor Tuning**, using the standard RSSI graph and independent EnterAt/ExitAt controls. These receivers do not add race seats or change race profiles.
+
+- `name` (string): unique identifier containing letters, numbers, underscores or hyphens; registering it again replaces the provider. Registrations are cleared before plugins initialize. Invalid registrations raise `ValueError`.
+- `label` (string): displayed gate/group name.
+- `data_fn` (function): returns cached telemetry as a dictionary with `connected` (bool), optional `address` and `max_rssi` (default 255), and `nodes` (list). Each node has `index` (non-negative integer), `frequency`, `rssi`, `enter`, `exit`, `inside` (bool), `peak`, and `nadir`. This callback is polled while Settings is open; it should not make hardware requests.
+- `set_levels_fn` (function): accepts `(node_index, enter, exit)`, validates the receiver's limits and connection, and saves to hardware. Returns `{'ok': True, 'enter': actual_enter, 'exit': actual_exit}` on success or `{'ok': False, 'message': explanation}` on failure. Reads and writes require the same administrator authentication as Settings.
+- `capture_fn` (optional function): accepts `(node_index, level)` where `level` is `'enter'` or `'exit'`. Average the receiver's samples over three seconds; for EnterAt, keep the captured level at least five RSSI units below a known node peak, matching RH's existing capture behavior. Save the result on the receiver and return the same confirmed-threshold response as `set_levels_fn`. The callback may yield while collecting samples; it must handle disconnects and concurrent captures. Receivers without this callback have no Capture control.
+
+Snapshots must contain unique node indices and finite RSSI values within `max_rssi`; malformed snapshots disable only that provider's controls. An empty node list removes its previously displayed receivers. Displayed nodes do not affect the race-seat count or frequency profile. Callbacks should return plain JSON-compatible dictionaries; callback errors produce a disconnected state or a failed write, never a successful save.
+
+#### ui.unregister_sensor_tuning(name)
+
+Remove a provider and its controls from Sensor Tuning. Returns `True` if removed, or `False` if the name was not registered. Polling stops its graphs when the provider disappears.
+
 #### ui.register_panel(name, label, page, order=0, open=False)
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
