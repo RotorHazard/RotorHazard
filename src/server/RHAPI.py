@@ -3,17 +3,19 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 9
+API_VERSION_MINOR = 11
 
 import dataclasses
 import json
 import inspect
 import copy
 import logging
+import math
 import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from interface_mapper import InterfaceType
+from SplitTimer import SplitTimer, add_split_timer
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,13 @@ class UserInterfaceAPI():
     # Markdown
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
+
+    def register_sensor_tuning(self, name, label, data_fn, set_levels_fn, capture_fn=None):
+        '''Show additional receivers in Settings > Sensor Tuning without adding race seats.'''
+        return self._racecontext.rhui.register_sensor_tuning(name, label, data_fn, set_levels_fn, capture_fn)
+
+    def unregister_sensor_tuning(self, name):
+        return self._racecontext.rhui.unregister_sensor_tuning(name)
 
     # Blueprint
     def blueprint_add(self, blueprint):
@@ -1211,6 +1220,25 @@ class RaceAPI():
                 'deleted': lap.get('deleted', False),
             } for lap in laps],
         })
+
+    def split_timer_add(self, split_id, settings=None):
+        timer = SplitTimer(split_id, settings)
+        if split_id in self._racecontext.reserved_split_ids:
+            logger.warning('Split timer %s not added: number reserved by a secondary timer', split_id + 1)
+            return False
+        return add_split_timer(self._racecontext.split_timers, timer)
+
+    def split_add(self, seat_index, split_id, timestamp):
+        race = self._racecontext.race
+        if type(seat_index) is not int or not 0 <= seat_index < race.num_nodes:
+            raise ValueError('Seat index is out of range')
+        if type(split_id) is not int or split_id < 0:
+            raise ValueError('Split number must be a non-negative integer')
+        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)) or not math.isfinite(timestamp):
+            raise ValueError('Split timestamp must be a finite monotonic time')
+        race.pass_invoke_func_queue_obj.put(race.record_split, split_id, seat_index, \
+                                            (timestamp - race.start_time_monotonic) * 1000,
+                                            race_start=race.start_time_monotonic)
 
     @property
     @callWithDatabaseWrapper

@@ -73,6 +73,10 @@ The event/effect/text and "tone..." options described above may also be configur
 
 * `Minimum Repeat (secs)`: The minimum number of seconds allowed between repeated triggerings of the event/action
 
+### Split Timers from Plugins
+
+Plugins can add split timers too, for timing hardware that is not a RotorHazard timer (see `race.split_timer_add()` and `race.split_add()` in [RHAPI](RHAPI.md)). Their splits are shown, announced and saved like those of secondary timers. Each split timer has a number giving its place on the course, from 0 for the first split after the start/finish; secondary timers in split mode take their position in the secondaries list. When using both, give the plugin's split timers the numbers after the secondary timers.
+
 <br/>
 
 ### Notes

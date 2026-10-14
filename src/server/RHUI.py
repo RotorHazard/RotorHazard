@@ -10,6 +10,7 @@ from flask import request
 from flask_socketio import emit
 from eventmanager import Evt
 import json
+import math
 import os
 import subprocess
 import urllib3
@@ -119,6 +120,14 @@ class Markdown():
     name: str
     desc: str
 
+@dataclass
+class SensorTuningProvider():
+    label: str
+    data_fn: callable
+    set_levels_fn: callable
+    capture_fn: callable = None
+    error_reported: bool = False
+
 class RHUI():
     # Language placeholder (Overwritten after module init)
     def __(self, *args):
@@ -141,6 +150,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._sensor_tuning = OrderedDict()
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -340,6 +350,95 @@ class RHUI():
     @property
     def markdowns(self):
         return self._markdowns
+
+    # Additional receivers shown in Sensor Tuning, independent of race seats.
+    def register_sensor_tuning(self, name, label, data_fn, set_levels_fn, capture_fn=None):
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_-]+', name):
+            raise ValueError('Receiver name must contain only letters, numbers, underscores or hyphens')
+        if not isinstance(label, str) or not label or not callable(data_fn) or not callable(set_levels_fn):
+            raise ValueError('Receiver label and data/set callbacks are required')
+        if capture_fn is not None and not callable(capture_fn):
+            raise ValueError('Capture callback must be callable')
+        self._sensor_tuning[name] = SensorTuningProvider(label, data_fn, set_levels_fn, capture_fn)
+
+    def unregister_sensor_tuning(self, name):
+        return self._sensor_tuning.pop(name, None) is not None
+
+    def clear_sensor_tuning(self):
+        self._sensor_tuning.clear()
+
+    @property
+    def sensor_tuning_available(self):
+        return bool(self._sensor_tuning)
+
+    def get_sensor_tuning_data(self):
+        providers = []
+        for name, provider in list(self._sensor_tuning.items()):
+            try:
+                data = dict(provider.data_fn())
+                if type(data.get('connected')) is not bool or not isinstance(data.get('nodes'), list):
+                    raise ValueError('Receiver snapshot requires connected (bool) and nodes (list)')
+                maximum = data.get('max_rssi', 255)
+                if type(maximum) is not int or maximum <= 0:
+                    raise ValueError('Invalid RSSI range')
+                indices = set()
+                for node in data['nodes']:
+                    index = node.get('index')
+                    if type(index) is not int or index < 0 or index in indices:
+                        raise ValueError('Receiver indices must be unique non-negative integers')
+                    indices.add(index)
+                    if type(node.get('frequency')) is not int or node['frequency'] < 0:
+                        raise ValueError('Invalid receiver frequency')
+                    if type(node.get('inside')) is not bool:
+                        raise ValueError('Invalid receiver crossing state')
+                    for key in ('enter', 'exit', 'rssi', 'peak', 'nadir'):
+                        value = node.get(key)
+                        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= maximum:
+                            raise ValueError('Invalid receiver RSSI field: ' + key)
+                    if type(node['enter']) is not int or type(node['exit']) is not int:
+                        raise ValueError('Thresholds must be whole numbers')
+                data = {
+                    'connected': data['connected'], 'max_rssi': maximum,
+                    'address': str(data.get('address', '')), 'message': str(data.get('message', '')),
+                    'nodes': [{key: node[key] for key in
+                              ('index', 'frequency', 'inside', 'enter', 'exit', 'rssi', 'peak', 'nadir')}
+                              for node in data['nodes']]
+                }
+                provider.error_reported = False
+            except Exception:
+                if not provider.error_reported:
+                    logger.exception('Unable to read sensor tuning provider %s', name)
+                    provider.error_reported = True
+                data = {'connected': False, 'nodes': [], 'message': self.__('Unable to read receiver data.')}
+            data.update(name=name, label=provider.label, can_capture=provider.capture_fn is not None)
+            providers.append(data)
+        return providers
+
+    def set_sensor_tuning_levels(self, name, node_index, enter, exit):
+        return self._write_sensor_tuning(name, node_index, enter, exit)
+
+    def capture_sensor_tuning_level(self, name, node_index, level):
+        return self._write_sensor_tuning(name, node_index, level, capture=True)
+
+    def _write_sensor_tuning(self, name, node_index, *args, capture=False):
+        provider = self._sensor_tuning.get(name)
+        if provider is None:
+            return {'ok': False, 'message': self.__('Unknown receiver.')}, 404
+        callback = provider.capture_fn if capture else provider.set_levels_fn
+        if callback is None:
+            return {'ok': False, 'message': self.__('Receiver does not support capture.')}, 400
+        try:
+            result = callback(node_index, *args)
+            if not isinstance(result, dict) or type(result.get('ok')) is not bool:
+                raise ValueError('Invalid receiver write response')
+            if result['ok']:
+                if any(type(result.get(key)) is not int for key in ('enter', 'exit')) or not 0 <= result['exit'] < result['enter']:
+                    raise ValueError('Receiver did not confirm valid thresholds')
+                return {'ok': True, 'enter': result['enter'], 'exit': result['exit']}, 200
+            return {'ok': False, 'message': str(result.get('message', self.__('Unable to save receiver levels.')))}, 400
+        except Exception:
+            logger.exception('Unable to tune sensor provider %s node %s', name, node_index)
+            return {'ok': False, 'message': self.__('Unable to save receiver levels.')}, 502
 
     # Blueprints
     def add_blueprint(self, blueprint):

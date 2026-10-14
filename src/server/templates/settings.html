@@ -2665,6 +2665,9 @@
 	});
 
 </script>
+{% if sensor_tuning_available %}
+<script src="{{ url_for('static', filename='sensor-tuning.js') }}?{{ serverInfo['release_version'] | urlencode }}"></script>
+{% endif %}
 {% endblock %} {% block content %}
 <main class="page-settings">
 
@@ -2813,6 +2816,10 @@
 			</div>
 			{% endfor %}
 		</div>
+
+		{% if sensor_tuning_available %}
+		<div id="additional-sensor-tuning" aria-live="polite"></div>
+		{% endif %}
 
 		<!--Edit system tuning values-->
 		<ol class="form">
