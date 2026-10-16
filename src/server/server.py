@@ -171,6 +171,7 @@ import socket
 import random
 import string
 import json
+import html
 from pathlib import Path
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
@@ -1657,13 +1658,21 @@ def on_delete_race_round(data):
     label = get_race_round_label(race.heat_id, race.round_id)
 
     if RaceContext.rhdata.heat_race_in_progress(race.heat_id):
-        message = __('Cannot delete {0} while a race in that heat is in progress').format(label)
+        message = __('Cannot delete {0} while a race in that heat is in progress').format(html.escape(label))
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
         emit('race_round_deleted', {'ok': False, 'race_id': race_id})
         return
 
+    race_db_id = race.id
     if RaceContext.rhdata.delete_savedRaceMeta(race):
-        message = __('Deleted {0}; a copy is listed under Deleted Races on the View Database page').format(label)
+        # the message links to restoring the copy just made of the race
+        deleted_race = next((d for d in RaceContext.rhdata.get_deletedRaces() if d.race_id == race_db_id), None)
+        if deleted_race:
+            restore_link = '<a href="#" class="restore-deleted-race-link" data-id="{0}" data-label="{1}">{2}</a>'.format(
+                deleted_race.id, html.escape(label), __('click here'))
+            message = __('Deleted {0} (to restore this round, {1})').format(html.escape(label), restore_link)
+        else:
+            message = __('Deleted {0}').format(html.escape(label))
         RaceContext.rhui.emit_priority_message(message, False)
 
         RaceContext.rhui.emit_heat_data()
@@ -1671,9 +1680,31 @@ def on_delete_race_round(data):
         RaceContext.rhui.emit_result_data()
         emit('race_round_deleted', {'ok': True, 'race_id': race_id})
     else:
-        message = __('Unable to delete {0}').format(label)
+        message = __('Unable to delete {0}').format(html.escape(label))
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
         emit('race_round_deleted', {'ok': False, 'race_id': race_id})
+
+def get_deleted_race_restore_problem(deleted_race_id):
+    '''The deleted race, its label, and a message saying why it cannot be restored (None when it can).'''
+    deleted_race = RaceContext.rhdata.get_deletedRace(deleted_race_id) if deleted_race_id is not None else None
+    if not deleted_race:
+        return None, None, __('That deleted race is no longer available to restore')
+
+    label = get_race_round_label(deleted_race.heat_id, deleted_race.round_id)
+    conflicts = RaceContext.rhdata.get_deletedRace_conflicts(deleted_race)
+    if conflicts:
+        return deleted_race, label, __('Cannot restore {0}: {1}').format(html.escape(label), '; '.join(conflicts))
+    return deleted_race, label, None
+
+@SOCKET_IO.on('check_deleted_race')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def on_check_deleted_race(data):
+    '''Replies whether a deleted race can be restored, with a message to the caller when it cannot.'''
+    _deleted_race, _label, problem = get_deleted_race_restore_problem(data.get('id'))
+    if problem:
+        RaceContext.rhui.emit_priority_message(problem, False, nobroadcast=True)
+    return {'ok': not problem}
 
 @SOCKET_IO.on('restore_deleted_race')
 @requires_socketio_auth
@@ -1681,33 +1712,24 @@ def on_delete_race_round(data):
 def on_restore_deleted_race(data):
     '''Restore a deleted race, unless anything conflicts with it.'''
     deleted_race_id = data.get('id')
-    deleted_race = RaceContext.rhdata.get_deletedRace(deleted_race_id) if deleted_race_id is not None else None
-
-    if not deleted_race:
-        message = __('That deleted race is no longer available to restore')
-        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+    deleted_race, label, problem = get_deleted_race_restore_problem(deleted_race_id)
+    if problem:
+        RaceContext.rhui.emit_priority_message(problem, False, nobroadcast=True)
         emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
         return
 
-    label = get_race_round_label(deleted_race.heat_id, deleted_race.round_id)
-
-    conflicts = RaceContext.rhdata.get_deletedRace_conflicts(deleted_race)
-    if conflicts:
-        message = __('Cannot restore {0}: {1}').format(label, '; '.join(conflicts))
-        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
-        emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
-        return
-
+    heat_id = deleted_race.heat_id
+    round_id = deleted_race.round_id
     if RaceContext.rhdata.restore_deletedRace(deleted_race):
-        message = __('Restored {0}').format(label)
+        message = __('Restored {0}').format(html.escape(label))
         RaceContext.rhui.emit_priority_message(message, False)
 
         RaceContext.rhui.emit_heat_data()
         RaceContext.rhui.emit_race_list()
         RaceContext.rhui.emit_result_data()
-        emit('deleted_race_restored', {'ok': True, 'id': deleted_race_id})
+        emit('deleted_race_restored', {'ok': True, 'id': deleted_race_id, 'heat_id': heat_id, 'round_id': round_id})
     else:
-        message = __('Unable to restore {0}; see the server log').format(label)
+        message = __('Unable to restore {0}; see the server log').format(html.escape(label))
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
         emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
 

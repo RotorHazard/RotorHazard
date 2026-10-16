@@ -2,23 +2,10 @@
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
 		$('#deleted-races').on('click', 'button.restore-deleted-race', function () {
-			$('#restore-race-text').text(__('Restore {0}?').replace('{0}', $(this).data('label')));
-			$('#restore-race-confirm-btn').data('id', $(this).data('id'));
-			$.magnificPopup.open({
-				items: {
-					src: '#restore-race-confirm'
-				},
-				type: 'inline'
+			var button = $(this);
+			confirm_restore_deleted_race(button.data('id'), button.data('label'), function () {
+				button.prop('disabled', true);
 			});
-		});
-
-		$('#restore-race-confirm-btn').click(function () {
-			var deleted_race_id = $(this).data('id');
-			$.magnificPopup.close();
-			if (deleted_race_id) {
-				$('#deleted-races button[data-id="' + deleted_race_id + '"]').prop('disabled', true);
-				socket.emit('restore_deleted_race', {'id': deleted_race_id});
-			}
 		});
 
 		socket.on('deleted_race_restored', function (msg) {
@@ -268,15 +255,6 @@
         {% endfor %}
     </tbody>
 </table>
-
-<div id="restore-race-confirm" class="priority-message-interrupt mfp-hide popup">
-    <h2>{{ __('Restore Race') }}</h2>
-    <div class="popup-content">
-        <p id="restore-race-text"></p>
-        <p><button id="restore-race-confirm-btn">{{ __('Restore') }}</button>
-        <button class="cancel">{{ __('Cancel') }}</button></p>
-    </div>
-</div>
 
 </main>
 {% endblock %}

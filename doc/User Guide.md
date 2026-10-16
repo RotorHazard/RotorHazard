@@ -361,6 +361,8 @@ You may click on/touch the graph to set enter/exit points, activate recalculatio
 
 "Commit changes" when you are finished adjusting the race data to save it to the database and update the race results.
 
+"Delete This Round" removes the selected round of the heat, for all pilots, after a confirmation. Other rounds keep their numbers, and the next race in the heat reuses a round number that is no longer taken. When a heat in a class using heat groups loses its only race, the heat can be raced again. The message shown after a round is deleted includes a "click here" link that restores the round, after a confirmation (or says why it can no longer be restored).
+
 <br/>
 
 -----------------------------

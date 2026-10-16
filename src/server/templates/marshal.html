@@ -414,7 +414,9 @@
 					$('#selected_round').prop('disabled', false);
 					$('#selected_pilot').prop('disabled', false);
 				}
-				if (prev_heat) {
+				if (pending_restored_round && select_heat_round(pending_restored_round.heat, pending_restored_round.round)) {
+					pending_restored_round = null;
+				} else if (prev_heat) {
 					$('.heat-selector').val(prev_heat);
 					$('#selected_heat').trigger('change');
 				}
@@ -536,6 +538,10 @@
 			// the select holds a placeholder until a heat is chosen, so it is not a previous round
 			var prev_round = race_list_loaded && !$('#selected_round option[value="--"]').length ?
 				$('#selected_round').val() : pop_selection('round');
+			if (pending_round !== null) {
+				prev_round = pending_round;
+				pending_round = null;
+			}
 
 			$('#selected_round').empty();
 
@@ -714,6 +720,28 @@
 		}
 
 		var round_before_delete = null;
+		var pending_round = null;  // round for the next heat change to select
+		var pending_restored_round = null;  // restored round waiting for the race list to include it
+
+		// shows the given heat and round if the race list has them; returns whether it did
+		function select_heat_round(heat_id, round_id) {
+			if (!(race_list.heats && heat_id in race_list.heats && round_id in race_list.heats[heat_id].rounds)) {
+				return false;
+			}
+			pending_round = String(round_id);
+			$('.heat-selector').val(String(heat_id));
+			$('#selected_heat').trigger('change');
+			return true;
+		}
+
+		socket.on('deleted_race_restored', function (msg) {
+			if (msg.ok && msg.heat_id !== undefined) {
+				pending_restored_round = null;
+				if (!select_heat_round(msg.heat_id, msg.round_id)) {
+					pending_restored_round = {'heat': msg.heat_id, 'round': msg.round_id};
+				}
+			}
+		});
 
 		$('#delete-round').click(function(){
 			if (race_loaded) {
