@@ -1520,6 +1520,36 @@ function update_system_message_display() {
 	}
 }
 
+/* Restore a deleted race round, after a confirmation */
+var restore_race_confirm_el = $('<div class="priority-message-interrupt popup">');
+restore_race_confirm_el.append('<h2>' + __('Restore Race') + '</h2>');
+restore_race_confirm_el.append('<div class="popup-content"><p class="restore-race-text"></p>' +
+	'<p><button class="restore-race-confirm-btn">' + __('Restore') + '</button> ' +
+	'<button class="cancel">' + __('Cancel') + '</button></p></div>');
+
+function confirm_restore_deleted_race(deleted_race_id, label, on_confirm=false) {
+	// the server checks the race can still be restored, and says why not, before the confirmation opens
+	socket.emit('check_deleted_race', {'id': deleted_race_id}, function (reply) {
+		if (!reply || !reply.ok) {
+			return;
+		}
+		restore_race_confirm_el.find('.restore-race-text').text(__('Restore {0}?').replace('{0}', label));
+		restore_race_confirm_el.find('.restore-race-confirm-btn').off('click').on('click', function () {
+			$.magnificPopup.close();
+			if (typeof on_confirm === 'function') {
+				on_confirm();
+			}
+			socket.emit('restore_deleted_race', {'id': deleted_race_id});
+		});
+		$.magnificPopup.open({
+			items: {
+				src: restore_race_confirm_el,
+				type: 'inline',
+			}
+		});
+	});
+}
+
 function init_popup_generics() {
 	$('.open-mfp-popup').magnificPopup({
 		type:'inline',
@@ -1686,6 +1716,11 @@ jQuery(document).ready(function($){
 		if (!msg.admin_only || rotorhazard.admin) {
 			push_message(msg.message, msg.interrupt);
 		}
+	});
+
+	$(document).on('click', 'a.restore-deleted-race-link', function (event) {
+		event.preventDefault();
+		confirm_restore_deleted_race($(this).data('id'), $(this).data('label'));
 	});
 
 	socket.on('clear_priority_messages', function () {

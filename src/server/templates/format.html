@@ -4055,6 +4055,9 @@
 			{% if Debug %}
 			<a href="/database" class="debug button-like">{{ __('View Database') }}</a>
 			{% endif %}
+			{% if has_deleted_races %}
+			<a href="/database?view=deleted" class="button-like">{{ __('View Deleted Rounds') }}</a>
+			{% endif %}
 		</div>
 
 		<ul id="db-management">

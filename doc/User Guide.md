@@ -63,9 +63,17 @@ This page is for adjusting event-specific parameters.
 #### Event
 Event information is displayed to users, such as on the home page when users first connect to the system or at the top of the Results page.
 
+_Event Name_ and _Event Description_ are the event information shown to users; the description accepts Markdown.
+
+_Archive/New Event_ starts a new event. Choose the _Items to Clear_ (races, or races together with heats, classes, pilots or race formats). _Archive Event_ first saves all current data to the _Event Archive_, using the event name as the file name, then clears the chosen items and gives the new event a default name and an empty description. _Clear Data Only_ clears the chosen items without saving a copy, which cannot be undone.
+
 _Consecutive Laps Base_ sets the number of laps which RotorHazard calculates for its Consecutive Laps race formats and results.
 
-_Minimum Lap Time_ and _Minimum Lap Behavior_ change how RotorHazard highlights or discards short passes. _Minimum Lap Time_ changes the threshold under which will activate the _Minimum Lap Behavior_. Use the "discard" behavior with caution, as this will eliminate data that may have been valid.
+_Minimum Lap Time_ and _Minimum Lap Behavior_ change how RotorHazard handles short passes. _Minimum Lap Time_ is the threshold (in seconds) under which the _Minimum Lap Behavior_ applies: _Highlight short laps_ keeps short laps and highlights them, _Discard new short laps_ discards them as they are recorded, and _Ignore lower peaks_ keeps only the crossing with the strongest signal peak among crossings that are closer together than the minimum lap time. Use the "discard" behavior with caution, as this will eliminate data that may have been valid.
+
+_Ignore Crossings Before_ discards a pilot's first crossing of the race if it comes sooner than this many seconds after the race start.
+
+_Event Archive_ lists the event databases saved on the timer (archived events and database backups). _Restore Event_ replaces all current data with the selected event, after a confirmation. _Delete Event_ removes the selected file, which cannot be undone. _Download Event Database_ downloads the selected file.
 
 #### Pilots
 Add an entry for each pilot that will race. The system will announce pilots based on their callsign. A phonetic spelling for a callsign may be used to influence the voice callouts; it is not required.
@@ -212,9 +220,9 @@ The "%COOP_RACE_INFO%" and "%COOP_RACE_LAP_TOTALS%" variables can be used in cal
 
 #### Data Management
 
-_Stored Data_ can be used to backup the current database (save to a file on the pi and prompt to download it) or restore events from stored data files
+_Backup/Download Database_ can be used to backup the current database (save to a file on the pi and prompt to download it)
 
-_Reset_ may clear races, classes, heats, pilots, and race formats
+_View Deleted Rounds_ appears when rounds have been deleted on the [Marshal](#marshal) page, and lists them; "Restore" puts a deleted round back if its heat, round number, class, format and pilots still fit
 
 _Import_ uses plugins to extract data from files and fill event values
 
@@ -360,6 +368,8 @@ Delete laps with the "×" button on the unwanted lap. Deleted laps are removed f
 You may click on/touch the graph to set enter/exit points, activate recalculation, and highlight specific laps. Clicking on laps in the list also adds a highlight on the graph. Press <kbd>delete</kbd> or <kbd>x</kbd> to delete a highlighted lap. Active laps are displayed in green, and deleted laps change to red. The width of the lap indicator shows the enter/exit points, and the yellow highlight draws a line at the exact lap time within that window.
 
 "Commit changes" when you are finished adjusting the race data to save it to the database and update the race results.
+
+"Delete This Round" removes the selected round of the heat, for all pilots, after a confirmation. When a heat in a class using heat groups loses its only race, the heat can be raced again. The message shown after a round is deleted includes a "click here" link that restores the round, after a confirmation (or says why it can no longer be restored). Deleted rounds can also be restored later with "View Deleted Rounds" under [Data Management](#data-management) on the Format page.
 
 <br/>
 
