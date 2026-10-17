@@ -4671,9 +4671,27 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
         if pilot:
             text = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
             if text:
-                profile_freqs = json.loads(rhapi.race.frequencyset.frequencies)
-                if profile_freqs:
-                    freq = str(profile_freqs["b"][heat_node.node_index]) + str(profile_freqs["c"][heat_node.node_index])
+                try:
+                    profile_freqs = json.loads(rhapi.race.frequencyset.frequencies)
+                except Exception:
+                    profile_freqs = None
+                if isinstance(profile_freqs, dict):
+                    # band and channel when both are set, else the frequency; empty for a disabled seat
+                    idx = heat_node.node_index
+                    seat_ok = isinstance(idx, int)
+                    bands = profile_freqs.get("b") if isinstance(profile_freqs.get("b"), list) else []
+                    channels = profile_freqs.get("c") if isinstance(profile_freqs.get("c"), list) else []
+                    freq_vals = profile_freqs.get("f") if isinstance(profile_freqs.get("f"), list) else []
+                    band = bands[idx] if seat_ok and 0 <= idx < len(bands) else None
+                    channel = channels[idx] if seat_ok and 0 <= idx < len(channels) else None
+                    frequency = freq_vals[idx] if seat_ok and 0 <= idx < len(freq_vals) else None
+                    if band and channel is not None:  # channel 0 is valid ('U0')
+                        freq = str(band) + str(channel)
+                    elif frequency:
+                        # spoken digit by digit ("5 6 5 8") rather than as a number
+                        freq = ' '.join(str(frequency)) if spoken_flag else str(frequency)
+                    else:
+                        freq = ''
                     if freq:
                         if first_flag:
                             first_flag = False
