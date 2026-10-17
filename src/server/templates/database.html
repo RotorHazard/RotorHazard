@@ -20,6 +20,7 @@
 </script>
 {% endblock %} {% block content %}
 <main class="page-database">
+{% if not deleted_only %}
 <h2>{{ __('Pilots') }}</h2>
 <table class="table">
     <thead>
@@ -143,6 +144,7 @@
     </tbody>
 </table>
 
+{% endif %}
 <h2>{{ __('Deleted Races') }}</h2>
 <table class="table" id="deleted-races">
     <thead>
@@ -175,6 +177,7 @@
     </tbody>
 </table>
 
+{% if not deleted_only %}
 <h2>{{ __('Profiles') }}</h2>
 <table class="table">
     <thead>
@@ -255,6 +258,7 @@
         {% endfor %}
     </tbody>
 </table>
+{% endif %}
 
 </main>
 {% endblock %}

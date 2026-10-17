@@ -573,7 +573,8 @@ def render_marshal():
 def render_format():
     '''Route to settings page.'''
     return render_template('format.html',
-        num_nodes=RaceContext.race.num_nodes)
+        num_nodes=RaceContext.race.num_nodes,
+        has_deleted_races=RaceContext.rhdata.has_deletedRaces())
 
 @APP.route('/settings')
 @requires_auth
@@ -680,8 +681,11 @@ def render_hardwarelog():
 @APP.route('/database')
 @requires_auth
 def render_database():
-    '''Route to database page.'''
+    '''Route to database page; '?view=deleted' shows only the deleted races.'''
+    if request.args.get('view') == 'deleted':
+        return render_template('database.html', deleted_only=True, deletedRaces=get_deleted_race_rows())
     return render_template('database.html',
+        deleted_only=False,
         pilots=RaceContext.rhdata.get_pilots(),
         heats=RaceContext.rhdata.get_heats(),
         heatnodes=RaceContext.rhdata.get_heatNodes(),

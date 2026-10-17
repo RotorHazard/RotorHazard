@@ -42,6 +42,7 @@ class RHData():
         self._SERVER_API = SERVER_API
         self._DB_FILE_NAME = DB_FILE_NAME
         self._DB_BKP_DIR_NAME = DB_BKP_DIR_NAME
+        self._has_deleted_races = None  # whether deleted races are kept; None until checked
         self._filters = RaceContext.filters
 
     def __(self, *args, **kwargs):
@@ -835,6 +836,7 @@ class RHData():
                     logger.debug(traceback.format_exc())
 
         self.commit()
+        self._has_deleted_races = None
 
         self.primeCache() # refresh Options cache
 
@@ -3459,6 +3461,8 @@ class RHData():
             logger.exception('Unable to delete race {0}'.format(race_id))
             self.rollback()
             return False
+        if deleted_race:
+            self._has_deleted_races = True
 
         self.clear_results_for_race(heat_id, class_id)
 
@@ -3500,6 +3504,12 @@ class RHData():
 
     def get_deletedRaces(self):
         return Database.DeletedRace.query.order_by(Database.DeletedRace.id.desc()).all()
+
+    def has_deletedRaces(self):
+        # checked in the database once, then kept up to date by the delete, restore, clear and recover functions
+        if self._has_deleted_races is None:
+            self._has_deleted_races = Database.DeletedRace.query.count() > 0
+        return self._has_deleted_races
 
     def get_deletedRace_snapshot(self, deletedRace_or_id):
         deleted_race = self.resolve_deletedRace_from_deletedRace_or_id(deletedRace_or_id)
@@ -3595,6 +3605,7 @@ class RHData():
             logger.exception('Unable to restore deleted race {0}'.format(deleted_race_id))
             self.rollback()
             return False
+        self._has_deleted_races = None
 
         self.clear_results_for_race(race_meta.heat_id, race_meta.class_id, race_meta.id)
 
@@ -3982,6 +3993,7 @@ class RHData():
         for heat in self.get_heats():
             heat.active = True
         self.commit()
+        self._has_deleted_races = False
         self.reset_pilot_used_frequencies()
         self.reset_heat_plans()
         logger.info('Database saved races reset')
