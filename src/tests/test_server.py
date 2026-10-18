@@ -312,7 +312,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 10)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 11)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
@@ -814,6 +814,17 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(freqs['b'][:4], ['R', 'B', None, 'F'])
         self.assertEqual(freqs['c'][:4], [1, 8, None, 4])
         self.assertFalse(rhdata.fill_frequency_bands())
+
+    def test_frequency_utils_api(self):
+        utils = server.RHAPI.utils
+        self.assertEqual(utils.band_channel_frequencies['R1'], 5658)
+        self.assertEqual(list(utils.band_channel_frequencies)[:2], ['R1', 'R2'])
+        self.assertEqual(utils.band_channel_for_frequency(5880), ('R', 7))
+        self.assertEqual(utils.band_channel_for_frequency(5555), (None, None))
+        self.assertEqual(utils.frequency_for_band_channel('F', 4), 5800)
+        self.assertEqual(utils.frequency_for_band_channel('U', 0), 5300)
+        self.assertIsNone(utils.frequency_for_band_channel('R', 9))
+        self.assertIsNone(utils.frequency_for_band_channel(None, None))
 
     def test_frequencyset_alter_fills_band_channel(self):
         db = server.RHAPI.db

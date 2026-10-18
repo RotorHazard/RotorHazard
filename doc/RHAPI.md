@@ -874,6 +874,8 @@ The length of lists stored in `frequencies`, `enter_ats`, and `exit_ats` may not
 
 The sentinel value `RHUtils.FREQUENCY_ID_NONE` should be used when no frequency is defined.
 
+When a seat's frequency is a known channel but its band and channel are missing, `db.frequencyset_add` and `db.frequencyset_alter` fill them in (see `utils.band_channel_for_frequency`). Frequency sets already stored are filled in the same way when the server starts.
+
 **Notice:** The frequency set specification is expected to be modified in future versions. Please consider this while developing plugins.
 - Rename class
 - Siimplify serialization for `enter_ats`, `exit_ats`
@@ -1709,6 +1711,19 @@ Convert HSL color values to a hexadecimal string. Returns `string`.
 #### utils.color_hexstring_to_int(hex_color):
 Convert hexadecimal string color to packed int. Accepts strings with or without "#" prefix. Returns `int`.
 - `hex_color` (string): hexadecimal color string to convert
+
+#### utils.band_channel_frequencies
+_Read only_
+The known video channels and their frequencies, keyed by band and channel ("R1", "F4", ...) in lookup order. Returns `dict` of `string` to `int` (MHz).
+
+#### utils.band_channel_for_frequency(frequency):
+The band and channel of a frequency. Where several channels share a frequency, the first in `utils.band_channel_frequencies` order is used (5880 is "R7"). Returns `tuple` of (`string`, `int`), or (`None`, `None`) for a frequency that is not a known channel.
+- `frequency` (int): frequency in MHz
+
+#### utils.frequency_for_band_channel(band, channel):
+The frequency of a band and channel. Returns `int` (MHz), or `None` if there is no such channel.
+- `band` (string): band designation, such as "R"
+- `channel` (int): channel number
 
 
 

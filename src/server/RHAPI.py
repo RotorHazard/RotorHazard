@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 10
+API_VERSION_MINOR = 11
 
 import dataclasses
 import json
@@ -11,6 +11,7 @@ import inspect
 import copy
 import logging
 import RHUtils
+import frequencies
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from interface_mapper import InterfaceType
@@ -1599,4 +1600,14 @@ class UtilsAPI():
     # Convert hexadecimal color values to packed int (LED)
     def color_hexstring_to_int(self, hex_color):
         return RHUtils.hexToColor(hex_color)
+
+    @property
+    def band_channel_frequencies(self):
+        return dict(frequencies.BAND_CHANNEL_FREQUENCIES)
+
+    def band_channel_for_frequency(self, frequency):
+        return frequencies.band_channel_for(frequency)
+
+    def frequency_for_band_channel(self, band, channel):
+        return frequencies.frequency_for(band, channel)
 
