@@ -1776,6 +1776,11 @@ jQuery(document).ready(function($){
 		return false;
 	});
 
+	$(document).on('click', 'button.clear-errors-logged', function (event) {
+		socket.emit('clear_errors_logged');
+		return false;
+	});
+
 	socket.on('restart_not_required', function (msg) {
 		$('.restart-warning').slideUp();
 	});

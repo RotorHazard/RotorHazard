@@ -313,8 +313,11 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 # Callback function invoked when an error-level message is logged
 def log_error_callback_fn(*args):
     if not RaceContext.rhui.is_ui_message_set("errors-logged"):
+        # in server-debug mode the notice can be cleared
+        clear_btn = ' <button class="clear-errors-logged">{}</button>'.format(__('Clear')) \
+                        if RaceContext.serverconfig.get_item('GENERAL', 'DEBUG') else ''
         RaceContext.rhui.set_ui_message("errors-logged",\
-                   f'{__("Error messages have been logged.")} (<a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
+                   f'{__("Error messages have been logged.")} (<a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)' + clear_btn,\
                    header="Notice", subclass="errors-logged")
         if AdminAuth.Auth_succeeded_flag:
             SOCKET_IO.emit('update_server_messages', RaceContext.rhui.get_ui_server_messages_str())
@@ -2148,6 +2151,15 @@ def on_restart_server():
 def on_cancel_restart_required():
     '''Cancels the pending-restart-required condition.'''
     RaceContext.serverstate.clear_restart_required()
+
+@SOCKET_IO.on('clear_errors_logged')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_clear_errors_logged():
+    '''Clears the errors-logged notice; a later error sets it again.'''
+    RaceContext.rhui.clear_ui_message('errors-logged')
+    log.set_log_level_callback(logging.ERROR, log_error_callback_fn)
+    SOCKET_IO.emit('update_server_messages', RaceContext.rhui.get_ui_server_messages_str())
 
 @SOCKET_IO.on('kill_server')
 @requires_socketio_auth
