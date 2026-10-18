@@ -2312,7 +2312,8 @@ var freq = {
 		for (var i in keyNames) {
 			output += '<option value="' + keyNames[i] + ':' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
 		}
-		output += '<option value="n/a">' + __('N/A') + '</option>';
+		// shown when a seat is on a non-standard frequency, but never offered in the list
+		output += '<option value="n/a" hidden>' + __('Custom') + '</option>';
 		return output;
 	},
 	/*
