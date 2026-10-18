@@ -187,6 +187,7 @@ import AdminAuth
 import calibration
 import heat_automation
 import RHAPI
+import frequencies
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet, restore_secondary_passwords, mask_secondary_passwords
 import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
@@ -570,6 +571,12 @@ def render_marshal():
     '''Route to race management page.'''
     return render_template('marshal.html',
         num_nodes=RaceContext.race.num_nodes)
+
+@APP.context_processor
+def inject_frequency_table():
+    '''Band/channel frequency table for the page layouts, which hand it to rotorhazard.js.'''
+    # a list of pairs, since 'tojson' sorts object keys and the order decides shared frequencies
+    return {'freq_table': list(frequencies.BAND_CHANNEL_FREQUENCIES.items())}
 
 @APP.route('/format')
 @requires_auth
@@ -1083,6 +1090,8 @@ def on_set_frequency(data):
     frequency = int(data['frequency'])
     band = str(data['band']) if 'band' in data and data['band'] != None else None
     channel = int(data['channel']) if 'channel' in data and data['channel'] != None else None
+    if band is None and channel is None:
+        band, channel = frequencies.band_channel_for(frequency)
 
     if node_index < 0 or node_index >= RaceContext.race.num_nodes:
         logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))
@@ -4300,6 +4309,12 @@ def rh_program_initialize(reg_endpoints_flag=True):
             except Exception as ex:
                 logger.warning('Clearing all data after recovery failure:  ' + str(ex))
                 db_reset()
+
+        # Fill in band and channel for seats whose frequency is a known channel
+        try:
+            RaceContext.rhdata.fill_frequency_bands()
+        except Exception:
+            logger.warning('Unable to fill in frequency bands', exc_info=True)
 
         # Add plugin-registered setting defaults to DB
         RaceContext.rhui.init_setting_defaults()

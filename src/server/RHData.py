@@ -21,6 +21,7 @@ import RHUtils
 import RHTimeFns
 import Database
 import Results
+import frequencies
 from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
@@ -837,6 +838,7 @@ class RHData():
 
         self.commit()
         self._has_deleted_races = None
+        self.fill_frequency_bands()
 
         self.primeCache() # refresh Options cache
 
@@ -2553,6 +2555,30 @@ class RHData():
 
         return new_profile
 
+    def fill_frequency_bands(self):
+        # fills in band and channel for seats, in every frequency set, whose frequency is a known channel;
+        #  failures are logged as warnings and never raised
+        changed = False
+        try:
+            for profile in self.get_profiles():
+                try:
+                    freqs = json.loads(profile.frequencies)
+                    before = json.dumps(freqs)
+                    for idx in frequencies.fill_missing_band_channels(freqs):
+                        logger.info("Filled in band/channel {}{} for seat {} of frequency set '{}'".format(
+                            freqs['b'][idx], freqs['c'][idx], idx + 1, profile.name))
+                    if json.dumps(freqs) != before:
+                        profile.frequencies = json.dumps(freqs)
+                        changed = True
+                except Exception:
+                    logger.warning("Unable to fill in frequency bands for frequency set '{}'".format(
+                        getattr(profile, 'name', '')), exc_info=True)
+            if changed:
+                self.commit()
+        except Exception:
+            logger.warning('Unable to fill in frequency bands', exc_info=True)
+        return changed
+
     def alter_profile(self, data):
         profile = Database.Profiles.query.get(data['profile_id'])
 
@@ -2561,7 +2587,13 @@ class RHData():
         if 'profile_description' in data:
             profile.description = data['profile_description']
         if 'frequencies' in data:
-            profile.frequencies = data['frequencies'] if isinstance(data['frequencies'], str) else json.dumps(data['frequencies'])
+            try:
+                freqs = json.loads(data['frequencies']) if isinstance(data['frequencies'], str) else data['frequencies']
+                frequencies.fill_missing_band_channels(freqs)
+                profile.frequencies = json.dumps(freqs)
+            except Exception:
+                logger.warning('Unable to fill in frequency bands; storing frequencies as given', exc_info=True)
+                profile.frequencies = data['frequencies'] if isinstance(data['frequencies'], str) else json.dumps(data['frequencies'])
         if 'enter_ats' in data:
             profile.enter_ats = data['enter_ats'] if isinstance(data['enter_ats'], str) else json.dumps(data['enter_ats'])
         if 'exit_ats' in data:
