@@ -2580,16 +2580,19 @@ class RHData():
         logger.debug('Altered profile {0} to {1}'.format(profile.id, data))
 
         seat_minimum = self._racecontext.race.num_nodes
-        freqs = json.loads(profile.frequencies)
-        if seat_minimum > len(freqs["b"]) or seat_minimum > len(freqs["c"]) or \
-            seat_minimum > len(freqs["f"]):
-            while seat_minimum > len(freqs["b"]):
-                freqs["b"].append(RHUtils.FREQUENCY_ID_NONE)
-            while seat_minimum > len(freqs["c"]):
-                freqs["c"].append(RHUtils.FREQUENCY_ID_NONE)
-            while seat_minimum > len(freqs["f"]):
-                freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
-            profile.frequencies = json.dumps(freqs)
+        try:
+            freqs = json.loads(profile.frequencies)
+            if seat_minimum > len(freqs["b"]) or seat_minimum > len(freqs["c"]) or \
+                seat_minimum > len(freqs["f"]):
+                while seat_minimum > len(freqs["b"]):
+                    freqs["b"].append(RHUtils.FREQUENCY_ID_NONE)
+                while seat_minimum > len(freqs["c"]):
+                    freqs["c"].append(RHUtils.FREQUENCY_ID_NONE)
+                while seat_minimum > len(freqs["f"]):
+                    freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
+                profile.frequencies = json.dumps(freqs)
+        except Exception:
+            logger.warning('Unable to extend frequencies of profile {0} to {1} seats'.format(profile.id, seat_minimum), exc_info=True)
 
         return profile
 
