@@ -2964,6 +2964,8 @@ def save_callouts(data):
     RaceContext.serverconfig.set_item('USER', 'voiceCallouts', callouts)
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
+    # sends the new list to the other pages and clients, not the page that saved it
+    emit('callouts', data['callouts'], broadcast=True, include_self=False)
 
 @SOCKET_IO.on('reload_callouts')
 @catchLogExcWithDBWrapper
