@@ -175,6 +175,14 @@ class StreamToLogger:
         pass  # ensure compatibility with file-like objects
 
 
+class _InvalidSessionFilter(logging.Filter):
+    '''Logs engineio.server's 'Invalid session' (a client reconnecting with a stale session id) at WARNING.'''
+    def filter(self, record):
+        if record.levelno == logging.ERROR and str(record.msg).startswith('Invalid session '):
+            record.levelno = logging.WARNING
+            record.levelname = logging.getLevelName(logging.WARNING)
+        return True
+
 def early_stage_setup():
     logging.addLevelName(LEVEL_NONE_VALUE, LEVEL_NONE_STR)
     logging.basicConfig(
@@ -198,6 +206,7 @@ def early_stage_setup():
         "Adafruit_I2C.Device.Bus"
     ]:
         logging.getLogger(name).setLevel(logging.WARN)
+    logging.getLogger("engineio.server").addFilter(_InvalidSessionFilter())
 
 def get_logging_level_value(lvl_name):
     try:
