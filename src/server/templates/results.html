@@ -461,6 +461,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('results') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 {% if Debug %}

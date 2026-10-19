@@ -3670,10 +3670,8 @@
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
 			</li>
-			{% for plugin in event_content_templates.values() %}
-			{% if plugin.format %}
-			{% include plugin.format ignore missing %}
-			{% endif %}
+			{% for plugin_template in getPluginTemplates('format', 'event_details') %}
+			{% include plugin_template ignore missing %}
 			{% endfor %}
 			<li>
 				<div class="label-block">
@@ -4110,6 +4108,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('format') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 <div id="parameters" class="mfp-hide popup">

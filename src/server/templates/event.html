@@ -382,10 +382,8 @@
 	</div>
 </div>
 
-{% for plugin in event_content_templates.values() %}
-{% if plugin.event %}
-{% include plugin.event ignore missing %}
-{% endif %}
+{% for plugin_template in getPluginTemplates('event') %}
+{% include plugin_template ignore missing %}
 {% endfor %}
 
 <div id="section-heats">

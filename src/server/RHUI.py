@@ -141,7 +141,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
-        self._event_content_templates = OrderedDict()
+        self._ui_templates = OrderedDict()
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -342,23 +342,26 @@ class RHUI():
     def markdowns(self):
         return self._markdowns
 
-    # Native event content from installed plugins
-    def register_event_content(self, name, event_template=None, management_template=None):
-        '''Register or replace a named contribution at the two native event locations.'''
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError('Event content registrations need a non-empty name')
-        for template in (event_template, management_template):
-            if template is not None and (not isinstance(template, str) or not template.strip()):
-                raise ValueError('Event content templates must be non-empty template names or None')
-        if event_template is None and management_template is None:
-            self._event_content_templates.pop(name, None)
+    # Template content from installed plugins
+    def register_template(self, name, template, page, position='default'):
+        '''Register a named template at a page's supported insertion point.'''
+        for value in (name, page, position):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError('Template name, page and position must be non-empty strings')
+        if template is None:
+            self._ui_templates.pop(name, None)
+        elif not isinstance(template, str) or not template.strip():
+            raise ValueError('Template must be a non-empty template name or None')
         else:
-            self._event_content_templates[name] = {'event': event_template, 'format': management_template}
+            self._ui_templates[name] = {'template': template, 'page': page, 'position': position}
 
     @property
-    def event_content_templates(self):
-        return OrderedDict((name, templates.copy())
-                           for name, templates in self._event_content_templates.items())
+    def templates(self):
+        return OrderedDict((name, template.copy()) for name, template in self._ui_templates.items())
+
+    def get_templates(self, page, position='default'):
+        return [entry['template'] for entry in self._ui_templates.values()
+                if entry['page'] == page and entry['position'] == position]
 
     def requires_auth(self, handler):
         return AdminAuth.make_http_auth_guard(self._racecontext)(handler)

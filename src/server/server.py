@@ -469,7 +469,7 @@ def render_template(template_name_or_list, **context):
             'getConfig': RaceContext.serverconfig.get_item,
             '__': __,
             'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),
-            'event_content_templates': RaceContext.rhui.event_content_templates,
+            'getPluginTemplates': RaceContext.rhui.get_templates,
             'restart_flag': RaceContext.serverstate.restart_required
         })
         response = make_response(templating.render_template(template_name_or_list, **context))

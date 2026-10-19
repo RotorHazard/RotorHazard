@@ -334,58 +334,73 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
 
-    def test_event_content_fragments(self):
+    def test_plugin_templates(self):
         ui = server.RaceContext.rhui
-        original = ui.event_content_templates
+        original = ui.templates
         loader = ChoiceLoader([DictLoader({
-            'example/event.html': '<section id="test-event-info">{{ getOption("eventName") }}</section>',
-            'example/manage.html': '<li id="test-event-management">Event controls</li>',
-            'venue/event.html': '<section id="test-venue">Venue information</section>'
+            'example/info.html': '<section id="test-plugin-info">{{ getOption("eventName") }}</section>',
+            'example/manage.html': '<li id="test-plugin-management">Event controls</li>',
+            'venue/info.html': '<section id="test-venue">Venue information</section>',
+            'example/page.html': '<section id="test-page-template">Page content</section>'
         }), server.APP.jinja_loader])
         try:
-            server.RHAPI.ui.register_event_content('example.event', 'example/event.html', 'example/manage.html')
-            server.RHAPI.ui.register_event_content('venue.event', 'venue/event.html')
+            server.RHAPI.ui.register_template('example.info', 'example/info.html', 'event')
+            server.RHAPI.ui.register_template('example.manage', 'example/manage.html', 'format', 'event_details')
+            server.RHAPI.ui.register_template('venue.info', 'venue/info.html', 'event')
             with patch.object(server.APP, 'jinja_loader', loader):
                 server.APP.jinja_env.cache.clear()
                 with server.APP.test_request_context('/event'):
                     public = server.render_event().get_data(as_text=True)
                 with server.APP.test_request_context('/format'):
                     organizer = server.render_format().get_data(as_text=True)
-                self.assertLess(public.index('id="description"'), public.index('id="test-event-info"'))
-                self.assertLess(public.index('id="test-event-info"'), public.index('id="test-venue"'))
+                self.assertLess(public.index('id="description"'), public.index('id="test-plugin-info"'))
+                self.assertLess(public.index('id="test-plugin-info"'), public.index('id="test-venue"'))
                 self.assertLess(public.index('id="test-venue"'), public.index('id="section-heats"'))
-                self.assertNotIn('test-event-management', public)
+                self.assertNotIn('test-plugin-management', public)
                 self.assertLess(organizer.index('id="set_event_description"'),
-                                organizer.index('id="test-event-management"'))
-                self.assertLess(organizer.index('id="test-event-management"'),
+                                organizer.index('id="test-plugin-management"'))
+                self.assertLess(organizer.index('id="test-plugin-management"'),
                                 organizer.index('id="set_consecutives_count"'))
-                self.assertNotIn('id="test-event-info"', organizer)
+                self.assertNotIn('id="test-plugin-info"', organizer)
                 self.assertNotIn('id="test-venue"', organizer)
 
-                server.RHAPI.ui.register_event_content('example.event', 'example/missing.html')
+                # The same API works on every existing custom-panel page.
+                pages = {'format': server.render_format, 'settings': server.render_settings,
+                         'run': server.render_run, 'marshal': server.render_marshal,
+                         'streams': server.render_stream, 'results': server.render_results}
+                for page, render in pages.items():
+                    with self.subTest(page=page):
+                        server.RHAPI.ui.register_template('example.page', 'example/page.html', page)
+                        with server.APP.test_request_context('/' + page):
+                            html = render().get_data(as_text=True)
+                        self.assertLess(html.index('id="test-page-template"'), html.index('id="custom-ui"'))
+                        self.assertEqual(ui.get_templates('event'), ['example/info.html', 'venue/info.html'])
+                server.RHAPI.ui.register_template('example.page', None, 'results')
+
+                server.RHAPI.ui.register_template('example.info', 'example/missing.html', 'event')
                 with server.APP.test_request_context('/event'):
                     missing = server.render_event().get_data(as_text=True)
                 self.assertIn('id="section-heats"', missing)
                 self.assertIn('id="test-venue"', missing)
-                self.assertNotIn('id="test-event-info"', missing)
-
-                server.RHAPI.ui.register_event_content('example.event')
-                self.assertIn('venue.event', ui.event_content_templates)
-                server.RHAPI.ui.register_event_content('venue.event')
+                self.assertNotIn('id="test-plugin-info"', missing)
+                server.RHAPI.ui.register_template('example.info', None, 'event')
+                self.assertIn('venue.info', ui.templates)
+                server.RHAPI.ui.register_template('venue.info', None, 'event')
                 with server.APP.test_request_context('/event'):
                     empty = server.render_event().get_data(as_text=True)
                 self.assertIn('id="section-heats"', empty)
-                self.assertNotIn('id="test-event-info"', empty)
+                self.assertNotIn('id="test-plugin-info"', empty)
                 self.assertNotIn('id="test-venue"', empty)
+                self.assertIn('example.manage', ui.templates)
                 with self.assertRaises(ValueError):
-                    server.RHAPI.ui.register_event_content('example.event', '')
+                    server.RHAPI.ui.register_template('example.info', '', 'event')
                 with self.assertRaises(ValueError):
-                    server.RHAPI.ui.register_event_content('', 'example/event.html')
+                    server.RHAPI.ui.register_template('', 'example/info.html', 'event')
         finally:
-            for name in list(ui.event_content_templates):
-                ui.register_event_content(name)
-            for name, templates in original.items():
-                ui.register_event_content(name, templates['event'], templates['format'])
+            for name, entry in ui.templates.items():
+                ui.register_template(name, None, entry['page'])
+            for name, entry in original.items():
+                ui.register_template(name, entry['template'], entry['page'], entry['position'])
             server.APP.jinja_env.cache.clear()
 
     def test_ui_api(self):
