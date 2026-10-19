@@ -1309,6 +1309,8 @@ def on_alter_heat(data):
     else:        # keep time fields in the current race in sync with the current race format
         RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
         RaceContext.rhui.emit_heat_data()
+        if RaceContext.race.current_heat == heat.id:  # send the new co-op values shown on the Run page
+            RaceContext.rhui.emit_current_heat()
     RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_heat')
