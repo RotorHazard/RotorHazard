@@ -79,6 +79,17 @@ class ServerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             server.RHAPI.db.event_option_set('example.checked', {}, event_id)
 
+    def test_event_options_independent_plugins(self):
+        event_id = server.RHAPI.db.event_id
+        self.assertTrue(server.RHAPI.db.event_option_set('venue.instructions', 'Venue details', event_id))
+        self.assertTrue(server.RHAPI.db.event_option_set('safety.instructions', 'Safety details', event_id))
+        self.assertTrue(server.RHAPI.db.event_option_set('venue.instructions', 'Updated venue', event_id, 'Venue details'))
+        self.assertEqual(server.RHAPI.db.event_option('safety.instructions'), 'Safety details')
+        self.assertEqual(server.RHAPI.db.event_option('venue.instructions'), 'Updated venue')
+        self.assertTrue(server.RHAPI.db.event_option_set('venue.instructions', None, event_id, 'Updated venue'))
+        self.assertEqual(server.RHAPI.db.event_option('safety.instructions'), 'Safety details')
+        self.assertTrue(server.RHAPI.db.event_option_set('safety.instructions', None, event_id, 'Safety details'))
+
     def test_event_options_all_ui_resets_and_archives(self):
         data = server.RaceContext.rhdata
         for reset_type in ('races', 'heats', 'classes', 'pilots', 'all', 'formats'):
