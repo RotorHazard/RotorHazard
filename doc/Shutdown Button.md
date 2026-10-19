@@ -6,6 +6,8 @@ When the RotorHazard S32_BPill hardware is used, the standard setup is to have a
 
 For the shutdown features to operate correctly, the Raspberry Pi needs have its 'boot' _config.txt_ file configured as [described](Software%20Setup.md#3-apply-changes-to-the-boot-configtxt-file) in the '[doc/Software Setup.md](Software%20Setup.md)' document.
 
+On new installs of Raspberry Pi OS 6.2 and later, the RotorHazard server also needs permission to run the shutdown command; see [Allow Shutdown and Reboot by RotorHazard](Software%20Setup.md#sudoers).
+
 ### Shutdown Button
 
 When the RotorHazard server is running, the button, LED and buzzer will operate as follows:

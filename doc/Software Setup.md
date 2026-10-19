@@ -100,14 +100,28 @@ For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_tr
 If the Raspberry Pi 5 is being used, the "dtoverlay=uart0-pi5" and "dtoverlay=i2c1-pi5" lines configure the devices to operate similar to how they do with the Pi 3 & 4. 
 
 
-### 4. Perform System Update
+<a id="sudoers"></a>
+### 4. Allow Shutdown and Reboot by RotorHazard
+On new installs of Raspberry Pi OS 6.2 and later, `sudo` requires a password by default, which stops RotorHazard from shutting down or rebooting the system. To allow these commands without a password, enter the following in a terminal window:
+```
+echo "pi ALL=NOPASSWD: /sbin/shutdown, /sbin/reboot" | sudo tee /etc/sudoers.d/rotorhazard-shutdown
+sudo chmod 440 /etc/sudoers.d/rotorhazard-shutdown
+sudo visudo -c
+```
+If the username was configured as something other than "pi" during the Operating System setup, change `pi` in the first command to match your username.
+
+The last command should report each file as "parsed OK"; if it reports an error, remove the file with `sudo rm /etc/sudoers.d/rotorhazard-shutdown` and try again.
+
+Alternatively, password-free `sudo` may be re-enabled for all commands via the "Admin Password" option (in the _Control Centre_, under _System_); see the [Raspberry Pi documentation](https://www.raspberrypi.com/documentation/computers/configuration.html#disable-sudo-password).
+
+### 5. Perform System Update
 Using a terminal window, do a system update and upgrade (this can take a few minutes):
 ```
 sudo apt update && sudo apt upgrade
 ```
 
 <a id="python"></a>
-### 5. Install Python
+### 6. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python3-dev python3-venv libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
@@ -124,13 +138,13 @@ source ~/.venv/bin/activate
 ```
 Save and exit the editor (CTRL-X, Y, ENTER)
 
-### 6. Reboot System
+### 7. Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
 ```
 sudo reboot
 ```
 
-### 7. Install the RotorHazard Server
+### 8. Install the RotorHazard Server
 
 To install the [latest stable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
 
@@ -149,7 +163,7 @@ Note:
 * The updates for the RotorHazard server Python dependencies may take a few minutes
 * Error messages about "pip's dependency resolver ... Flask-SQLAlchemy not installed" may be safely ignored
 
-### 8. Configuration File
+### 9. Configuration File
 When the RotorHazard server is run for the first time, it will create a `config.json` file in the data directory. **As of RotorHazard 4.3, it is not necessary to hand-edit this file.** All settings can be modified within the frontend user interface. The `config.json` file may still be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
 
 The contents of the "config.json" file must be in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
@@ -279,6 +293,8 @@ A system shutdown should always be performed before unplugging the power, either
 sudo shutdown now
 ```
 The physical [shutdown button](Shutdown%20Button.md) may also be used on hardware that supports it.
+
+If the system does not shut down, see [Allow Shutdown and Reboot by RotorHazard](#sudoers).
 
 ----------------------------------------------------------------------------
 
