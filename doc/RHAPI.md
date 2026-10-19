@@ -220,11 +220,13 @@ Register a Markdown block and assign it to a UI panel.
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
 
-#### ui.register_event_track(event_template=None, management_template=None)
+#### ui.register_event_content(name, event_template=None, management_template=None)
 
-Register one installed plugin's track fragments in the existing event pages. `event_template` is included after the public `/event` description and before heats. `management_template` is included after the event-description field inside `/format`'s Event form, so its top-level markup should be `<li>` elements. Template names must be non-empty strings or `None`; a later registration replaces the previous pair. Passing `None` omits that fragment. Missing templates are skipped without hiding the event page.
+Register an installed plugin's contribution in the existing event pages. `event_template` is included after the public `/event` description and before heats. `management_template` is included after the event-description field inside `/format`'s Event form, so its top-level markup should be `<li>` elements. Examples include track previews, venue information and event instructions.
 
-Use namespaced templates supplied by a registered Flask blueprint, for example `my_plugin/event-track.html` and `my_plugin/manage-track.html`. Fragments use the page's existing Jinja context and escaping. They may reference the plugin's local CSS and deferred JavaScript; no remote dependency is required. The plugin decides whether an attached track exists and renders no public section when absent. The public fragment must not expose credentials or private organizer information. Only trusted installed plugins may register templates.
+Use a unique plugin-qualified `name` and namespaced templates supplied by a registered Flask blueprint, for example `my_plugin.event`, `my_plugin/event.html` and `my_plugin/manage.html`. Multiple plugins can contribute independently, in registration order. Registering the same name replaces only that contribution; omitting both templates removes it. Template names must be non-empty strings or `None`. A missing template is skipped without hiding the event page or other contributions.
+
+Fragments use the page's existing Jinja context and escaping. They may reference the plugin's local CSS and deferred JavaScript. The plugin decides whether it has content to display; public fragments must not expose credentials or private organizer information. Only trusted installed plugins may register templates. These are two fixed event locations, not arbitrary page or slot definitions.
 
 #### ui.requires_auth(handler)
 

@@ -83,8 +83,8 @@ class UserInterfaceAPI():
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
 
-    def register_event_track(self, event_template=None, management_template=None):
-        return self._racecontext.rhui.register_event_track(event_template, management_template)
+    def register_event_content(self, name, event_template=None, management_template=None):
+        return self._racecontext.rhui.register_event_content(name, event_template, management_template)
 
     def requires_auth(self, handler):
         return self._racecontext.rhui.requires_auth(handler)

@@ -141,7 +141,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
-        self._event_track_templates = {'event': None, 'format': None}
+        self._event_content_templates = OrderedDict()
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -342,17 +342,23 @@ class RHUI():
     def markdowns(self):
         return self._markdowns
 
-    # Native event track fragments
-    def register_event_track(self, event_template=None, management_template=None):
-        '''Register one plugin's public and organizer track fragments.'''
+    # Native event content from installed plugins
+    def register_event_content(self, name, event_template=None, management_template=None):
+        '''Register or replace a named contribution at the two native event locations.'''
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError('Event content registrations need a non-empty name')
         for template in (event_template, management_template):
             if template is not None and (not isinstance(template, str) or not template.strip()):
-                raise ValueError('Event track templates must be non-empty template names or None')
-        self._event_track_templates = {'event': event_template, 'format': management_template}
+                raise ValueError('Event content templates must be non-empty template names or None')
+        if event_template is None and management_template is None:
+            self._event_content_templates.pop(name, None)
+        else:
+            self._event_content_templates[name] = {'event': event_template, 'format': management_template}
 
     @property
-    def event_track_templates(self):
-        return self._event_track_templates.copy()
+    def event_content_templates(self):
+        return OrderedDict((name, templates.copy())
+                           for name, templates in self._event_content_templates.items())
 
     def requires_auth(self, handler):
         return AdminAuth.make_http_auth_guard(self._racecontext)(handler)

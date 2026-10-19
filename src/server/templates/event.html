@@ -382,9 +382,11 @@
 	</div>
 </div>
 
-{% if event_track_templates.event %}
-{% include event_track_templates.event ignore missing %}
+{% for plugin in event_content_templates.values() %}
+{% if plugin.event %}
+{% include plugin.event ignore missing %}
 {% endif %}
+{% endfor %}
 
 <div id="section-heats">
 	<!--Display the heats-->

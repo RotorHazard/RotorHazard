@@ -334,45 +334,58 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
 
-    def test_event_track_fragments(self):
+    def test_event_content_fragments(self):
         ui = server.RaceContext.rhui
-        original = ui.event_track_templates
+        original = ui.event_content_templates
         loader = ChoiceLoader([DictLoader({
-            'example/track.html': '<section id="test-track">{{ getOption("eventName") }}</section>',
-            'example/manage.html': '<li id="test-track-management">Track controls</li>'
+            'example/event.html': '<section id="test-event-info">{{ getOption("eventName") }}</section>',
+            'example/manage.html': '<li id="test-event-management">Event controls</li>',
+            'venue/event.html': '<section id="test-venue">Venue information</section>'
         }), server.APP.jinja_loader])
         try:
-            server.RHAPI.ui.register_event_track('example/track.html', 'example/manage.html')
+            server.RHAPI.ui.register_event_content('example.event', 'example/event.html', 'example/manage.html')
+            server.RHAPI.ui.register_event_content('venue.event', 'venue/event.html')
             with patch.object(server.APP, 'jinja_loader', loader):
                 server.APP.jinja_env.cache.clear()
                 with server.APP.test_request_context('/event'):
                     public = server.render_event().get_data(as_text=True)
                 with server.APP.test_request_context('/format'):
                     organizer = server.render_format().get_data(as_text=True)
-                self.assertLess(public.index('id="description"'), public.index('id="test-track"'))
-                self.assertLess(public.index('id="test-track"'), public.index('id="section-heats"'))
-                self.assertNotIn('test-track-management', public)
+                self.assertLess(public.index('id="description"'), public.index('id="test-event-info"'))
+                self.assertLess(public.index('id="test-event-info"'), public.index('id="test-venue"'))
+                self.assertLess(public.index('id="test-venue"'), public.index('id="section-heats"'))
+                self.assertNotIn('test-event-management', public)
                 self.assertLess(organizer.index('id="set_event_description"'),
-                                organizer.index('id="test-track-management"'))
-                self.assertLess(organizer.index('id="test-track-management"'),
+                                organizer.index('id="test-event-management"'))
+                self.assertLess(organizer.index('id="test-event-management"'),
                                 organizer.index('id="set_consecutives_count"'))
-                self.assertNotIn('id="test-track"', organizer)
+                self.assertNotIn('id="test-event-info"', organizer)
+                self.assertNotIn('id="test-venue"', organizer)
 
-                server.RHAPI.ui.register_event_track('example/missing.html')
+                server.RHAPI.ui.register_event_content('example.event', 'example/missing.html')
                 with server.APP.test_request_context('/event'):
                     missing = server.render_event().get_data(as_text=True)
                 self.assertIn('id="section-heats"', missing)
-                self.assertNotIn('id="test-track"', missing)
+                self.assertIn('id="test-venue"', missing)
+                self.assertNotIn('id="test-event-info"', missing)
 
-                server.RHAPI.ui.register_event_track()
+                server.RHAPI.ui.register_event_content('example.event')
+                self.assertIn('venue.event', ui.event_content_templates)
+                server.RHAPI.ui.register_event_content('venue.event')
                 with server.APP.test_request_context('/event'):
                     empty = server.render_event().get_data(as_text=True)
                 self.assertIn('id="section-heats"', empty)
-                self.assertNotIn('id="test-track"', empty)
+                self.assertNotIn('id="test-event-info"', empty)
+                self.assertNotIn('id="test-venue"', empty)
                 with self.assertRaises(ValueError):
-                    server.RHAPI.ui.register_event_track('')
+                    server.RHAPI.ui.register_event_content('example.event', '')
+                with self.assertRaises(ValueError):
+                    server.RHAPI.ui.register_event_content('', 'example/event.html')
         finally:
-            ui.register_event_track(original['event'], original['format'])
+            for name in list(ui.event_content_templates):
+                ui.register_event_content(name)
+            for name, templates in original.items():
+                ui.register_event_content(name, templates['event'], templates['format'])
             server.APP.jinja_env.cache.clear()
 
     def test_ui_api(self):
