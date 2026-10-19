@@ -3,6 +3,9 @@
 # Provides abstraction for database and results page caches
 #
 
+import functools
+import uuid
+from gevent.lock import RLock
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,11 +35,20 @@ APP.app_context().push()
 
 Position_place_strings = None
 
+def with_event_data_lock(handler):
+    @functools.wraps(handler)
+    def locked(self, *args, **kwargs):
+        with self.event_data_lock:
+            return handler(self, *args, **kwargs)
+    return locked
+
+
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
     TEAM_NAMES_LIST = [str(chr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
     def __init__(self, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME):
+        self.event_data_lock = RLock()
         self._Events = Events
         self._racecontext = RaceContext
         self._SERVER_API = SERVER_API
@@ -95,11 +107,13 @@ class RHData():
             return False
 
     # Caching
+    @with_event_data_lock
     def primeCache(self):
         settings = Database.GlobalSettings.query.all()
         self._OptionsCache = {} # empty cache
         for setting in settings:
             self._OptionsCache[setting.option_name] = setting.option_value
+        self.get_event_id()
 
     # General
     def db_init(self, nofill=False, migrateDbApi=None):
@@ -126,6 +140,7 @@ class RHData():
         self.reset_raceFormats(migrateDbApi is None or migrateDbApi >= 46)
         self.reset_options()
 
+    @with_event_data_lock
     def reset_all(self, nofill=False, migrateDbApi=None):
         try:
             self.do_reset_all(nofill, migrateDbApi)
@@ -194,6 +209,7 @@ class RHData():
 
     # File Handling
 
+    @with_event_data_lock
     def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
         self.close()
         self.clean()
@@ -391,6 +407,7 @@ class RHData():
         else:
             logger.debug('Unable to restore "{}" table: no data'.format(getattr(class_type, '__name__', '???')))
 
+    @with_event_data_lock
     def recover_database(self, dbfile, **kwargs):
         recover_status = {
             'stage_0': False,
@@ -470,6 +487,7 @@ class RHData():
                 "calibrationMode",
                 "MinLapSec",
                 "MinLapBehavior",
+                "eventId",
                 "eventName",
                 "eventDescription",
                 "ledEffects",
@@ -731,13 +749,20 @@ class RHData():
 
                 # restore options
                 if options_query_data:
-                    if migrate_db_api == self._SERVER_API:
-                        for opt in options_query_data:
-                            self.set_option(opt['option_name'], opt['option_value'])
-                    else:
-                        for opt in options_query_data:
-                            if opt['option_name'] in carryoverOpts:
-                                self.set_option(opt['option_name'], opt['option_value'])
+                    source_event_id = next((opt['option_value'] for opt in options_query_data
+                                            if opt['option_name'] == 'eventId'), None)
+                    try:
+                        uuid.UUID(source_event_id)
+                    except (ValueError, TypeError, AttributeError):
+                        source_event_id = None
+                    for opt in options_query_data:
+                        name = opt['option_name']
+                        event_data = name == 'eventId' or name.startswith('event.')
+                        # Legacy/unidentified data must not inherit a previous event's track.
+                        if event_data and not source_event_id:
+                            continue
+                        if migrate_db_api == self._SERVER_API or name in carryoverOpts or event_data:
+                            self.set_option(name, opt['option_value'])
 
                 logger.info('UI Options restored')
 
@@ -4104,6 +4129,75 @@ class RHData():
         self.commit()
         return True
 
+    # Private event options: ordinary GlobalSettings rows, carried in native DB backups.
+    @staticmethod
+    def event_option_name(name):
+        if not isinstance(name, str) or not name.strip() or len(name) > 34:
+            raise ValueError('Event option names must contain 1-34 characters')
+        return 'event.' + name
+
+    @with_event_data_lock
+    def get_event_id(self):
+        event_id = self.get_option('eventId')
+        try:
+            uuid.UUID(event_id)
+        except (ValueError, TypeError, AttributeError):
+            event_id = self.reset_event_options()
+        return event_id
+
+    @with_event_data_lock
+    def get_event_option(self, name, default_value=None):
+        self.get_event_id()
+        return self.get_option(self.event_option_name(name), default_value)
+
+    @with_event_data_lock
+    def set_event_option(self, name, value, event_id, previous_value=None):
+        """Save only if the event and the previously read value still match."""
+        option = self.event_option_name(name)
+        if value is not None and not isinstance(value, str):
+            raise ValueError('Event option values must be strings or None')
+        settings = Database.GlobalSettings.__table__
+        with Database.DB_engine.connect() as connection:
+            # The server's SQLite connections use isolation_level=None: explicitly begin
+            # a transaction so reset and value checks cannot race another writer.
+            connection.exec_driver_sql('BEGIN IMMEDIATE')
+            current_id = connection.execute(sqlalchemy.select(settings.c.option_value).where(
+                settings.c.option_name == 'eventId')).scalar()
+            current_value = connection.execute(sqlalchemy.select(settings.c.option_value).where(
+                settings.c.option_name == option)).scalar()
+            if not event_id or current_id != event_id or current_value != previous_value:
+                return False
+            if value is None:
+                connection.execute(settings.delete().where(settings.c.option_name == option))
+            elif connection.execute(settings.update().where(settings.c.option_name == option).values(
+                    option_value=value)).rowcount == 0:
+                connection.execute(settings.insert().values(option_name=option, option_value=value))
+            connection.commit()
+        if value is None:
+            self._OptionsCache.pop(option, None)
+        else:
+            self._OptionsCache[option] = value
+        Database.DB_session.expire_all()
+        return True
+
+    @with_event_data_lock
+    def reset_event_options(self):
+        """Rotate identity and clear all private event options in one transaction."""
+        event_id = uuid.uuid4().hex
+        settings = Database.GlobalSettings.__table__
+        with Database.DB_engine.connect() as connection:
+            connection.exec_driver_sql('BEGIN IMMEDIATE')
+            connection.execute(settings.delete().where(settings.c.option_name.like('event.%')))
+            if connection.execute(settings.update().where(settings.c.option_name == 'eventId').values(
+                    option_value=event_id)).rowcount == 0:
+                connection.execute(settings.insert().values(option_name='eventId', option_value=event_id))
+            connection.commit()
+        self._OptionsCache = {name: value for name, value in self._OptionsCache.items()
+                              if not name.startswith('event.')}
+        self._OptionsCache['eventId'] = event_id
+        Database.DB_session.expire_all()
+        return event_id
+
     # Options
     def get_options(self):
         return Database.GlobalSettings.query.all()
@@ -4177,11 +4271,15 @@ class RHData():
         Database.GlobalSettings.query.filter_by(option_name=option).delete()
         self.commit()
 
+    @with_event_data_lock
     def clear_options(self):
         Database.DB_session.query(Database.GlobalSettings).delete()
-        self.commit()
+        if not self.commit():
+            raise RuntimeError('Unable to clear database options')
+        self._OptionsCache = {}
         return True
 
+    @with_event_data_lock
     def reset_options(self):
         self.clear_options()
         self.set_option("server_api", self._SERVER_API)
@@ -4193,6 +4291,7 @@ class RHData():
         self.set_option("MinLapSec", "10")
         self.set_option("MinFirstCrossingSec", "0")
         # event information
+        self.reset_event_options()
         self.set_option("eventName", self.generate_new_event_name())
         self.set_option("eventDescription", "")
         # Event results cache

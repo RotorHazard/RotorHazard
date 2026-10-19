@@ -3,6 +3,8 @@ import os
 import sys
 import tempfile
 import unittest
+import sqlite3
+from unittest.mock import patch
 import gevent
 from datetime import datetime
 from flask.blueprints import Blueprint
@@ -36,6 +38,10 @@ from Node import Node
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from Database import LapSource
+import Database
+from sqlalchemy import event
+from flask import Flask
+import json_endpoints
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -51,6 +57,167 @@ class ServerTest(unittest.TestCase):
             if resp['name'] == event:
                 return resp['args'][0]
         self.fail('No response of type {0}'.format(event))
+
+    def test_event_options_checked_save_and_restart(self):
+        event_id = server.RHAPI.db.event_id
+        self.assertTrue(server.RHAPI.db.event_option_set('example.checked', 'first', event_id))
+        self.assertFalse(server.RHAPI.db.event_option_set('example.checked', 'stale', event_id))
+        self.assertFalse(server.RHAPI.db.event_option_set('example.checked', 'stale', 'other', 'first'))
+        self.assertTrue(server.RHAPI.db.event_option_set('example.checked', 'second', event_id, 'first'))
+        Database.initialize(Database.DB_URI)
+        server.RaceContext.rhdata.primeCache()
+        self.assertEqual(server.RHAPI.db.event_id, event_id)
+        self.assertEqual(server.RHAPI.db.event_option('example.checked'), 'second')
+        server.RHAPI.db.option_set('eventName', 'Renamed event')
+        self.assertEqual(server.RHAPI.db.event_id, event_id)
+        self.assertTrue(server.RHAPI.db.event_option_set('example.checked', None, event_id, 'second'))
+        self.assertEqual(server.RHAPI.db.event_option('example.checked', 'missing'), 'missing')
+        with self.assertRaises(ValueError):
+            server.RHAPI.db.event_option_set('', 'invalid', event_id)
+        with self.assertRaises(ValueError):
+            server.RHAPI.db.event_option_set('x' * 35, 'invalid', event_id)
+        with self.assertRaises(ValueError):
+            server.RHAPI.db.event_option_set('example.checked', {}, event_id)
+
+    def test_event_options_all_ui_resets_and_archives(self):
+        data = server.RaceContext.rhdata
+        for reset_type in ('races', 'heats', 'classes', 'pilots', 'all', 'formats'):
+            for archive in (False, True):
+                with self.subTest(reset_type=reset_type, archive=archive):
+                    old_id = server.RHAPI.db.event_id
+                    previous = server.RHAPI.db.event_option('example.track')
+                    self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'complete archive', old_id, previous))
+                    backups = []
+                    original_backup = data.backup_db_file
+                    def backup(*args, **kwargs):
+                        result = original_backup(*args, **kwargs)
+                        backups.append(result)
+                        return result
+                    observed = []
+                    with patch.object(data, 'backup_db_file', side_effect=backup), \
+                            patch.object(server.RaceContext.rhui, 'emit_heat_data',
+                                         side_effect=lambda: observed.append(data.get_event_option('example.track'))):
+                        self.client.emit('reset_database', {'reset_type': reset_type, 'with_archive': archive})
+                    self.assertNotEqual(server.RHAPI.db.event_id, old_id)
+                    self.assertIsNone(server.RHAPI.db.event_option('example.track'))
+                    self.assertTrue(observed)
+                    self.assertTrue(all(value is None for value in observed))
+                    self.assertFalse(server.RHAPI.db.event_option_set('example.track', 'late import', old_id))
+                    if archive:
+                        self.assertEqual(len(backups), 1)
+                        with sqlite3.connect(backups[0]) as connection:
+                            options = dict(connection.execute('SELECT option_name, option_value FROM global_settings'))
+                        self.assertEqual(options['eventId'], old_id)
+                        self.assertEqual(options['event.example.track'], 'complete archive')
+
+    def test_event_options_programmatic_reset(self):
+        old_id = server.RHAPI.db.event_id
+        previous = server.RHAPI.db.event_option('example.track')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'old track', old_id, previous))
+        server.RHAPI.db.reset_all()
+        self.assertNotEqual(server.RHAPI.db.event_id, old_id)
+        self.assertIsNone(server.RHAPI.db.event_option('example.track'))
+        self.assertFalse(server.RHAPI.db.event_option_set('example.track', 'late import', old_id))
+
+    def test_event_options_backup_restore_and_migration(self):
+        data = server.RaceContext.rhdata
+        for source_api in (server.SERVER_API, server.SERVER_API - 1):
+            with self.subTest(source_api=source_api):
+                event_id = server.RHAPI.db.event_id
+                previous = server.RHAPI.db.event_option('example.track')
+                self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'archive with assets', event_id, previous))
+                data.set_option('server_api', source_api)
+                backup = data.backup_db_file(True)
+                data.set_option('server_api', server.SERVER_API)
+                data.reset_event_options()
+                self.assertTrue(server.restore_database_file(backup))
+                self.assertEqual(server.RHAPI.db.event_id, event_id)
+                self.assertEqual(server.RHAPI.db.event_option('example.track'), 'archive with assets')
+
+    def test_event_options_legacy_restore_does_not_reuse_track(self):
+        data = server.RaceContext.rhdata
+        event_id = server.RHAPI.db.event_id
+        previous = server.RHAPI.db.event_option('example.track')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'orphaned track', event_id, previous))
+        backup = data.backup_db_file(True)
+        with sqlite3.connect(backup) as connection:
+            connection.execute("DELETE FROM global_settings WHERE option_name='eventId'")
+        self.assertTrue(server.restore_database_file(backup))
+        self.assertNotEqual(server.RHAPI.db.event_id, event_id)
+        self.assertIsNone(server.RHAPI.db.event_option('example.track'))
+
+    def test_event_options_failed_restore_does_not_reuse_track(self):
+        event_id = server.RHAPI.db.event_id
+        old_value = server.RHAPI.db.event_option('example.track')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'previous event', event_id, old_value))
+        with tempfile.NamedTemporaryFile(suffix='.db') as backup:
+            backup.write(b'not a SQLite database')
+            backup.flush()
+            self.assertFalse(server.restore_database_file(backup.name))
+        self.assertNotEqual(server.RHAPI.db.event_id, event_id)
+        self.assertIsNone(server.RHAPI.db.event_option('example.track'))
+
+    def test_event_options_rollback_preserves_identity_and_data(self):
+        data = server.RaceContext.rhdata
+        event_id = server.RHAPI.db.event_id
+        previous = server.RHAPI.db.event_option('example.track')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'keep', event_id, previous))
+        def fail_update(connection, cursor, statement, parameters, context, executemany):
+            if statement.startswith('UPDATE global_settings'):
+                raise RuntimeError('Simulated interrupted reset')
+        event.listen(Database.DB_engine, 'before_cursor_execute', fail_update)
+        try:
+            with self.assertRaises(RuntimeError):
+                data.reset_event_options()
+        finally:
+            event.remove(Database.DB_engine, 'before_cursor_execute', fail_update)
+        data.primeCache()
+        self.assertEqual(server.RHAPI.db.event_id, event_id)
+        self.assertEqual(server.RHAPI.db.event_option('example.track'), 'keep')
+        with patch('sqlalchemy.engine.Connection.commit', side_effect=RuntimeError('Interrupted save')):
+            with self.assertRaises(RuntimeError):
+                data.set_event_option('example.track', 'replacement', event_id, 'keep')
+        data.primeCache()
+        self.assertEqual(server.RHAPI.db.event_option('example.track'), 'keep')
+
+    def test_event_options_reset_serializes_pending_save(self):
+        data = server.RaceContext.rhdata
+        event_id = server.RHAPI.db.event_id
+        with data.event_data_lock:
+            pending = gevent.spawn(data.set_event_option, 'example.pending', 'late', event_id)
+            gevent.sleep(0)
+            self.assertFalse(pending.ready())
+            data.reset_event_options()
+        self.assertFalse(pending.get(timeout=2))
+        self.assertIsNone(data.get_event_option('example.pending'))
+
+    def test_event_options_are_excluded_from_public_options(self):
+        event_id = server.RHAPI.db.event_id
+        old_value = server.RHAPI.db.event_option('example.private')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.private', 'source metadata', event_id, old_value))
+        app = Flask('event-option-test')
+        app.register_blueprint(json_endpoints.createBlueprint(server.RaceContext, {}))
+        response = app.test_client().get('/api/options')
+        self.assertEqual(response.status_code, 201)
+        options = response.get_json()['options']
+        self.assertIn('eventName', options)
+        self.assertNotIn('eventId', options)
+        self.assertFalse(any(name.startswith('event.') for name in options))
+        self.client.get_received()
+        server.RaceContext.rhui.emit_option_update(['eventName', 'event.example.private', 'eventId'])
+        broadcast = self.get_response('option_update')['options']
+        self.assertIn('eventName', broadcast)
+        self.assertNotIn('event.example.private', broadcast)
+        self.assertNotIn('eventId', broadcast)
+
+    def test_event_options_failed_archive_preserves_track(self):
+        event_id = server.RHAPI.db.event_id
+        previous = server.RHAPI.db.event_option('example.track')
+        self.assertTrue(server.RHAPI.db.event_option_set('example.track', 'keep', event_id, previous))
+        with patch.object(server.RaceContext.rhdata, 'backup_db_file', return_value=None):
+            self.client.emit('reset_database', {'reset_type': 'all', 'with_archive': True})
+        self.assertEqual(server.RHAPI.db.event_id, event_id)
+        self.assertEqual(server.RHAPI.db.event_option('example.track'), 'keep')
 
     def test_sensors(self):
         self.assertTrue(any(s.name == 'TestSensor' for s in server.RaceContext.sensors))
@@ -309,7 +476,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 10)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 11)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):

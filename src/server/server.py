@@ -354,6 +354,14 @@ def catchLogExcWithDBWrapper(func):
             logger.exception("Exception via catchLogExcWithDBWrapper")
     return wrapper
 
+# Serialize event transitions with checked plugin option reads/writes.
+def lockEventDataWrapper(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with RaceContext.rhdata.event_data_lock:
+            return func(*args, **kwargs)
+    return wrapper
+
 # Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
 #  then return default value based on BASEDIR and server RELEASE_VERSION
 def getDefNodeFwUpdateUrl():
@@ -1803,6 +1811,7 @@ def on_list_backups(*args):
 
     emit('backups_list', emit_payload)
 
+@lockEventDataWrapper
 def restore_database_file(db_file_name):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
         stop_background_threads()
@@ -1813,7 +1822,9 @@ def restore_database_file(db_file_name):
             RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # restore number of nodes
             RaceContext.last_race = None
             try:
-                RaceContext.rhdata.recover_database(db_file_name)
+                recovery = RaceContext.rhdata.recover_database(db_file_name)
+                if not recovery['stage_0'] or not recovery['stage_1']:
+                    raise RuntimeError('Database recovery did not complete')
                 gevent.sleep(1)  # pause/yield to allow changes to be committed
                 RaceContext.race.reset_current_laps()
                 clean_results_cache()
@@ -1890,10 +1901,13 @@ def on_delete_database_file(data):
 @SOCKET_IO.on('reset_database')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
+@lockEventDataWrapper
 def on_reset_database(data):
     '''Reset database.'''
     with_archive = data.get('with_archive')
     reset_type = data.get('reset_type')
+    if reset_type not in ('races', 'heats', 'classes', 'pilots', 'all', 'formats'):
+        raise ValueError('Unknown database reset type')
     logger.debug('Resetting database, with_archive={}, reset_type={}'.format(with_archive, reset_type))
     RaceContext.pagecache.set_valid(False)
 
@@ -1905,8 +1919,11 @@ def on_reset_database(data):
         # if this is not a secondary/split timer then try to use event name for backup filename
         bkp_filename = RaceContext.rhdata.get_option('eventName') \
                     if RaceContext.race.format is not RaceContext.serverstate.secondary_race_format else None
-        RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename)
+        if not RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename):
+            raise RuntimeError('Unable to archive event; reset cancelled')
         on_list_backups()
+
+    RaceContext.rhdata.reset_event_options()
 
     if reset_type == 'races':
         RaceContext.race.reset_current_laps()
@@ -1959,7 +1976,8 @@ def on_reset_database(data):
 
     emit('reset_confirm')
 
-    Events.trigger(Evt.DATABASE_RESET)
+    Events.trigger(Evt.DATABASE_RESET, {'event_id': RaceContext.rhdata.get_event_id(),
+                                        'reset_type': reset_type, 'with_archive': bool(with_archive)})
 
 @SOCKET_IO.on('export_database')
 @requires_socketio_auth
