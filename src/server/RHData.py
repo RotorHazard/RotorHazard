@@ -758,7 +758,7 @@ class RHData():
                     for opt in options_query_data:
                         name = opt['option_name']
                         event_data = name == 'eventId' or name.startswith('event.')
-                        # Legacy/unidentified data must not inherit a previous event's track.
+                        # Legacy/unidentified data must not inherit another event's private data.
                         if event_data and not source_event_id:
                             continue
                         if migrate_db_api == self._SERVER_API or name in carryoverOpts or event_data:
