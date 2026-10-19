@@ -4028,8 +4028,15 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
-        # start from no interfaces, so plugins can add theirs as they load
+        # start from no interfaces or split timers, so plugins can add theirs as they load
         RaceContext.interface.clear_interfaces()
+        RaceContext.split_timers.clear()
+        ordered_secondaries = sorted(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'),
+            key=lambda info: isinstance(info, dict) and str(info.get('mode', 'split')).lower() == 'mirror')
+        RaceContext.reserved_split_ids = {
+            index for index, info in enumerate(ordered_secondaries)
+            if not isinstance(info, dict) or str(info.get('mode', 'split')).lower() not in ('mirror', 'action')
+        }
 
         # Plugin handling
         plugin_modules = []
@@ -4203,11 +4210,10 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
         hasMirrors = False
-        secondary = None
 
         # process mirrors last
         all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
-        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror' if 'mode' in x else False))
+        all_secondaries.sort(key=lambda info: isinstance(info, dict) and str(info.get('mode', 'split')).lower() == 'mirror')
 
         try:
             for sec_idx, secondary_info in enumerate(all_secondaries):
@@ -4232,7 +4238,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     )
                     break
                 secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
-                                          RELEASE_VERSION, secondary)
+                                          RELEASE_VERSION)
                 RaceContext.cluster.addSecondary(secondary)
         except:
             logger.exception("Error adding secondary to cluster")
