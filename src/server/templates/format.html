@@ -3670,6 +3670,9 @@
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
 			</li>
+			{% if event_track_templates.format %}
+			{% include event_track_templates.format ignore missing %}
+			{% endif %}
 			<li>
 				<div class="label-block">
 					<label for="set_consecutives_count">{{ __('Consecutive Laps Base') }}</label>

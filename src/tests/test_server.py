@@ -6,6 +6,8 @@ import unittest
 import gevent
 from datetime import datetime
 from flask.blueprints import Blueprint
+from jinja2 import ChoiceLoader, DictLoader
+from unittest.mock import patch
 
 _TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 _SRC_DIR = os.path.dirname(_TESTS_DIR)
@@ -309,7 +311,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 10)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 11)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
@@ -331,6 +333,47 @@ class ServerTest(unittest.TestCase):
         server.rh_program_initialize(reg_endpoints_flag=False)
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
+
+    def test_event_track_fragments(self):
+        ui = server.RaceContext.rhui
+        original = ui.event_track_templates
+        loader = ChoiceLoader([DictLoader({
+            'example/track.html': '<section id="test-track">{{ getOption("eventName") }}</section>',
+            'example/manage.html': '<li id="test-track-management">Track controls</li>'
+        }), server.APP.jinja_loader])
+        try:
+            server.RHAPI.ui.register_event_track('example/track.html', 'example/manage.html')
+            with patch.object(server.APP, 'jinja_loader', loader):
+                server.APP.jinja_env.cache.clear()
+                with server.APP.test_request_context('/event'):
+                    public = server.render_event().get_data(as_text=True)
+                with server.APP.test_request_context('/format'):
+                    organizer = server.render_format().get_data(as_text=True)
+                self.assertLess(public.index('id="description"'), public.index('id="test-track"'))
+                self.assertLess(public.index('id="test-track"'), public.index('id="section-heats"'))
+                self.assertNotIn('test-track-management', public)
+                self.assertLess(organizer.index('id="set_event_description"'),
+                                organizer.index('id="test-track-management"'))
+                self.assertLess(organizer.index('id="test-track-management"'),
+                                organizer.index('id="set_consecutives_count"'))
+                self.assertNotIn('id="test-track"', organizer)
+
+                server.RHAPI.ui.register_event_track('example/missing.html')
+                with server.APP.test_request_context('/event'):
+                    missing = server.render_event().get_data(as_text=True)
+                self.assertIn('id="section-heats"', missing)
+                self.assertNotIn('id="test-track"', missing)
+
+                server.RHAPI.ui.register_event_track()
+                with server.APP.test_request_context('/event'):
+                    empty = server.render_event().get_data(as_text=True)
+                self.assertIn('id="section-heats"', empty)
+                self.assertNotIn('id="test-track"', empty)
+                with self.assertRaises(ValueError):
+                    server.RHAPI.ui.register_event_track('')
+        finally:
+            ui.register_event_track(original['event'], original['format'])
+            server.APP.jinja_env.cache.clear()
 
     def test_ui_api(self):
         panels = server.RHAPI.ui.register_panel('test_panel', "Test Panel", 'test_page', 1)

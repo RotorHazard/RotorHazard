@@ -220,6 +220,23 @@ Register a Markdown block and assign it to a UI panel.
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
 
+#### ui.register_event_track(event_template=None, management_template=None)
+
+Register one installed plugin's track fragments in the existing event pages. `event_template` is included after the public `/event` description and before heats. `management_template` is included after the event-description field inside `/format`'s Event form, so its top-level markup should be `<li>` elements. Template names must be non-empty strings or `None`; a later registration replaces the previous pair. Passing `None` omits that fragment. Missing templates are skipped without hiding the event page.
+
+Use namespaced templates supplied by a registered Flask blueprint, for example `my_plugin/event-track.html` and `my_plugin/manage-track.html`. Fragments use the page's existing Jinja context and escaping. They may reference the plugin's local CSS and deferred JavaScript; no remote dependency is required. The plugin decides whether an attached track exists and renders no public section when absent. The public fragment must not expose credentials or private organizer information. Only trusted installed plugins may register templates.
+
+#### ui.requires_auth(handler)
+
+Decorate plugin HTTP routes with the same request-local HTTP Basic authorization policy as `/format`, including RotorHazard's intentionally open-admin/first-run modes. Unauthorized requests receive the same HTTP 401 challenge as built-in pages. Authentication is checked for every request, regardless of previous authenticated requests or the SocketIO authentication setting. Plugins remain responsible for CSRF protection and input validation on their mutation routes.
+
+```python
+@blueprint.route('/manage')
+@rhapi.ui.requires_auth
+def manage():
+    return 'Organizer only'
+```
+
 #### ui.blueprint_add(blueprint)
 Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 

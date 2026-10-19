@@ -141,6 +141,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._event_track_templates = {'event': None, 'format': None}
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -340,6 +341,21 @@ class RHUI():
     @property
     def markdowns(self):
         return self._markdowns
+
+    # Native event track fragments
+    def register_event_track(self, event_template=None, management_template=None):
+        '''Register one plugin's public and organizer track fragments.'''
+        for template in (event_template, management_template):
+            if template is not None and (not isinstance(template, str) or not template.strip()):
+                raise ValueError('Event track templates must be non-empty template names or None')
+        self._event_track_templates = {'event': event_template, 'format': management_template}
+
+    @property
+    def event_track_templates(self):
+        return self._event_track_templates.copy()
+
+    def requires_auth(self, handler):
+        return AdminAuth.make_http_auth_guard(self._racecontext)(handler)
 
     # Blueprints
     def add_blueprint(self, blueprint):

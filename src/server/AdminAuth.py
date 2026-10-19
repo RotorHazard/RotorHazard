@@ -8,7 +8,7 @@
 #
 import functools
 import logging
-from flask import request, session
+from flask import Response, request, session
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,21 @@ def check_auth(racecontext, auth):
         Auth_succeeded_flag = True
         return True
     return False
+
+def make_http_auth_guard(racecontext):
+    '''Return the request-local HTTP admin guard used by pages and plugin routes.'''
+    def requires_auth(handler):
+        @functools.wraps(handler)
+        def decorated_auth(*args, **kwargs):
+            if not check_auth(racecontext, request.authorization):
+                return Response(
+                    'Could not verify your access level for that URL.\n'
+                    'You have to login with proper credentials', 401,
+                    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+            return handler(*args, **kwargs)
+        return decorated_auth
+    return requires_auth
+
 
 def socketio_auth_ok(racecontext):
     '''True if the current SocketIO connection passes the admin-auth check that guarded handlers apply.'''
