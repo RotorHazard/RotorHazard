@@ -6,6 +6,7 @@ import unittest
 import gevent
 from datetime import datetime
 from flask.blueprints import Blueprint
+from flask import Flask, render_template_string
 from jinja2 import ChoiceLoader, DictLoader
 from unittest.mock import patch
 
@@ -334,6 +335,59 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
 
+    def test_plugin_template_duplicate_names(self):
+        ui = server.RaceContext.rhui
+        name = 'collision_test.info'
+        server.RHAPI.ui.register_template(name, 'first/info.html', 'event')
+        original = ui.templates[name]
+        try:
+            for template, page, position in (
+                    ('first/info.html', 'event', 'default'),
+                    ('other/info.html', 'event', 'default'),
+                    ('other/info.html', 'settings', 'default'),
+                    ('other/manage.html', 'format', 'event_details')):
+                with self.subTest(template=template, page=page, position=position):
+                    with self.assertRaisesRegex(ValueError, 'collision_test.info.*already exists'):
+                        server.RHAPI.ui.register_template(name, template, page, position)
+                    self.assertEqual(ui.templates[name], original)
+                    self.assertIn('first/info.html', ui.get_templates('event'))
+                    if template != 'first/info.html':
+                        self.assertNotIn(template, ui.get_templates(page, position))
+        finally:
+            server.RHAPI.ui.register_template(name, None, 'event')
+        server.RHAPI.ui.register_template(name, 'replacement/info.html', 'settings')
+        self.assertEqual(ui.templates[name]['template'], 'replacement/info.html')
+        server.RHAPI.ui.register_template(name, None, 'settings')
+
+    def test_plugin_templates_from_blueprints(self):
+        ui = server.RaceContext.rhui
+        names = ('blueprint_test.venue', 'blueprint_test.safety', 'blueprint_test.missing')
+        app = Flask('plugin-template-test')
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                for plugin in ('venue', 'safety'):
+                    folder = os.path.join(directory, plugin)
+                    os.makedirs(os.path.join(folder, plugin))
+                    with open(os.path.join(folder, plugin, 'info.html'), 'w', encoding='utf-8') as template:
+                        template.write('<section>' + plugin + ': {{ title }}</section>')
+                    app.register_blueprint(Blueprint(plugin, __name__, template_folder=folder))
+                    server.RHAPI.ui.register_template('blueprint_test.' + plugin, plugin + '/info.html', 'event')
+                server.RHAPI.ui.register_template(names[2], 'missing/info.html', 'event')
+                with self.assertRaisesRegex(ValueError, 'blueprint_test.venue.*already exists'):
+                    server.RHAPI.ui.register_template(names[0], 'safety/info.html', 'event')
+                with app.app_context():
+                    rendered = render_template_string(
+                        '{% for plugin_template in getPluginTemplates("event") %}'
+                        '{% include plugin_template ignore missing %}{% endfor %}',
+                        getPluginTemplates=ui.get_templates, title='<script>unsafe</script>')
+                self.assertIn('<section>venue: &lt;script&gt;unsafe&lt;/script&gt;</section>', rendered)
+                self.assertIn('<section>safety: &lt;script&gt;unsafe&lt;/script&gt;</section>', rendered)
+                self.assertLess(rendered.index('venue:'), rendered.index('safety:'))
+                self.assertNotIn('<script>', rendered)
+        finally:
+            for name in names:
+                ui.register_template(name, None, 'event')
+
     def test_plugin_templates(self):
         ui = server.RaceContext.rhui
         original = ui.templates
@@ -370,13 +424,15 @@ class ServerTest(unittest.TestCase):
                          'streams': server.render_stream, 'results': server.render_results}
                 for page, render in pages.items():
                     with self.subTest(page=page):
-                        server.RHAPI.ui.register_template('example.page', 'example/page.html', page)
+                        server.RHAPI.ui.register_template('example.page.' + page, 'example/page.html', page)
                         with server.APP.test_request_context('/' + page):
                             html = render().get_data(as_text=True)
                         self.assertLess(html.index('id="test-page-template"'), html.index('id="custom-ui"'))
                         self.assertEqual(ui.get_templates('event'), ['example/info.html', 'venue/info.html'])
-                server.RHAPI.ui.register_template('example.page', None, 'results')
+                for page in pages:
+                    server.RHAPI.ui.register_template('example.page.' + page, None, page)
 
+                server.RHAPI.ui.register_template('example.info', None, 'event')
                 server.RHAPI.ui.register_template('example.info', 'example/missing.html', 'event')
                 with server.APP.test_request_context('/event'):
                     missing = server.render_event().get_data(as_text=True)

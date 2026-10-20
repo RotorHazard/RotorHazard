@@ -352,6 +352,8 @@ class RHUI():
             self._ui_templates.pop(name, None)
         elif not isinstance(template, str) or not template.strip():
             raise ValueError('Template must be a non-empty template name or None')
+        elif name in self._ui_templates:
+            raise ValueError(f'Template registration {name!r} already exists')
         else:
             self._ui_templates[name] = {'template': template, 'page': page, 'position': position}
 
