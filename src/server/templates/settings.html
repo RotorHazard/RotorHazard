@@ -3485,6 +3485,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('settings') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 <p><a href="/advanced-settings">{{ __('Advanced Settings') }}</a>

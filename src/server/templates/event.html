@@ -382,6 +382,10 @@
 	</div>
 </div>
 
+{% for plugin_template in getPluginTemplates('event') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="section-heats">
 	<!--Display the heats-->
 	<h2>{{ __('Heats') }}</h2>

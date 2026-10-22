@@ -220,6 +220,35 @@ Register a Markdown block and assign it to a UI panel.
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
 
+#### ui.register_template(name, template, page, position="default")
+
+Register a plugin-owned template on a frontend page, following the `page` argument used by `ui.register_panel`. Each registration targets one page and insertion point; public content and organizer controls are separate registrations. Use a unique plugin-qualified `name` and a namespaced template from a registered Flask blueprint. Multiple plugins contribute independently in registration order. A duplicate registration name raises `ValueError` and leaves the existing contribution unchanged, including when the page, position or template differs. `template=None` explicitly removes a registration; deliberate replacement requires removing it first. Names, pages and positions must be non-empty strings. A missing template is skipped without hiding the page or other contributions.
+
+| Page | Position | Location |
+| --- | --- | --- |
+| `event` | `default` | After the public event description, before heats. |
+| `format`, `settings`, `run`, `marshal`, `streams`, `results` | `default` | Before the existing custom UI panels. |
+| `format` | `event_details` | After the event-description field inside the Event form. Templates here must contain `<li>` elements. |
+
+```python
+rhapi.ui.register_template('my_plugin.info', 'my_plugin/info.html', 'event')
+rhapi.ui.register_template('my_plugin.controls', 'my_plugin/manage.html', 'format', 'event_details')
+rhapi.ui.register_template('my_plugin.settings', 'my_plugin/settings.html', 'settings')
+```
+
+Templates use the page's existing Jinja context and escaping and may reference local CSS and deferred JavaScript. The registration name is not a Jinja filename: `getPluginTemplates(page, position)` supplies the registered template paths to the page's `plugin_template` include loop. Give each plugin its own template directory (for example `my_plugin/info.html`); Flask blueprint names do not automatically namespace template filenames. They are rendered outside `#custom-ui`, so SocketIO panel refreshes do not erase them. Only trusted installed plugins may register templates. Plugins decide whether they have content to display and must keep credentials and private organizer information out of public pages. Pages render only their documented insertion points; this API does not select arbitrary DOM elements or create page routes.
+
+#### ui.requires_auth(handler)
+
+Decorate plugin HTTP routes with the same request-local HTTP Basic authorization policy as `/format`, including RotorHazard's intentionally open-admin/first-run modes. Unauthorized requests receive the same HTTP 401 challenge as built-in pages. Authentication is checked for every request, regardless of previous authenticated requests or the SocketIO authentication setting. Plugins remain responsible for CSRF protection and input validation on their mutation routes.
+
+```python
+@blueprint.route('/manage')
+@rhapi.ui.requires_auth
+def manage():
+    return 'Organizer only'
+```
+
 #### ui.blueprint_add(blueprint)
 Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 

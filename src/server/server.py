@@ -449,20 +449,7 @@ def apply_default_admin_creds_if_blank():
             'password': 'rotorhazard',
             })
 
-def authenticate():
-    '''Sends a 401 response that enables basic auth.'''
-    return Response(
-        'Could not verify your access level for that URL.\n'
-        'You have to login with proper credentials', 401,
-        {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-def requires_auth(f):
-    @functools.wraps(f)
-    def decorated_auth(*args, **kwargs):
-        if not AdminAuth.check_auth(RaceContext, request.authorization):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated_auth
+requires_auth = AdminAuth.make_http_auth_guard(RaceContext)
 
 requires_socketio_auth = AdminAuth.make_socketio_auth_guard(RaceContext)
 # stricter guard for handlers that disclose a stored credential; not bypassable
@@ -482,6 +469,7 @@ def render_template(template_name_or_list, **context):
             'getConfig': RaceContext.serverconfig.get_item,
             '__': __,
             'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),
+            'getPluginTemplates': RaceContext.rhui.get_templates,
             'restart_flag': RaceContext.serverstate.restart_required
         })
         response = make_response(templating.render_template(template_name_or_list, **context))

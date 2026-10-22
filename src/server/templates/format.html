@@ -3670,6 +3670,9 @@
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
 			</li>
+			{% for plugin_template in getPluginTemplates('format', 'event_details') %}
+			{% include plugin_template ignore missing %}
+			{% endfor %}
 			<li>
 				<div class="label-block">
 					<label for="set_consecutives_count">{{ __('Consecutive Laps Base') }}</label>
@@ -4105,6 +4108,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('format') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 <div id="parameters" class="mfp-hide popup">

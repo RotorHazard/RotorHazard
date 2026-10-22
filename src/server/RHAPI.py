@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 10
+API_VERSION_MINOR = 11
 
 import dataclasses
 import json
@@ -82,6 +82,12 @@ class UserInterfaceAPI():
     # Markdown
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
+
+    def register_template(self, name, template, page, position='default'):
+        return self._racecontext.rhui.register_template(name, template, page, position)
+
+    def requires_auth(self, handler):
+        return self._racecontext.rhui.requires_auth(handler)
 
     # Blueprint
     def blueprint_add(self, blueprint):

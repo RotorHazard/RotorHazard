@@ -3447,6 +3447,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('run') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 <button id="audio-unlock">{{ __('Enable Audio') }}</button>

@@ -961,6 +961,10 @@
 </div>
 
 <!-- Custom UI -->
+{% for plugin_template in getPluginTemplates('marshal') %}
+{% include plugin_template ignore missing %}
+{% endfor %}
+
 <div id="custom-ui"></div>
 
 <div id="delete-round-confirm" class="priority-message-interrupt mfp-hide popup">

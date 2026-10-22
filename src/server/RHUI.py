@@ -141,6 +141,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._ui_templates = OrderedDict()
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -340,6 +341,32 @@ class RHUI():
     @property
     def markdowns(self):
         return self._markdowns
+
+    # Template content from installed plugins
+    def register_template(self, name, template, page, position='default'):
+        '''Register a named template at a page's supported insertion point.'''
+        for value in (name, page, position):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError('Template name, page and position must be non-empty strings')
+        if template is None:
+            self._ui_templates.pop(name, None)
+        elif not isinstance(template, str) or not template.strip():
+            raise ValueError('Template must be a non-empty template name or None')
+        elif name in self._ui_templates:
+            raise ValueError(f'Template registration {name!r} already exists')
+        else:
+            self._ui_templates[name] = {'template': template, 'page': page, 'position': position}
+
+    @property
+    def templates(self):
+        return OrderedDict((name, template.copy()) for name, template in self._ui_templates.items())
+
+    def get_templates(self, page, position='default'):
+        return [entry['template'] for entry in self._ui_templates.values()
+                if entry['page'] == page and entry['position'] == position]
+
+    def requires_auth(self, handler):
+        return AdminAuth.make_http_auth_guard(self._racecontext)(handler)
 
     # Blueprints
     def add_blueprint(self, blueprint):
