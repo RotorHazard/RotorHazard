@@ -558,11 +558,13 @@ class RHUI():
 
     def emit_option_update(self, options, **params):
         option_vals = {}
-        if isinstance(options, str):
+        if isinstance(options, str) and options != 'eventId' and not options.startswith('event.'):
             option_vals[options] = self._racecontext.rhdata.get_option(options)
 
         if isinstance(options, list):
             for opt in options:
+                if opt == 'eventId' or opt.startswith('event.'):
+                    continue
                 option_vals[opt] = self._racecontext.rhdata.get_option(opt)
 
         emit_payload = {

@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 10
+API_VERSION_MINOR = 11
 
 import dataclasses
 import json
@@ -909,6 +909,19 @@ class DatabaseAPI():
     @callWithDatabaseWrapper
     def saved_lap_splits_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedRaceLapSplits_by_savedRaceMeta(race_id)
+
+    @property
+    @callWithDatabaseWrapper
+    def event_id(self):
+        return self._racecontext.rhdata.get_event_id()
+
+    @callWithDatabaseWrapper
+    def event_option(self, name, default=None):
+        return self._racecontext.rhdata.get_event_option(name, default)
+
+    @callWithDatabaseWrapper
+    def event_option_set(self, name, value, event_id, previous_value=None):
+        return self._racecontext.rhdata.set_event_option(name, value, event_id, previous_value)
 
     # Options
 

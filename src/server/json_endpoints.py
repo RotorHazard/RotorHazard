@@ -244,7 +244,8 @@ def createBlueprint(RaceContext, serverInfo):
         options = {}
         if opt_query:
             for opt in opt_query:
-                if opt.option_name not in ['eventResults', 'secret_key']:
+                if opt.option_name not in ['eventResults', 'secret_key', 'eventId'] and \
+                        not opt.option_name.startswith('event.'):
                     options[opt.option_name] = opt.option_value
 
             payload = options
