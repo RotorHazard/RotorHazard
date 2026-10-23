@@ -2254,7 +2254,7 @@ var freq = {
 				fString: "n/a",
 				band: null,
 				channel: null,
-				frequency: frequency
+				frequency: null
 			}
 		}
 		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
