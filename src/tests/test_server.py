@@ -1,10 +1,12 @@
 '''python -m unittest discover'''
 import os
 import sys
+import json
 import tempfile
 import unittest
 import gevent
 from datetime import datetime
+from flask import render_template_string
 from flask.blueprints import Blueprint
 
 _TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -36,6 +38,7 @@ from Node import Node
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from Database import LapSource
+import frequencies
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -309,7 +312,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 10)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 11)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
@@ -794,6 +797,53 @@ class ServerTest(unittest.TestCase):
         readings = sensor.getReadings()
         self.assertEqual(readings['counter']['value'], count+1)
 
-        
+    def test_set_frequency_fills_band_channel(self):
+        self.client.emit('set_frequency', {'node': 0, 'frequency': 5800})
+        freqs = json.loads(server.RaceContext.race.profile.frequencies)
+        self.assertEqual((freqs['b'][0], freqs['c'][0], freqs['f'][0]), ('F', 4, 5800))
+
+    def test_fill_frequency_bands(self):
+        rhdata = server.RaceContext.rhdata
+        profile = rhdata.get_profile(server.RaceContext.race.profile.id)
+        # stored directly, as an older database holds it; alter_profile() would fill it in
+        profile.frequencies = json.dumps({'b': [None, 'B', None, 0], 'c': [None, 8, None, 0],
+                                          'f': [5658, 5866, 0, 5800]})
+        rhdata.commit()
+        self.assertTrue(rhdata.fill_frequency_bands())
+        freqs = json.loads(rhdata.get_profile(profile.id).frequencies)
+        self.assertEqual(freqs['b'][:4], ['R', 'B', None, 'F'])
+        self.assertEqual(freqs['c'][:4], [1, 8, None, 4])
+        self.assertFalse(rhdata.fill_frequency_bands())
+
+    def test_frequency_utils_api(self):
+        utils = server.RHAPI.utils
+        self.assertEqual(utils.band_channel_frequencies['R1'], 5658)
+        self.assertEqual(list(utils.band_channel_frequencies)[:2], ['R1', 'R2'])
+        self.assertEqual(utils.band_channel_for_frequency(5880), ('R', 7))
+        self.assertEqual(utils.band_channel_for_frequency(5555), (None, None))
+        self.assertEqual(utils.frequency_for_band_channel('F', 4), 5800)
+        self.assertEqual(utils.frequency_for_band_channel('U', 0), 5300)
+        self.assertIsNone(utils.frequency_for_band_channel('R', 9))
+        self.assertIsNone(utils.frequency_for_band_channel(None, None))
+
+    def test_frequencyset_alter_fills_band_channel(self):
+        db = server.RHAPI.db
+        set_id = db.frequencysets[0].id
+        db.frequencyset_alter(set_id, frequencies={'b': [None, None], 'c': [None, None], 'f': [5732, 5555]})
+        freqs = json.loads(db.frequencyset_by_id(set_id).frequencies)
+        self.assertEqual(freqs['b'][:2], ['R', None])
+        self.assertEqual(freqs['c'][:2], [3, None])
+
+    def test_page_frequency_table(self):
+        # rendered without a request, as a handled request stops later tests registering blueprints
+        with server.APP.test_request_context('/'):
+            table = render_template_string('{{ freq_table | tojson }}')
+        # in table order, which decides shared frequencies
+        self.assertEqual([tuple(pair) for pair in json.loads(table)],
+                         list(frequencies.BAND_CHANNEL_FREQUENCIES.items()))
+        for layout in ('layout.html', 'layout-basic.html'):
+            source = server.APP.jinja_env.loader.get_source(server.APP.jinja_env, layout)[0]
+            self.assertIn('{{ freq_table | tojson }}.forEach(function (pair) { freq.frequencies[pair[0]] = pair[1]; });', source)
+
 if __name__ == '__main__':
     unittest.main()
