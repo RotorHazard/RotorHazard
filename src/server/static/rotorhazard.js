@@ -2250,7 +2250,7 @@ var freq = {
 
 		if (fstring == "n/a") {
 			return {
-				key: __("X"),
+				key: '**',
 				fString: "n/a",
 				band: null,
 				channel: null,
@@ -2299,7 +2299,7 @@ var freq = {
 			}
 		}
 		return {
-			key: __("X"),
+			key: '**',
 			fString: "n/a",
 			band: null,
 			channel: null,
