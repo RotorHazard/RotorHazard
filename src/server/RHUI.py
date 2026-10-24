@@ -1782,12 +1782,17 @@ class RHUI():
         else:
             self._socket.emit('first_pass_registered', emit_payload)
 
-    def emit_phonetic_text(self, text_str, domain=False, winner_flag=False, **params):
-        '''Emits given phonetic text.'''
+    def emit_phonetic_text(self, text_str, domain=False, winner_flag=False, priority=False,
+                          resume_queue=False, **params):
+        '''Emits given phonetic text; 'priority' places it at the front of the client speak
+        queue, and 'resume_queue' ends a pause started by 'pause_speaking_queue'.
+        '''
         emit_payload = {
             'text': text_str,
             'domain': domain,
-            'winner_flag': winner_flag
+            'winner_flag': winner_flag,
+            'priority': priority,
+            'resume_queue': resume_queue
         }
 
         emit_payload = self._filters.run_filters(Flt.EMIT_PHONETIC_TEXT, emit_payload)
@@ -1796,6 +1801,21 @@ class RHUI():
             emit('phonetic_text', emit_payload)
         else:
             self._socket.emit('phonetic_text', emit_payload)
+
+    def emit_pause_speaking_queue(self, timeout_secs, **params):
+        '''Emits pause of client speak-queue processing, auto-resuming after the given timeout.'''
+        emit_payload = {'timeout': timeout_secs}
+        if ('nobroadcast' in params):
+            emit('pause_speaking_queue', emit_payload)
+        else:
+            self._socket.emit('pause_speaking_queue', emit_payload)
+
+    def emit_resume_speaking_queue(self, **params):
+        '''Emits resume of client speak-queue processing.'''
+        if ('nobroadcast' in params):
+            emit('resume_speaking_queue')
+        else:
+            self._socket.emit('resume_speaking_queue')
 
     def emit_phonetic_split(self, split_data, **params):
         '''Emits phonetic split-pass data.'''
