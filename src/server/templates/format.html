@@ -2786,6 +2786,9 @@
 		socket.on('format_data', function (msg) {
 			rotorhazard.event.race_formats = msg.formats;
 			update_race_formats();
+			if (current_format == 'last') {
+				current_format = $('#set_race_format').val();
+			}
 			display_classes();
 			display_unclassified_heats();
 		});
