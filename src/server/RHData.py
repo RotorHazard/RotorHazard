@@ -4332,6 +4332,15 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
                         fastest_str = "{} {}".format(pilot_obj.callsign, fastest_split.split_speed)
     return fastest_str
 
+def getPilotTimeStr(rhapi, result, key, spoken_flag):
+    # a pilot's time figure from a leaderboard row; zero means no laps, so no data
+    if not result.get(key + '_raw'):
+        return ''
+    if spoken_flag:
+        return RHUtils.format_phonetic_time_to_str(result[key + '_raw'],
+                                                  rhapi.config.get_item('UI', 'timeFormatPhonetic'))
+    return str(result.get(key, ''))
+
 # Text replacer
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
     if '%' in text:
@@ -4481,29 +4490,19 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                     text = text.replace('%LAP_COUNT%', str(result.get('laps')))
 
                     # %TOTAL_TIME% : Total time since start of race for pilot
-                    text = text.replace('%TOTAL_TIME%', RHUtils.format_phonetic_time_to_str( \
-                        result.get('total_time_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                            if spoken_flag else str(result.get('total_time', '')))
+                    text = text.replace('%TOTAL_TIME%', getPilotTimeStr(rhapi, result, 'total_time', spoken_flag))
 
                     # %TOTAL_TIME_LAPS%: Total time since start of first lap for pilot
-                    text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.format_phonetic_time_to_str( \
-                        result.get('total_time_laps_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                            if spoken_flag else str(result.get('total_time_laps', '')))
+                    text = text.replace('%TOTAL_TIME_LAPS%', getPilotTimeStr(rhapi, result, 'total_time_laps', spoken_flag))
 
                     # %LAST_LAP% : Last lap time for pilot
-                    text = text.replace('%LAST_LAP%', RHUtils.format_phonetic_time_to_str( \
-                        result.get('last_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                            if spoken_flag else str(result.get('last_lap', '')))
+                    text = text.replace('%LAST_LAP%', getPilotTimeStr(rhapi, result, 'last_lap', spoken_flag))
 
                     # %AVERAGE_LAP% : Average lap time for pilot
-                    text = text.replace('%AVERAGE_LAP%', RHUtils.format_phonetic_time_to_str( \
-                        result.get('average_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                            if spoken_flag else str(result.get('average_lap', '')))
+                    text = text.replace('%AVERAGE_LAP%', getPilotTimeStr(rhapi, result, 'average_lap', spoken_flag))
 
                     # %FASTEST_LAP% : Fastest lap time
-                    text = text.replace('%FASTEST_LAP%', RHUtils.format_phonetic_time_to_str( \
-                        result.get('fastest_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                            if spoken_flag else str(result.get('fastest_lap', '')))
+                    text = text.replace('%FASTEST_LAP%', getPilotTimeStr(rhapi, result, 'fastest_lap', spoken_flag))
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.format_phonetic_time_to_str( \
