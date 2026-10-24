@@ -73,6 +73,9 @@ class RaceContext():
         self.last_race.results = self.race.results
         self.last_race.cacheStatus = self.race.cacheStatus
         self.last_race.status_message = self.race.status_message
+        self.last_race.phonetic_status_msg = self.race.phonetic_status_msg
+        self.last_race.race_winner_name = self.race.race_winner_name
+        self.last_race.race_winner_phonetic = self.race.race_winner_phonetic
         self.last_race.team_results = self.race.team_results
         self.last_race.team_cacheStatus = self.race.team_cacheStatus
         self.last_race.win_status = self.race.win_status

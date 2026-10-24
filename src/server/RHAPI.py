@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 11
+API_VERSION_MINOR = 12
 
 import dataclasses
 import json
@@ -1261,6 +1261,10 @@ class RaceAPI():
                 'deleted': lap.get('deleted', False),
             } for lap in laps],
         })
+
+    @property
+    def last_race(self):
+        return self._racecontext.last_race
 
     @property
     @callWithDatabaseWrapper
