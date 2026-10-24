@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, MetaData, Table, inspect
 from sqlalchemy.exc import NoSuchTableError
 from datetime import datetime
 import os
+import re
 import traceback
 import shutil
 import json
@@ -4349,6 +4350,35 @@ def getPilotTimeStr(rhapi, result, key, spoken_flag):
     return str(result.get(key, ''))
 
 # Text replacer
+# per-pilot tokens, filled only from the pilot's leaderboard row
+PILOT_CALL_TOKENS = ('%POSITION_CALL%', '%POSITION_PLACE_CALL%', '%TIME_BEHIND_CALL%',
+                     '%TIME_BEHIND_FINPLACE_CALL%', '%TIME_BEHIND_FINPOS_CALL%')
+PILOT_VALUE_TOKENS = ('%LAP_COUNT%', '%TOTAL_TIME%', '%TOTAL_TIME_LAPS%', '%FASTEST_LAP%',
+                      '%LAST_LAP%', '%AVERAGE_LAP%', '%FASTEST_SPEED%',
+                      '%POSITION%', '%POSITION_PLACE%', '%TIME_BEHIND%', '%CONSECUTIVE%')
+
+# tokens filled outside the per-pilot block; with the two lists above these cover every
+#  token 'doReplace' substitutes
+OTHER_TOKENS = ('%HEAT%', '%PILOT%', '%PILOTS%', '%LINEUP%', '%FREQS%',
+                '%ROUND%', '%ROUND_CALL%', '%RACE_FORMAT%', '%RACE_RESULT%',
+                '%WINNER%', '%WINNER_CALL%',
+                '%PREVIOUS_WINNER%', '%PREVIOUS_WINNER_CALL%',
+                '%LEADER%', '%LEADER_CALL%',
+                '%FASTEST_RACE_LAP%', '%FASTEST_RACE_LAP_CALL%',
+                '%FASTEST_RACE_SPEED%', '%FASTEST_RACE_SPEED_CALL%',
+                '%SPLIT_TIME%', '%SPLIT_SPEED%',
+                '%COOP_RACE_INFO%', '%COOP_RACE_LAP_TOTALS%',
+                '%CURRENT_TIME_AP%', '%CURRENT_TIME_24%',
+                '%CURRENT_TIME_SECS_AP%', '%CURRENT_TIME_SECS_24%')
+
+ALL_TOKENS = PILOT_CALL_TOKENS + PILOT_VALUE_TOKENS + OTHER_TOKENS
+
+def clearUnfilledTokens(text):
+    for token in ALL_TOKENS:
+        if token in text:
+            text = text.replace(token, '')
+    return text
+
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
     if '%' in text:
         race_results = rhapi.race.results
@@ -4690,6 +4720,13 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                         delay_sec_holder.clear()
                         delay_sec_holder.append(float(num_str))
                         text = getPilotsListStr(rhapi, ' . ', spoken_flag).split(' . ')
+
+        # tokens left unfilled (no data) are removed so they are never spoken as raw text
+        if isinstance(text, str) and '%' in text:
+            text = clearUnfilledTokens(text)
+            leftover = re.findall(r'%[A-Z_0-9]+%', text)
+            if leftover:
+                logger.warning("Unrecognised callout token(s): {}".format(leftover))
 
     return text
 
