@@ -601,6 +601,13 @@ $(document).on('click', function(event){
 	initSpeak(event);
 });
 
+// focus number input when its spin buttons are clicked (Firefox does not)
+$(document).on('mousedown', 'input[type=number]', function() {
+	if (document.activeElement !== this) {
+		this.focus();
+	}
+});
+
 function __(text) {
 	// return translated string
 	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
