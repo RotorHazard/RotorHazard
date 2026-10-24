@@ -276,6 +276,7 @@ The variables listed below may be used for the  effects.
 | %LAST_LAP%                | Last lap time for pilot                                                 |
 | %AVERAGE_LAP%             | Average lap time for pilot                                              |
 | %FASTEST_LAP%             | Fastest lap time                                                        |
+| %TIME_BEHIND%             | Amount of time behind race leader                                       |
 | %TIME_BEHIND_CALL%        | Amount of time behind race leader (with prompt)                         |
 | %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
 | %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                      |
