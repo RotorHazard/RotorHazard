@@ -35,6 +35,11 @@ var speakServerTextFlag = true;
 var playRaceTonesFlag = true;
 // true until the first 'race_status' after load, to resume a race already running
 var raceTimerResumeCheck = true;
+// false while another tab on this machine plays the audio (see claimAudio)
+var audioOwnerFlag = true;
+var audioOwnerConfirmed = false;
+var audioOwnerReplyTimer = null;
+const AUDIO_OWNER_REPLY_TIMEOUT_MS = 5000;
 var reloading = false;
 
 /* global functions */
@@ -509,6 +514,9 @@ function race_timer_kickoff(msg) {
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
+	if (!audioAllowed()) {
+		return;
+	}
 	if (volume && volume > MIN_LOG_VOL_LIM) {
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
@@ -546,6 +554,9 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 };
 
 function play_mp3_beep(audio_obj, volume) {
+	if (!audioAllowed()) {
+		return;
+	}
 	if (volume && volume > MIN_LOG_VOL_LIM) {
 		audio_obj.volume = volume;
 		audio_obj.play();
@@ -623,7 +634,58 @@ function resumeSpeakQueue() {
 	}
 };
 
+// Empties the speak queue and stops any callout being spoken; a pause stays in effect
+function clearSpeakQueue() {
+	speakObjsQueue.length = 0;
+	checkSpeakQueueFlag = true;
+	checkSpeakQueueCntr = 0;
+	$().articulate('stop');
+};
+
+// Gives true if this tab may play audio; the server says which tabs may play
+function audioAllowed() {
+	return audioOwnerFlag || !audioClaimsEnabled();
+};
+
+// Gives true if this tab takes part in choosing its machine's audio tab; pages kept silent stay out
+function audioClaimsEnabled() {
+	return speakServerTextFlag && playRaceTonesFlag;
+};
+
+// Claims the machine's audio for this tab; an active claim takes over, a passive one only registers
+function claimAudio(active) {
+	if (!socket || !socket.connected || !audioClaimsEnabled()) {
+		return;
+	}
+	if (active) {
+		if (globalAudioCtx.state != 'running') {  // a tab whose audio is still locked cannot play
+			active = false;
+		}
+		else if (audioOwnerFlag && audioOwnerConfirmed) {
+			return;
+		}
+		else {
+			audioOwnerFlag = true;
+		}
+	}
+	socket.emit('claim_audio', {'active': active});
+	clearTimeout(audioOwnerReplyTimer);
+	// with no reply, play rather than stay silent
+	audioOwnerReplyTimer = setTimeout(function() { audioOwnerFlag = true; }, AUDIO_OWNER_REPLY_TIMEOUT_MS);
+};
+
+function audioWasOwner() {
+	try {
+		return sessionStorage.getItem('rh_audio_owner') == '1';
+	} catch (e) {
+		return false;
+	}
+};
+
 function speak(obj, priority) {
+	if (!audioAllowed()) {
+		return;
+	}
 	if (typeof(priority)=='undefined')
 		priority = false;
 
@@ -1756,6 +1818,40 @@ jQuery(document).ready(function($){
 
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+	// audio plays in one tab per machine: the most recently viewed one
+	socket.on('connect', function () {
+		audioOwnerConfirmed = false;
+		claimAudio(audioWasOwner() || document.visibilityState == 'visible');
+	});
+
+	socket.on('audio_owner', function (msg) {
+		clearTimeout(audioOwnerReplyTimer);
+		audioOwnerConfirmed = true;
+		if (audioOwnerFlag && !msg.owner) {  // another tab took over
+			clearSpeakQueue();
+		}
+		audioOwnerFlag = Boolean(msg.owner);
+		try {
+			sessionStorage.setItem('rh_audio_owner', audioOwnerFlag ? '1' : '');
+		} catch (e) {}
+	});
+
+	$(document).on('visibilitychange', function () {
+		if (document.visibilityState == 'visible') {
+			claimAudio(true);
+		}
+	});
+
+	$(window).on('focus', function () {
+		claimAudio(true);
+	});
+
+	globalAudioCtx.addEventListener('statechange', function () {
+		if (globalAudioCtx.state == 'running' && document.visibilityState == 'visible') {
+			claimAudio(true);
+		}
+	});
 
 	// reconnect when visibility is regained
 	$(document).on('visibilitychange', function(){

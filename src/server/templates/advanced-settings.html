@@ -439,6 +439,16 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set-audio-single-tab">{{ __('Audio Playback') }}</label>
+					<div class="desc">{{ __('Which browser tabs play callouts and tones') }}</div>
+				</div>
+				<select id="set-audio-single-tab" class="set-config" data-section="GENERAL" data-key="AUDIO_SINGLE_TAB" data-type="boolean">
+					<option value="true" {{'selected' if getConfig('GENERAL', 'AUDIO_SINGLE_TAB')==true}}>{{ __('Most Recently Viewed Tab') }}</option>
+					<option value="false" {{'selected' if getConfig('GENERAL', 'AUDIO_SINGLE_TAB')==false}}>{{ __('All Tabs') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set-backup-retention">{{ __('Database Backup Retention (days)') }}</label>
 				</div>
 				<input type="number" id="set-backup-retention" class="set-config" data-section="GENERAL" data-key="DB_AUTOBKP_NUM_KEEP" value="{{ getConfig('GENERAL', 'DB_AUTOBKP_NUM_KEEP') }}" min="-1">

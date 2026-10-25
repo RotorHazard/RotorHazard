@@ -1817,6 +1817,10 @@ class RHUI():
         else:
             self._socket.emit('resume_speaking_queue')
 
+    def emit_audio_owner(self, sid, owner_flag):
+        '''Emits to the given client whether it is the tab that plays audio on its machine.'''
+        self._socket.emit('audio_owner', {'owner': owner_flag}, to=sid)
+
     def emit_phonetic_split(self, split_data, **params):
         '''Emits phonetic split-pass data.'''
         name_callout_flag = split_data.get('name_callout_flag', True)
