@@ -1,0 +1,224 @@
+/* Presentation only. Keep existing IDs, visibility, race states and event bindings.
+   Broadcast overlays retain their independent theme. */
+html {
+    color-scheme: dark;
+    --ui-bg: #0b111c;
+    --ui-surface: #121d2c;
+    --ui-raised: #192738;
+    --ui-border: #2a3c51;
+    --ui-text: #e8eff7;
+    --ui-muted: #a2b3c7;
+    --ui-accent: #62d9ed;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: 'Barlow', 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+html body {
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    background: radial-gradient(ellipse at 12% 0%, #143047 0, transparent 48rem), var(--ui-bg);
+}
+html a { color: var(--ui-accent); }
+html a:hover { color: #b3f3ff; }
+html :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 4px; }
+html body > header {
+    min-height: 4rem;
+    padding: .5rem 2%;
+    background: #101c2b;
+    border-bottom: 1px solid var(--ui-border);
+    box-shadow: 0 8px 28px #0003;
+}
+html #timer-name { color: var(--ui-text); font-weight: 700; letter-spacing: .025em; }
+html #timer-name img { height: 1.4em; vertical-align: -.3em; margin-right: .45em; }
+html nav > ul > li { margin: .25rem .15rem; }
+html nav a {
+    padding: .65rem .8rem;
+    border-radius: .55rem;
+    color: var(--ui-muted);
+    transition: color 160ms ease, background-color 160ms ease;
+}
+html nav a:hover, html nav a:focus-visible {
+    background: #21384a;
+    color: var(--ui-accent);
+}
+html nav > ul > li > ul {
+    top: 100%;
+    right: 0;
+    visibility: hidden;
+    pointer-events: none;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: .75rem;
+    padding: .4rem;
+    box-shadow: 0 16px 40px #0006;
+}
+html nav > ul > li:hover > ul, html nav > ul > li:focus > ul,
+html nav > ul > li:focus-within > ul, html nav ul.show-menu {
+    visibility: visible; pointer-events: auto; opacity: 1;
+}
+html main { width: 100%; max-width: 90rem; padding: 1.5rem 1.5rem 3rem; }
+html h1 { font-weight: 700; letter-spacing: -.025em; }
+html h2 {
+    background: transparent;
+    color: var(--ui-text);
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: .8rem 1rem;
+}
+html h2::before { content: none; }
+html h3 {
+    background: var(--ui-raised);
+    color: var(--ui-text);
+    padding: .6rem .8rem;
+    border-radius: .5rem;
+    font-size: 1.05rem;
+}
+html .panel {
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 1rem;
+    margin: 0 0 1.25rem;
+    box-shadow: 0 8px 24px #0002;
+}
+html .panel-header { padding: 0; border-radius: 1rem 1rem 0 0; }
+html .panel-header h2 { margin: 0; }
+html .panel-content { padding: 1.25rem; }
+html .panel-header + .panel-content { border-top: 1px solid var(--ui-border); padding-top: 1.25rem; }
+html .panel-content.full-width { margin: 0; padding: 1.25rem; }
+html .collapsing .panel-header { transition: background-color 180ms ease; }
+html .collapsing .panel-header:hover { background: var(--ui-raised); }
+html .collapsing .panel-header h2 > button {
+    width: 100%; padding-right: 1.5rem; position: relative;
+}
+html .collapsing .panel-header h2 > button::after {
+    content: '+'; position: absolute; right: 0; color: var(--ui-accent); font-weight: 400;
+}
+html .collapsing.open .panel-header h2 > button::after { content: '\2212'; }
+html button:not(.no-style):not(.hamburger):not(.color-picker):not(.eye-icon):not(.mfp-close),
+html .button-like {
+    background: #21394e;
+    color: var(--ui-text);
+    border: 1px solid #3c5b74;
+    border-radius: .6rem;
+    min-height: 2.65rem;
+    padding: .5rem .9rem;
+    line-height: 1.4;
+    font-weight: 700;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+html button:not(.no-style):not(.hamburger):not(.color-picker):not(.eye-icon):not(.mfp-close):enabled:hover,
+html .button-like:hover {
+    background: #2a4b63;
+    border-color: var(--ui-accent);
+    box-shadow: 0 4px 16px #0003;
+}
+html button:not(.no-style):not(.color-picker):enabled:active, html .button-like:active { transform: translateY(1px); }
+html button.no-style { color: inherit; background: transparent; }
+html button#start_race:enabled {
+    background: #63dbed; color: #081923; border-color: #8ee9f6;
+    box-shadow: 0 0 20px #62d9ed1c;
+}
+html button#start_race:enabled:hover { background: #9bebf6; }
+html button#save_laps:enabled { background: #1b4a40; color: #b5f6d9; border-color: #438c74; }
+html button.btn-danger:enabled, html a.btn-danger,
+html button#stop_race:enabled, html button#discard_laps:enabled {
+    background: #512b36; border-color: #af6070; color: #ffe0e4;
+}
+html button.btn-danger:enabled:hover, html a.btn-danger:hover,
+html button#stop_race:enabled:hover, html button#discard_laps:enabled:hover {
+    background: #703443; border-color: #ff9ead;
+}
+html button:disabled, html input:disabled, html select:disabled,
+html button:not(.no-style):not(.hamburger):not(.color-picker):not(.eye-icon):not(.mfp-close):disabled {
+    background: #1c2735; color: #8593a5; border-color: #334254;
+    box-shadow: none; cursor: not-allowed;
+}
+html input[type='text'], html input[type='password'],
+html input[type='number'], html input[type='email'],
+html select, html textarea {
+    background: #0e1826; color: var(--ui-text); border: 1px solid #42576d;
+    border-radius: .5rem; padding: .5rem .65rem; min-height: 2.65rem;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+html input:focus, html select:focus, html textarea:focus {
+    border-color: var(--ui-accent); box-shadow: 0 0 0 3px #62d9ed1a;
+}
+html input:invalid, html textarea:invalid, html .value-invalid { border-color: #ff8a9c; }
+html option, html optgroup { background: #121d2c; color: var(--ui-text); }
+html option:disabled { color: #8593a5; }
+html input[type='checkbox'], html input[type='radio'], html input[type='range'] { accent-color: var(--ui-accent); }
+html .form-note, html ol.form .desc { color: var(--ui-muted); font-style: normal; }
+html ol.form > li { margin-top: .85rem; margin-bottom: .85rem; }
+html table { border-color: var(--ui-border); }
+html th, html td { border-color: var(--ui-border); padding: .55rem .65rem; }
+html thead { background: #1c2d40; color: #c7d9eb; }
+html tbody tr { transition: background-color 140ms ease; }
+html tbody tr:hover { background-color: #62d9ed0c; }
+html .table-wrap { border-radius: .5rem; }
+html .timing-clock {
+    background: linear-gradient(120deg, #162b40, #0c1929);
+    color: #e6faff; border: 1px solid #385b74;
+    border-radius: .8rem; font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 1.3; letter-spacing: .025em; padding: .3em 0;
+    box-shadow: inset 0 1px #ffffff0a;
+    transition: background-color 200ms ease, border-color 200ms ease;
+}
+html .race-running .timing-clock { background: #12372f; color: #c0ffe5; border-color: #459d7f; }
+html .race-stopped .timing-clock { background: #3e2631; color: #ffd3dc; border-color: #b1647b; }
+html .timing-clock.staging { background: #453719; color: #ffe2a1; border-color: #b89143; }
+html .timing-clock .warning { color: #ffd489; font-size: .875rem; letter-spacing: 0; }
+html #main_panel > .panel-content > .control-set { margin: 1.25rem 0; }
+html .race-results { margin-top: 1rem; }
+html .node { padding: .6rem; background: #0e1826; border: 1px solid var(--ui-border); border-radius: .75rem; }
+html .node h3, html .node h4, html .node h5 { padding: .45rem .5rem; }
+html .node .laps th, html .node .laps td { padding: .4rem .25rem; }
+html .rssi-graph { border-radius: .4rem; overflow: hidden; }
+html .crossing { padding: .2rem; font-size: .8rem; }
+html .crossing:not(.is-crossing) { background: #1b2b3c; color: #c0cddd; }
+html .popup, html dialog {
+    background: var(--ui-surface); color: var(--ui-text);
+    border: 1px solid #3c536d; border-radius: .85rem;
+    box-shadow: 0 24px 80px #0008;
+}
+html .popup h2, html dialog h2 { padding: .9rem 2.7rem .9rem 1rem; border-bottom: 1px solid var(--ui-border); }
+html .priority-message-interrupt { border-color: #af6070; }
+html .priority-message-interrupt h2 { background: #512b36; color: #ffe0e4; border-radius: .85rem .85rem 0 0; }
+html .mfp-bg { background: #050b14; opacity: .85; }
+html main.page-home { max-width: 66rem; }
+html .page-home .header { padding: 1.5rem 0 2.5rem; }
+html .page-home .header h1 { max-width: 32rem; margin: 0 auto; }
+html .page-home h3 { background: transparent; padding: 0; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+html .page-home .home-menu { max-width: none; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+html .page-home .home-menu li { margin: 0; min-width: 0; }
+html .page-home .home-menu li a {
+    text-align: left; padding: 1.1rem 1.25rem; font-size: 1rem;
+    min-height: 4rem; height: 100%; display: flex; align-items: center;
+}
+html .page-home .home-menu li a::after { content: '\2197'; margin-left: auto; padding-left: 1rem; color: var(--ui-accent); }
+html footer { margin-top: auto; padding: 1.5rem 1rem; color: var(--ui-muted); font-size: .85rem; }
+/* Animate static page entry only, never the live clock, RSSI or lap updates. */
+@keyframes rh-ui-enter { from { opacity: .3; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: no-preference) {
+    html main { animation: rh-ui-enter 320ms ease-out; }
+    html .popup, html dialog[open] { animation: rh-ui-enter 180ms ease-out; }
+    html .page-home .home-menu a:hover { transform: translateY(-2px); }
+}
+@media (max-width: 60em) {
+    html #nav-main { top: 100%; background: #101c2b; border-color: var(--ui-border); max-height: 80vh; overflow-y: auto; }
+    html #nav-main li { margin: .2rem .5rem; width: calc(100% - 1rem); }
+    html nav > ul > li > ul { box-shadow: none; min-width: 0; visibility: visible; pointer-events: auto; }
+    html .hamburger { color: var(--ui-text); }
+}
+@media (max-width: 40em) {
+    html main { padding: 1rem .65rem 2rem; }
+    html .panel-content, html .panel-content.full-width { padding: .8rem; }
+    html .page-home .home-menu { grid-template-columns: 1fr; }
+    html .page-home .header { padding: 1rem .5rem 1.5rem; }
+    html #main_panel > .panel-content > .control-set > :is(button, select) { margin: .25rem; max-width: calc(100% - .5rem); }
+    html .timing-clock .warning { position: static; text-align: center; }
+    html .timing-clock .warning > div { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+    html *, html *::before, html *::after { animation: none !important; transition: none !important; }
+}
+

@@ -44,6 +44,7 @@
 	<!-- CSS -->
 	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
 	<link rel="stylesheet" href="/static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+	<link rel="stylesheet" href="/static/modern-ui.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 	<style>
 
@@ -117,7 +118,7 @@
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>{{ __('Powered by') }} <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
+		<p>{{ __('Powered by') }} <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }} <span class="modern-ui-credit">· {{ __('Modern UI by Higgs Lost') }}</span></p>
 	</footer>
 
 	<a id="message-notification" hidden href="#message-center" class="open-mfp-popup"><span class="screen-reader-text">Open</span> <span id="message-count">0</span> <span class="screen-reader-text">messages</span></a>
@@ -148,3 +149,4 @@
 </body>
 
 </html>
+
