@@ -1165,6 +1165,15 @@ class RHData():
         heat.auto_name = self.get_heat_auto_name(heat)
         self.commit()
 
+    def get_current_group_id(self, class_id):
+        # lowest group among the class's active heats, else its highest group
+        heats = self.get_heats_by_class(class_id)
+        active_groups = [h.group_id for h in heats if h.active and h.group_id is not None]
+        if active_groups:
+            return min(active_groups)
+        groups = [h.group_id for h in heats if h.group_id is not None]
+        return max(groups) if groups else 0
+
     def add_heat(self, init=None, initPilots=None):
         # Add new heat
         new_heat = Database.Heat(
@@ -1188,6 +1197,10 @@ class RHData():
                 new_heat.auto_frequency = init['auto_frequency']
             if 'group_id' in init:
                 new_heat.group_id = init['group_id']
+            elif new_heat.class_id:
+                race_class = self.get_raceClass(new_heat.class_id)
+                if race_class and race_class.round_type == RoundType.GROUPED:
+                    new_heat.group_id = self.get_current_group_id(new_heat.class_id)
 
             defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
         else:

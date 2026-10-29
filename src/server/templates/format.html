@@ -974,21 +974,30 @@
 						groupselect.empty();
 						groupselect.prop('hidden', false);
 
+						// current round: lowest round among active heats, else the highest round
+						var class_heats = rotorhazard.event.heats.filter(h => h.class_id == race_class.id && h.group_id != null);
+						var active_groups = class_heats.filter(h => h.active).map(h => h.group_id);
+						var current_group = active_groups.length ? Math.min(...active_groups) :
+							(class_heats.length ? Math.max(...class_heats.map(h => h.group_id)) : 0);
+
 						if (groups.length > 1) {
+							groupselect.prop('disabled', false);
 							for (var i in groups) {
 								$(document.createElement('option'))
-									.prop('value', i)
-									.text(`${__('Round')} ${parseInt(i)+1}`)
+									.prop('value', groups[i])
+									.text(`${__('Round')} ${parseInt(groups[i])+1}`)
 									.appendTo(groupselect);
 							}
-							if (selected_group_val > 0) {
+							if (groupselect.data('user_selected') && groups.includes(selected_group_val)) {
 								groupselect.val(selected_group_val);
+							} else {
+								groupselect.val(current_group);
 							}
 						} else {
 							groupselect.prop('disabled', true);
 							$(document.createElement('option'))
-								.prop('value', 0)
-								.text(`${__('Round')} 1`)
+								.prop('value', current_group)
+								.text(`${__('Round')} ${current_group+1}`)
 								.appendTo(groupselect);
 						}
 					} else {
@@ -1291,8 +1300,7 @@
 		})
 
 		$(document).on("change", '.class-group-list', function (event) {
-			var raceclass_id = parseInt($(this).data('class'));
-			$('#race-class-'+ raceclass_id + ' .add_heat').data('group', parseInt($(this).val()));
+			$(this).data('user_selected', true);
 		})
 
 		$(document).on("click", '.unlock_class', function (event) {
@@ -1336,6 +1344,7 @@
 			var group_select = $(this).siblings('.class-group-list')
 			if (group_select.length) {
 				data.group = group_select.val();
+				group_select.data('user_selected', false);
 			}
 			socket.emit('add_heat', data);
 		});
