@@ -255,6 +255,14 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 # cached copy of GENERAL/ADMIN_SOCKET_AUTH; kept in sync by 'on_set_config'
 AdminAuth.set_admin_socket_auth_enabled(RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_SOCKET_AUTH'))
 
+SPEAK_QUEUE_PAUSE_TIMEOUT_SECS = 5  # auto-resume if no priority callout arrives while paused
+AUDIO_HANDOFF_GRACE_SECS = 2  # wait before promoting another tab, so a refreshing owner tab can reclaim
+# per-machine audio tabs: client address -> socket ids of claiming tabs (most recent claim last),
+#  the socket id told it is the owner, and addresses waiting out the hand-off grace period
+AudioClaimants = {}
+AudioOwners = {}
+AudioHandoffPending = set()
+
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
 IMDTABLER_JAR_NAME =  PROGRAM_DIR + '/static/IMDTabler.jar'
@@ -855,6 +863,7 @@ def connect_handler(auth):
 def disconnect_handler(*args):
     '''Emit disconnect event.'''
     logger.debug('Client disconnected')
+    release_audio_claim(request.remote_addr, request.sid, True)
 
 # Cluster events
 
@@ -2874,6 +2883,8 @@ def on_set_config(data):
         apply_default_admin_creds_if_blank()
     if data['section'] in ('SECRETS', 'GENERAL'):
         check_default_admin_creds_warning()
+    if data['section'] == 'GENERAL' and data['key'] == 'AUDIO_SINGLE_TAB':
+        refresh_audio_owners()
     event_value = data['value']
     if data['section'] == 'GENERAL' and data['key'] == 'SECONDARIES' and isinstance(event_value, list):
         event_value = mask_secondary_passwords(event_value)
@@ -2917,6 +2928,8 @@ def on_set_config_section(data):
         apply_default_admin_creds_if_blank()
     if data['section'] in ('SECRETS', 'GENERAL'):
         check_default_admin_creds_warning()
+    if data['section'] == 'GENERAL':
+        refresh_audio_owners()
     event_value = data['value']
     if data['section'] == 'GENERAL' and isinstance(event_value, dict) and isinstance(event_value.get('SECONDARIES'), list):
         event_value = dict(event_value, SECONDARIES=mask_secondary_passwords(event_value['SECONDARIES']))
@@ -2972,20 +2985,111 @@ def save_callouts(data):
 def reload_callouts(*args):
     RaceContext.rhui.emit_callouts()
 
+@SOCKET_IO.on('pause_speaking_queue')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_pause_speaking_queue(*args):
+    '''Holds client speak-queue processing'''
+    RaceContext.rhui.emit_pause_speaking_queue(SPEAK_QUEUE_PAUSE_TIMEOUT_SECS)
+
+@SOCKET_IO.on('resume_speaking_queue')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_resume_speaking_queue(*args):
+    '''Resumes client speak-queue processing paused by 'pause_speaking_queue'.'''
+    RaceContext.rhui.emit_resume_speaking_queue()
+
+@SOCKET_IO.on('claim_audio')
+@catchLogExceptionsWrapper
+def on_claim_audio(data=None):
+    '''Registers the tab as an audio claimant for its machine; an active claim makes it the owner.'''
+    active = bool(data.get('active')) if isinstance(data, dict) else False
+    addr = request.remote_addr
+    claimants = AudioClaimants.setdefault(addr, [])
+    if request.sid in claimants:
+        if active:
+            claimants.remove(request.sid)
+            claimants.append(request.sid)
+    elif active:
+        claimants.append(request.sid)
+    else:
+        claimants.insert(0, request.sid)
+    if active:
+        AudioHandoffPending.discard(addr)
+    update_audio_owner(addr, request.sid)
+
+@SOCKET_IO.on('release_audio')
+@catchLogExceptionsWrapper
+def on_release_audio(*args):
+    '''Removes the tab from its machine's audio claimants.'''
+    release_audio_claim(request.remote_addr, request.sid, False)
+
+def release_audio_claim(addr, sid, grace_flag):
+    '''Removes a tab from its machine's audio claimants, handing ownership on if it was the owner.'''
+    claimants = AudioClaimants.get(addr)
+    if not claimants or sid not in claimants:
+        return
+    claimants.remove(sid)
+    if AudioOwners.get(addr) == sid:
+        AudioOwners.pop(addr)
+        if grace_flag and claimants:
+            AudioHandoffPending.add(addr)
+            gevent.spawn_later(AUDIO_HANDOFF_GRACE_SECS, finish_audio_handoff, addr)
+            return
+    update_audio_owner(addr)
+
+@catchLogExceptionsWrapper
+def finish_audio_handoff(addr):
+    '''Promotes the most recent remaining claimant once the hand-off grace period ends.'''
+    AudioHandoffPending.discard(addr)
+    update_audio_owner(addr)
+
+def update_audio_owner(addr, reply_sid=None, notify_all=False):
+    '''Makes the machine's most recent claimant its audio owner, telling the tabs whose state changed.'''
+    claimants = AudioClaimants.get(addr)
+    if not claimants:
+        AudioClaimants.pop(addr, None)
+        AudioOwners.pop(addr, None)
+        AudioHandoffPending.discard(addr)
+        return
+    single_flag = RaceContext.serverconfig.get_item('GENERAL', 'AUDIO_SINGLE_TAB')
+    prev_owner = AudioOwners.get(addr)
+    told_sids = set()
+    if addr not in AudioHandoffPending and claimants[-1] != prev_owner:
+        AudioOwners[addr] = claimants[-1]
+        if single_flag:
+            RaceContext.rhui.emit_audio_owner(claimants[-1], True)
+            told_sids.add(claimants[-1])
+            if prev_owner in claimants:
+                RaceContext.rhui.emit_audio_owner(prev_owner, False)
+                told_sids.add(prev_owner)
+    notify_sids = list(claimants) if notify_all else [reply_sid] if reply_sid else []
+    for sid in notify_sids:
+        if sid not in told_sids:
+            RaceContext.rhui.emit_audio_owner(sid, (not single_flag) or sid == AudioOwners.get(addr))
+
+def refresh_audio_owners():
+    '''Tells every claiming tab on every machine whether it plays audio, after the mode changes.'''
+    for addr in list(AudioClaimants.keys()):
+        update_audio_owner(addr, notify_all=True)
+
 @SOCKET_IO.on('play_callout_text')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
+    priority = data.get('priority', False)  # if set then put at front of client speak queue
     delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
     message = RHData.doReplace(RHAPI, data['callout'], {}, True, delay_sec_holder)
     if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
-        RaceContext.rhui.emit_phonetic_text(message)
+        RaceContext.rhui.emit_phonetic_text(message, priority=priority, resume_queue=priority)
     else:
         if not isinstance(message, list):
-            gevent.spawn_later(delay_sec_holder[0], RaceContext.rhui.emit_phonetic_text, message)
+            gevent.spawn_later(delay_sec_holder[0], RaceContext.rhui.emit_phonetic_text, message,
+                               priority=priority, resume_queue=priority)
         else:
             for i, piece in enumerate(message):
-                gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece)
+                gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece,
+                                   priority=priority, resume_queue=priority)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper

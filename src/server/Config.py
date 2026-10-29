@@ -80,6 +80,7 @@ class Config:
         self.config['GENERAL']['SHUTDOWN_BUTTON_DELAYMS'] = 2500
         self.config['GENERAL']['DB_AUTOBKP_NUM_KEEP'] = 30
         self.config['GENERAL']['SYNC_LEADTIME_SECS'] = 0.9  # lead time for race stage/start signals
+        self.config['GENERAL']['AUDIO_SINGLE_TAB'] = True  # play audio only in each machine's most recently viewed tab
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
         self.config['GENERAL']['MOCK_NODES'] = 0
