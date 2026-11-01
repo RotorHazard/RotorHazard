@@ -756,7 +756,6 @@ class RHRace():
                     # keep time fields in the current race in sync with the current race format
                     self.set_race_format_time_fields(self.format, self.current_heat)
                     self._racecontext.rhui.emit_heat_data()    # update displayed values
-                    self._racecontext.rhui.emit_race_status()
 
                 result = self.get_results()
                 if heat_result:
