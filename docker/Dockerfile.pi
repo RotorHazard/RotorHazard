@@ -1,0 +1,31 @@
+# RotorHazard Server - Raspberry Pi image (arm64)
+# Builds on the base image. Python 3.10+ required.
+#
+# Build the base for arm64 first, then:
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t rotorhazard:pi .
+# Or use build-and-push.sh which builds base then pi.
+#
+# Override base image for local builds: --build-arg BASE_IMAGE=rotorhazard:base
+ARG BASE_IMAGE=racefpv/rotorhazard:base
+FROM ${BASE_IMAGE}
+
+# Pi-specific system dependencies
+RUN apt-get update && apt-get install -y \
+    procps \
+    python3-dev \
+    i2c-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pi requirements (includes RPi.GPIO, rpi-ws281x, etc.)
+COPY src/server/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Extra Pi dependencies (LED support, VRxC flashing, etc.)
+RUN pip install --no-cache-dir rpi-lgpio gpiozero rpi5-ws2812 esptool pillow
+
+WORKDIR /app/src/server
+RUN mkdir -p /app/data
+VOLUME /app/data
+EXPOSE 5000
+ENV RH_DATA_DIR=/app/data
+CMD ["python", "server.py", "--data", "/app/data"]

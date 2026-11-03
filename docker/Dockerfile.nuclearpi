@@ -1,0 +1,17 @@
+# NuclearHazard Server - Raspberry Pi (arm64)
+# Adds NuclearHazard entrypoint and defaults on top of the Pi image.
+#
+# Build Pi image first, then:
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile.nuclearpi -t rotorhazard:nuclearpi .
+# Or use docker/scripts/build-and-push.sh (builds base then pi then nuclearpi).
+#
+# Override Pi image for local builds: --build-arg PI_IMAGE=rotorhazard:pi
+ARG PI_IMAGE=racefpv/rotorhazard-pi:latest
+FROM ${PI_IMAGE}
+
+# NuclearHazard entrypoint (first-run config, Pi 5 gpiochip symlink, etc.)
+COPY docker/scripts/nh_entrypoint.sh /app/nh_entrypoint.sh
+RUN chmod +x /app/nh_entrypoint.sh
+
+ENV NH_FIRST_RUN=0
+ENTRYPOINT ["/app/nh_entrypoint.sh"]
