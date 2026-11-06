@@ -31,7 +31,6 @@ AUTO_CAL = {
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
-    'CURRENT_COUNT_WEIGHT': 0.5,  # per lap of difference from the laps currently recorded
 }
 
 class NoSuggestion:
@@ -128,9 +127,9 @@ def _has_early_crossing(laps):
     return any(not lap['deleted'] and lap['lap_time_stamp'] <= AUTO_CAL['HOLESHOT_WINDOW_S'] * 1000
                for lap in laps)
 
-def _score_calibration(laps, min_lap_ms, current_lap_count):
+def _score_calibration(laps, min_lap_ms):
     # lower is better: crossings too close together to be laps, a crossing left open or overlong,
-    #  merged passes, and (lightly) a lap count away from the laps currently recorded
+    #  and merged passes
     score = AUTO_CAL['NOISE_PENALTY'] * _count_noise_crossings(laps, min_lap_ms)
     stamps = []
     for lap in laps:
@@ -144,20 +143,18 @@ def _score_calibration(laps, min_lap_ms, current_lap_count):
     if len(lap_times) >= 3:
         median = sorted(lap_times)[len(lap_times) // 2]
         score += AUTO_CAL['MERGED_PENALTY'] * sum(1 for t in lap_times if t > median * AUTO_CAL['MERGED_RATIO'])
-    score += AUTO_CAL['CURRENT_COUNT_WEIGHT'] * abs(len(stamps) - current_lap_count)
     return score
 
 def suggest_calibration(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
-                        min_lap_behavior, min_first_crossing_ms, current_lap_count=0):
+                        min_lap_behavior, min_first_crossing_ms):
     '''EnterAt/ExitAt from the RSSI history: the widest run of EnterAt values over which the pass
        count holds steady is the gate band, between the weakest pass and the ripple. Returns
        {'enter_at', 'exit_at', 'laps', 'lap_count', 'band'} or None when no band stands out.'''
     return suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec,
-                                           min_lap_ms, min_lap_behavior, min_first_crossing_ms,
-                                           current_lap_count)[0]
+                                           min_lap_ms, min_lap_behavior, min_first_crossing_ms)[0]
 
 def suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
-                                    min_lap_behavior, min_first_crossing_ms, current_lap_count=0):
+                                    min_lap_behavior, min_first_crossing_ms):
     '''As suggest_calibration(), returning (suggestion, None) or (None, NoSuggestion reason).'''
     if len(values) < 3 or len(values) != len(times):
         return None, NoSuggestion.NO_HISTORY
@@ -202,12 +199,12 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     # a weak holeshot peaks at the top of the ripple; with no early crossing in the band, step
     #  down to the first EnterAt that adds exactly one, early, and keeps the set clean
     if not _has_early_crossing(scan[enter]):
-        base_score = _score_calibration(scan[enter], min_lap_ms, current_lap_count)
+        base_score = _score_calibration(scan[enter], min_lap_ms)
         for e in range(band['low'] - 1, band['low'] - AUTO_CAL['HOLESHOT_SEARCH'] - 1, -1):
             if e not in scan:
                 break
             if pass_count(scan[e]) == band['count'] + 1 and _has_early_crossing(scan[e]) and \
-                    _crossings_usable(scan[e]) and _score_calibration(scan[e], min_lap_ms, current_lap_count) <= base_score:
+                    _crossings_usable(scan[e]) and _score_calibration(scan[e], min_lap_ms) <= base_score:
                 enter = e
                 break
     # ExitAt: of the values giving the cleanest laps (clear of the valleys within a crossing and
@@ -220,7 +217,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
             laps = laps_for(enter, exit_at)
             if not _crossings_usable(laps, skip_late):
                 continue
-            score = _score_calibration(laps, min_lap_ms, current_lap_count)
+            score = _score_calibration(laps, min_lap_ms)
             if score < best_score:
                 best_score = score
                 cleanest = []
@@ -459,9 +456,8 @@ class Calibration:
             return None, NoSuggestion.NO_HISTORY
         # a secondary timer saves its races with no format
         race_format = rhdata.get_raceFormat(race_meta.format_id)
-        laps = rhdata.get_active_savedRaceLaps_by_savedPilotRace(pilotrace_id)
         return self._suggest(json.loads(pilotrace.history_values), json.loads(pilotrace.history_times),
-                             race_meta.start_time, race_format, len(laps))
+                             race_meta.start_time, race_format)
 
     def suggest_for_seat(self, seat_index):
         '''Suggested EnterAt/ExitAt for a seat in the current (stopped, unsaved) race: (suggestion, None) or (None, reason).'''
@@ -471,11 +467,10 @@ class Calibration:
         node = self._racecontext.interface.nodes[seat_index]
         if _pass_peak_only(self._racecontext.interface.node_map[seat_index].interface.marshal_type):
             return None, NoSuggestion.PASS_PEAK_ONLY
-        laps = [lap for lap in race.node_laps.get(seat_index, []) if not lap.deleted]
         return self._suggest(node.history_values, node.history_times, race.start_time_monotonic,
-                             race.format, len(laps))
+                             race.format)
 
-    def _suggest(self, values, times, start_time, race_format, current_lap_count):
+    def _suggest(self, values, times, start_time, race_format):
         rhdata = self._racecontext.rhdata
         # with no format there is no race time, so no laps count as late
         unlimited_time = race_format.unlimited_time if race_format else True
@@ -483,8 +478,7 @@ class Calibration:
         result, reason = suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec,
                                      rhdata.get_optionInt('MinLapSec') * 1000,
                                      self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior'),
-                                     rhdata.get_optionInt('MinFirstCrossingSec') * 1000,
-                                     current_lap_count)
+                                     rhdata.get_optionInt('MinFirstCrossingSec') * 1000)
         if result:
             logger.debug('Calibration suggestion: EnterAt {}, ExitAt {}, band {}-{}, {} laps'.format(
                 result['enter_at'], result['exit_at'], result['band'][0], result['band'][1], result['lap_count']))
