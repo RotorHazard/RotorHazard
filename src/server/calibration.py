@@ -22,7 +22,12 @@ AUTO_CAL = {
     'MIN_BAND_FRACTION': 0.05,
     'WIDE_FRACTION': 0.75,      # bands at least this wide, relative to the widest, compete on pass count
     'BAND_POSITION': 2 / 3,     # EnterAt placed this far up the steady band
-    'EXIT_GAP_FRACTION': 0.24,  # usual ExitAt gap below EnterAt, as a fraction of the way to the trace minimum
+    'MIN_EXIT_GAP': 3,          # smallest gap of ExitAt below EnterAt
+    'MIN_EXIT_GAP_FRACTION': 0.1,  # or this fraction of the way from EnterAt to the trace minimum
+    'EXIT_TOP_MARGIN_FRACTION': 0.05,  # ExitAt this fraction of the way to the trace minimum below the top of the clean range
+    'EXIT_GAP_FRACTION': 0.3,   # but at least this fraction of the way from EnterAt to the trace minimum, within the clean range
+    'EXIT_SPAN_FRACTION': 0.19, # or this fraction of the trace span,
+    'EXIT_SPAN_CAP_FRACTION': 0.4,  # up to this fraction of the way from EnterAt to the trace minimum
     'MAX_CROSSING_S': 20,       # a crossing longer than this is not a gate pass
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
@@ -31,6 +36,7 @@ AUTO_CAL = {
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
+    'DURATION_WEIGHT': 1.0,     # per second of crossing time over all counted crossings
 }
 
 class NoSuggestion:
@@ -127,9 +133,9 @@ def _has_early_crossing(laps):
     return any(not lap['deleted'] and lap['lap_time_stamp'] <= AUTO_CAL['HOLESHOT_WINDOW_S'] * 1000
                for lap in laps)
 
-def _score_calibration(laps, min_lap_ms):
+def _score_calibration(laps, min_lap_ms, with_duration=True):
     # lower is better: crossings too close together to be laps, a crossing left open or overlong,
-    #  and merged passes
+    #  merged passes, and (with_duration) the time spent in the counted crossings
     score = AUTO_CAL['NOISE_PENALTY'] * _count_noise_crossings(laps, min_lap_ms)
     stamps = []
     for lap in laps:
@@ -139,6 +145,8 @@ def _score_calibration(laps, min_lap_ms):
             score += AUTO_CAL['OPEN_PENALTY']
         elif not lap['deleted']:
             stamps.append(lap['lap_time_stamp'])
+            if with_duration:
+                score += AUTO_CAL['DURATION_WEIGHT'] * (lap['crossingEnd'] - lap['crossingStart'])
     lap_times = [stamps[i] - stamps[i - 1] for i in range(1, len(stamps))]
     if len(lap_times) >= 3:
         median = sorted(lap_times)[len(lap_times) // 2]
@@ -207,31 +215,37 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                     _crossings_usable(scan[e]) and _score_calibration(scan[e], min_lap_ms) <= base_score:
                 enter = e
                 break
-    # ExitAt: of the values giving the cleanest laps (clear of the valleys within a crossing and
-    #  above the lowest point of any lap), the one nearest the usual gap below EnterAt
-    cleanest = []
+    # ExitAt: the lowest score, with the time spent in crossings counted, marks the clean range,
+    #  the run of ExitAt values around it giving the same laps; ExitAt is placed a small margin
+    #  below the top of that range, so laps are announced soon after the pass
+    structural = {}
+    best_exit = None
     best_score = math.inf
+    min_gap = max(AUTO_CAL['MIN_EXIT_GAP'], _js_round((enter - lo) * AUTO_CAL['MIN_EXIT_GAP_FRACTION']))
     # laps after the race are left out only when no ExitAt is clean with them
     for skip_late in (False, True):
-        for exit_at in range(enter - 1, lo, -1):
+        for exit_at in range(enter - min_gap, lo, -1):
             laps = laps_for(enter, exit_at)
             if not _crossings_usable(laps, skip_late):
                 continue
+            structural[exit_at] = _score_calibration(laps, min_lap_ms, with_duration=False)
             score = _score_calibration(laps, min_lap_ms)
             if score < best_score:
                 best_score = score
-                cleanest = []
-            if score == best_score:
-                cleanest.append(exit_at)
-        if cleanest:
+                best_exit = exit_at
+        if best_exit is not None:
             break
-    if not cleanest:
+    if best_exit is None:
         return None, NoSuggestion.NO_CLEAN_EXIT
-    target = enter - _js_round((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'])
-    exit_at = cleanest[0]
-    for candidate in cleanest[1:]:
-        if abs(candidate - target) < abs(exit_at - target):
-            exit_at = candidate
+    top = best_exit
+    while structural.get(top + 1) == structural[best_exit]:
+        top += 1
+    bottom = best_exit
+    while structural.get(bottom - 1) == structural[best_exit]:
+        bottom -= 1
+    gap = max((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'],
+              min((hi - lo) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - lo) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
+    exit_at = max(bottom, min(top - _js_round((enter - lo) * AUTO_CAL['EXIT_TOP_MARGIN_FRACTION']), enter - _js_round(gap)))
     laps = laps_for(enter, exit_at)
     return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps,
             'lap_count': len([lap for lap in laps if not lap['deleted']]), 'band': [band['low'], band['high']]}, None
