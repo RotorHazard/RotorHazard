@@ -101,18 +101,21 @@ def compute_laps(values, times, start_time, enter_at, exit_at, unlimited_time, r
             finished = True
     return laps
 
-def _crossings_usable(laps):
+def _crossings_usable(laps, skip_late=False):
     # a crossing that never closes, or that lasts far longer than a gate pass, is the threshold
-    #  sitting in the ripple or the noise
+    #  sitting in the ripple or the noise; laps after the race can be left out
     return not any(lap.get('open') or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_CROSSING_S']
-                   for lap in laps)
+                   for lap in laps if not (skip_late and lap.get('late')))
 
 def _count_noise_crossings(laps, min_lap_ms):
-    # crossings within the minimum lap time of the previous one, plus any already deleted as such
+    # crossings within the minimum lap time of the previous one, plus any already deleted as such;
+    #  laps after the race are left out
     min_gap = min_lap_ms or AUTO_CAL['DEFAULT_MIN_LAP_MS']
     noise = 0
     last_stamp = None
     for lap in laps:
+        if lap.get('late'):
+            continue
         if lap.get('noise'):
             noise += 1
         elif not lap['deleted']:
@@ -131,6 +134,8 @@ def _score_calibration(laps, min_lap_ms, current_lap_count):
     score = AUTO_CAL['NOISE_PENALTY'] * _count_noise_crossings(laps, min_lap_ms)
     stamps = []
     for lap in laps:
+        if lap.get('late'):
+            continue
         if lap.get('open') or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_CROSSING_S']:
             score += AUTO_CAL['OPEN_PENALTY']
         elif not lap['deleted']:
@@ -172,7 +177,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         # a wide provisional ExitAt, so the bumps after a pass stay inside its crossing
         laps = laps_for(enter, enter - max(1, _js_round((enter - lo) * AUTO_CAL['SCAN_EXIT_FRACTION'])))
         scan[enter] = laps
-        if not laps or not _crossings_usable(laps):
+        if not laps or not _crossings_usable(laps, skip_late=True):
             run = None
             continue
         # passes and merged crossings must both hold for the band to continue; laps after the
@@ -209,16 +214,20 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     #  above the lowest point of any lap), the one nearest the usual gap below EnterAt
     cleanest = []
     best_score = math.inf
-    for exit_at in range(enter - 1, lo, -1):
-        laps = laps_for(enter, exit_at)
-        if not _crossings_usable(laps):
-            continue
-        score = _score_calibration(laps, min_lap_ms, current_lap_count)
-        if score < best_score:
-            best_score = score
-            cleanest = []
-        if score == best_score:
-            cleanest.append(exit_at)
+    # laps after the race are left out only when no ExitAt is clean with them
+    for skip_late in (False, True):
+        for exit_at in range(enter - 1, lo, -1):
+            laps = laps_for(enter, exit_at)
+            if not _crossings_usable(laps, skip_late):
+                continue
+            score = _score_calibration(laps, min_lap_ms, current_lap_count)
+            if score < best_score:
+                best_score = score
+                cleanest = []
+            if score == best_score:
+                cleanest.append(exit_at)
+        if cleanest:
+            break
     if not cleanest:
         return None, NoSuggestion.NO_CLEAN_EXIT
     target = enter - _js_round((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'])
