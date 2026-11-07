@@ -223,8 +223,10 @@ def _score_calibration(laps, min_lap_ms, with_duration=True):
             continue
         if lap.get('open') or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_CROSSING_S']:
             score += AUTO_CAL['OPEN_PENALTY']
-        elif not lap['deleted']:
-            stamps.append(lap['lap_time_stamp'])
+        elif not lap['deleted'] or lap.get('noise'):
+            # a crossing deleted as noise still spent its time over the threshold
+            if not lap['deleted']:
+                stamps.append(lap['lap_time_stamp'])
             if with_duration:
                 score += AUTO_CAL['DURATION_WEIGHT'] * (lap['crossingEnd'] - lap['crossingStart'])
     lap_times = [stamps[i] - stamps[i - 1] for i in range(1, len(stamps))]
