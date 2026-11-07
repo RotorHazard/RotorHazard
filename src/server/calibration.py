@@ -55,6 +55,15 @@ def _pass_peak_only(marshal_type):
     from BaseHardwareInterface import MarshalType  # the interface path is added after this module loads
     return marshal_type == MarshalType.PASS_PEAK_ONLY
 
+def _lap_limit(race_format):
+    # in an individual first-to-laps race the pilot is done at the winning lap, counted from the
+    #  holeshot unless the format starts on the first lap
+    from RHRace import RacingMode, StartBehavior, WinCondition  # imported here as RHRace imports much of the server
+    if not race_format or race_format.team_racing_mode != RacingMode.INDIVIDUAL or \
+            race_format.win_condition != WinCondition.FIRST_TO_LAP_X or not race_format.number_laps_win:
+        return 0
+    return race_format.number_laps_win + (0 if race_format.start_behavior == StartBehavior.FIRST_LAP else 1)
+
 def _js_round(value):
     # JavaScript's Math.round, which rounds halves up
     return math.floor(value + 0.5)
@@ -109,6 +118,17 @@ def compute_laps(values, times, start_time, enter_at, exit_at, unlimited_time, r
             finished = True
     return laps
 
+def _mark_after_lap_limit(laps, lap_limit):
+    # crossings after the pilot's last counted lap in a first-to-laps race, deleted ones included,
+    #  are after the race
+    count = 0
+    for lap in laps:
+        if count >= lap_limit:
+            lap['deleted'] = True
+            lap['late'] = True
+        elif not lap['deleted']:
+            count += 1
+
 def _mark_landing(laps):
     # with no time limit, the crossings after the last lap of ordinary length are the landing
     counted = [lap for lap in laps if not lap['deleted']]
@@ -127,6 +147,11 @@ def _mark_landing(laps):
         if lap['lap_time_stamp'] > end and not lap['deleted']:
             lap['deleted'] = True
             lap['late'] = True
+            lap['landing'] = True
+
+def _ruled_late(lap):
+    # a lap the race's own rules put after the race: past the race time or the winning lap
+    return lap.get('late') and not lap.get('landing')
 
 def _after_race(lap):
     # a lap after the race, or a crossing the recording ended in that is no longer than a gate pass
@@ -136,7 +161,7 @@ def _crossings_usable(laps, skip_late=False):
     # a crossing that never closes, or that lasts far longer than a gate pass, is the threshold
     #  sitting in the ripple or the noise; laps after the race can be left out
     return not any(lap.get('open') or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_CROSSING_S']
-                   for lap in laps if not (skip_late and _after_race(lap)))
+                   for lap in laps if not (_ruled_late(lap) or skip_late and _after_race(lap)))
 
 def _count_noise_crossings(laps, min_lap_ms):
     # crossings within the minimum lap time of the previous one, plus any already deleted as such;
@@ -187,16 +212,17 @@ def _score_calibration(laps, min_lap_ms, with_duration=True):
     return score
 
 def suggest_calibration(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
-                        min_lap_behavior, min_first_crossing_ms):
+                        min_lap_behavior, min_first_crossing_ms, lap_limit=0):
     '''EnterAt/ExitAt from the RSSI history: the widest run of EnterAt values over which the pass
        count holds steady is the gate band, between the weakest pass and the ripple. Returns
        {'enter_at', 'exit_at', 'laps', 'lap_count', 'band'} or None when no band stands out.'''
     return suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec,
-                                           min_lap_ms, min_lap_behavior, min_first_crossing_ms)[0]
+                                           min_lap_ms, min_lap_behavior, min_first_crossing_ms, lap_limit)[0]
 
 def suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
-                                    min_lap_behavior, min_first_crossing_ms):
-    '''As suggest_calibration(), returning (suggestion, None) or (None, NoSuggestion reason).'''
+                                    min_lap_behavior, min_first_crossing_ms, lap_limit=0):
+    '''As suggest_calibration(), returning (suggestion, None) or (None, NoSuggestion reason).
+       lap_limit is the most laps the pilot can count, holeshot included, or 0 for no limit.'''
     if len(values) < 3 or len(values) != len(times):
         return None, NoSuggestion.NO_HISTORY
     lo = min(values)
@@ -206,6 +232,8 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     def laps_for(enter, exit_at):
         laps = compute_laps(values, times, start_time, enter, exit_at, unlimited_time, race_time_sec,
                             min_lap_ms, min_lap_behavior, min_first_crossing_ms)
+        if lap_limit:
+            _mark_after_lap_limit(laps, lap_limit)
         if unlimited_time:
             _mark_landing(laps)
         return laps
@@ -545,7 +573,7 @@ class Calibration:
         result, reason = suggest_calibration_with_reason(values, times, start_time, unlimited_time, race_time_sec,
                                      rhdata.get_optionInt('MinLapSec') * 1000,
                                      self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior'),
-                                     rhdata.get_optionInt('MinFirstCrossingSec') * 1000)
+                                     rhdata.get_optionInt('MinFirstCrossingSec') * 1000, _lap_limit(race_format))
         if result:
             logger.debug('Calibration suggestion: EnterAt {}, ExitAt {}, band {}-{}, {} laps'.format(
                 result['enter_at'], result['exit_at'], result['band'][0], result['band'][1], result['lap_count']))
