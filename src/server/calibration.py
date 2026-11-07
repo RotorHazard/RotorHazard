@@ -244,7 +244,14 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                                     min_lap_behavior, min_first_crossing_ms, lap_limit=0):
     '''As suggest_calibration(), returning (suggestion, None) or (None, NoSuggestion reason).
        lap_limit is the most laps the pilot can count, holeshot included, or 0 for no limit.'''
-    if len(values) < 3 or len(values) != len(times):
+    if len(values) != len(times):
+        return None, NoSuggestion.NO_HISTORY
+    # only the readings from the race start to the end of the race time count
+    race_end = start_time + race_time_sec if not unlimited_time and race_time_sec else math.inf
+    kept = [(value, time) for value, time in zip(values, times) if start_time <= time <= race_end]
+    values = [value for value, _ in kept]
+    times = [time for _, time in kept]
+    if len(values) < 3:
         return None, NoSuggestion.NO_HISTORY
     lo = min(values)
     hi = max(values)
