@@ -191,6 +191,13 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         count = len([lap for lap in laps if not lap.get('late')]) - noise
         if run and run['count'] == count and run['noise'] == noise:
             run['low'] = enter
+        elif (run and run['high'] == run['low'] and len(plateaus) > 1 and run['count'] == count
+              and noise == 0 and plateaus[-2]['count'] == count and plateaus[-2]['noise'] == 0
+              and plateaus[-2]['low'] == enter + 2):
+            # a single EnterAt with the same passes and an extra noise crossing does not break a clean band
+            plateaus.pop()
+            run = plateaus[-1]
+            run['low'] = enter
         else:
             run = {'count': count, 'noise': noise, 'high': enter, 'low': enter}
             plateaus.append(run)
