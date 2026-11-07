@@ -28,6 +28,9 @@ AUTO_CAL = {
     'EXIT_GAP_FRACTION': 0.3,   # but at least this fraction of the way from EnterAt to the trace minimum, within the clean range
     'EXIT_SPAN_FRACTION': 0.19, # or this fraction of the trace span,
     'EXIT_SPAN_CAP_FRACTION': 0.4,  # up to this fraction of the way from EnterAt to the trace minimum
+    'MIN_EXIT_GAP_OF_ENTER': 0.1,   # ExitAt at least this fraction of EnterAt below it, within the clean range,
+    'MIN_EXIT_GAP_OF_ENTER_FALLBACK': 0.05,  #  or this fraction when the clean range cannot hold that,
+    'FALLBACK_MIN_SPAN': 30,    #  on a trace spanning at least this much
     'MAX_CROSSING_S': 20,       # a crossing longer than this is not a gate pass
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
@@ -377,6 +380,22 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     gap = max((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'],
               min((hi - lo) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - lo) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
     exit_at = max(bottom, min(top - _js_round((enter - lo) * AUTO_CAL['EXIT_TOP_MARGIN_FRACTION']), enter - _js_round(gap)))
+    # keep the smallest gap, taking the highest ExitAt at or below it that is within the clean range or
+    #  gives laps at least as clean as the chosen one; on a strong trace the fallback gap may be used
+    #  while it stays clear of the trace minimum; otherwise no suggestion
+    def highest_clean(limit):
+        for exit_value in range(limit, lo, -1):
+            if bottom <= exit_value <= top or structural.get(exit_value, math.inf) <= structural[best_exit]:
+                return exit_value
+        return None
+    wanted = highest_clean(min(exit_at, enter - math.ceil(enter * AUTO_CAL['MIN_EXIT_GAP_OF_ENTER'])))
+    fallback = highest_clean(min(exit_at, enter - math.ceil(enter * AUTO_CAL['MIN_EXIT_GAP_OF_ENTER_FALLBACK'])))
+    if wanted is not None:
+        exit_at = wanted
+    elif hi - lo >= AUTO_CAL['FALLBACK_MIN_SPAN'] and fallback is not None and fallback - lo >= AUTO_CAL['MIN_EXIT_GAP']:
+        exit_at = fallback
+    else:
+        return None, NoSuggestion.NO_CLEAN_EXIT
     laps = laps_for(enter, exit_at)
     return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps,
             'lap_count': len([lap for lap in laps if not lap['deleted']]), 'band': [band['low'], band['high']]}, None
