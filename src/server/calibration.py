@@ -433,8 +433,15 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     bottom = best_exit
     while structural.get(bottom - 1) == structural[best_exit]:
         bottom -= 1
-    gap = max((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'],
-              min((hi - lo) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - lo) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
+    # the gap is measured to the usual low point between passes, which sits well above the trace
+    #  minimum when the signal never settles between passes
+    counted = [lap for lap in laps_for(enter, best_exit) if not lap['deleted'] and not _after_race(lap)]
+    lows = sorted(min(values[i] for i, time in enumerate(times) if prev['crossingEnd'] < time < lap['crossingStart'])
+                  for prev, lap in zip(counted, counted[1:])
+                  if any(prev['crossingEnd'] < time < lap['crossingStart'] for time in times))
+    floor = max(lo, lows[len(lows) // 4]) if len(lows) >= AUTO_CAL['TYPICAL_LAP_MIN_CROSSINGS'] else lo
+    gap = max((enter - floor) * AUTO_CAL['EXIT_GAP_FRACTION'],
+              min((hi - floor) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - floor) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
     exit_at = max(bottom, min(top - _js_round((enter - lo) * AUTO_CAL['EXIT_TOP_MARGIN_FRACTION']), enter - _js_round(gap)))
     # keep the smallest gap, taking the highest ExitAt at or below it that is within the clean range or
     #  gives laps at least as clean as the chosen one; on a strong trace the fallback gap may be used
