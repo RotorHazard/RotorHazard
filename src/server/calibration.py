@@ -2,6 +2,7 @@
 
 import logging
 import json
+import bisect
 import math
 import RHUtils
 from eventmanager import Evt
@@ -50,6 +51,13 @@ AUTO_CAL = {
     'MIN_LAP_TOO_LONG_FRACTION': 0.75,  # a minimum lap longer than this fraction of the typical lap is
                                         #  replaced by half the typical lap
     'CLEAN_PEAK_WINDOW_S': 1,   # around a crossing, the signal should rise past halfway to its peak only once
+    'BELL_DROP_FRACTION': 0.2,  # with no band, a peak above halfway up the trace that falls this fraction of the way
+    'BELL_SIDE_S': 2,           #  to the minimum on both sides within this time,
+    'BELL_TOLERANCE_FRACTION': 0.1,  #  without rising again by more than this fraction, is a clean peak;
+    'BELL_PASS_FRACTION': 0.9,  #  clean peaks this far up to their median are the passes,
+    'BELL_ENTER_FRACTION': 0.015,  #  and EnterAt is this fraction of the weakest of them below it,
+    'BELL_ENTER_MIN': 2,        #  and at least this much; EnterAt then goes lower while it only adds clean peaks,
+    'BELL_PASS_LOSS_FRACTION': 0.05,  #  and a lower ExitAt may lose at most this fraction of the passes
     'DOUBLE_WINDOW_S': 1.0,     # a crossing this close to a stronger one is a second bump of the same pass
     'TRAILING_NOISE_WINDOW_S': 5,  # noise crossings after the last pass this close to the end of the recording are ignored
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
@@ -266,6 +274,39 @@ def _score_calibration(laps, min_lap_ms, with_duration=True):
         score += AUTO_CAL['MERGED_PENALTY'] * sum(1 for t in lap_times if t > median * AUTO_CAL['MERGED_RATIO'])
     return score
 
+def _clean_peaks(values, times):
+    # (value, time) of the peaks above halfway up the trace that fall steadily on both sides
+    lo = min(values)
+    hi = max(values)
+    window = AUTO_CAL['CLEAN_PEAK_WINDOW_S']
+    peaks = []
+    last_time = -math.inf
+    for i, (value, time) in enumerate(zip(values, times)):
+        if value < (lo + hi) / 2 or time - last_time <= window:
+            continue
+        first = bisect.bisect_left(times, time - window)
+        last = bisect.bisect_right(times, time + window)
+        if value < max(values[first:last]) or values.index(value, first, last) != i:
+            continue
+        base = value - (value - lo) * AUTO_CAL['BELL_DROP_FRACTION']
+        tolerance = (value - lo) * AUTO_CAL['BELL_TOLERANCE_FRACTION']
+        sides = 0
+        for step in (-1, 1):
+            j = i
+            lowest = value
+            while 0 <= j + step < len(values) and abs(times[j + step] - time) <= AUTO_CAL['BELL_SIDE_S']:
+                j += step
+                if values[j] > lowest + tolerance:
+                    break
+                lowest = min(lowest, values[j])
+                if values[j] <= base:
+                    sides += 1
+                    break
+        if sides == 2:
+            peaks.append((value, time))
+            last_time = time
+    return peaks
+
 def suggest_calibration(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                         min_lap_behavior, min_first_crossing_ms, lap_limit=0):
     '''EnterAt/ExitAt from the RSSI history: the widest run of EnterAt values over which the pass
@@ -287,6 +328,52 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     times = [time for _, time in kept]
     if len(values) < 3:
         return None, NoSuggestion.NO_HISTORY
+    found, reason = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                                  min_lap_behavior, min_first_crossing_ms, lap_limit)
+    if reason == NoSuggestion.NO_GATE_PASSES:
+        # with no band, EnterAt goes a little below the weakest of the clean peaks near the typical
+        #  peak height
+        peaks = _clean_peaks(values, times)
+        lo = min(values)
+        if peaks:
+            median = sorted(value for value, _ in peaks)[len(peaks) // 2]
+            passes = [(value, time) for value, time in peaks if value >= lo + (median - lo) * AUTO_CAL['BELL_PASS_FRACTION']]
+            if len(passes) >= AUTO_CAL['TYPICAL_LAP_MIN_CROSSINGS']:
+                weakest = min(value for value, _ in passes)
+                # a minimum lap too long for the spacing of the passes is replaced as in the band scan
+                typical_lap = sorted(b - a for (_, a), (_, b) in zip(passes, passes[1:]))[(len(passes) - 1) // 2] * 1000
+                if (min_lap_ms or AUTO_CAL['DEFAULT_MIN_LAP_MS']) > typical_lap * AUTO_CAL['MIN_LAP_TOO_LONG_FRACTION']:
+                    min_lap_ms = typical_lap / 2
+                # below the weakest pass, EnterAt goes down while every crossing it adds is a clean peak at
+                #  least half a typical lap from the crossings already there
+                window = AUTO_CAL['CLEAN_PEAK_WINDOW_S'] * 1000
+                clean_stamps = [(time - start_time) * 1000 for _, time in peaks]
+                def crossings(level):
+                    exit_level = level - max(AUTO_CAL['MIN_EXIT_GAP'], _js_round(level * AUTO_CAL['MIN_EXIT_GAP_OF_ENTER']))
+                    return [lap['lap_time_stamp'] for lap in compute_laps(values, times, start_time, level, exit_level,
+                            unlimited_time, race_time_sec, min_lap_ms, 0, min_first_crossing_ms) if not lap.get('open')]
+                floor = weakest
+                above = crossings(floor)
+                while floor - 1 > lo:
+                    below = crossings(floor - 1)
+                    added = [stamp for stamp in below if all(abs(stamp - other) > window for other in above)]
+                    if any(all(abs(stamp - clean) > window for clean in clean_stamps)
+                           or min(abs(stamp - other) for other in above) < typical_lap / 2 for stamp in added):
+                        break
+                    floor -= 1
+                    above = below
+                weakest = min([value for value, _ in peaks if value >= floor] + [weakest])
+                enter = weakest - max(AUTO_CAL['BELL_ENTER_MIN'], _js_round(weakest * AUTO_CAL['BELL_ENTER_FRACTION']))
+                found, _ = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                                         min_lap_behavior, min_first_crossing_ms, lap_limit, (enter, len(passes)))
+                if found:
+                    reason = None
+    return found, reason
+
+def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                  min_lap_behavior, min_first_crossing_ms, lap_limit, fixed=None):
+    # the suggestion from the readings given, or (None, NoSuggestion reason); with fixed, an EnterAt
+    #  and the number of passes it should keep, used when no band stands out
     lo = min(values)
     hi = max(values)
     if hi - lo < AUTO_CAL['MIN_SPAN']:
@@ -399,7 +486,9 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         wide = [p for p in joined if p['high'] - p['low'] >= max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION'])]
         band = wide[0] if wide else None
         if band is None:
-            return None, NoSuggestion.NO_GATE_PASSES
+            if fixed is None or fixed[0] not in scan:
+                return None, NoSuggestion.NO_GATE_PASSES
+            band = {'count': fixed[1], 'noise': 0, 'high': fixed[0], 'low': fixed[0]}
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
     peaks = [lap['peak_rssi'] for lap in scan[enter] if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
     if peaks:
@@ -474,9 +563,13 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     # keep the smallest gap, taking the highest ExitAt at or below it that is within the clean range or
     #  gives laps at least as clean as the chosen one; on a strong trace the fallback gap may be used
     #  while it stays clear of the trace minimum; otherwise no suggestion
+    # with a fixed EnterAt, a lower ExitAt also must keep the passes of the chosen one
+    keep = pass_count(laps_for(enter, best_exit)) * (1 - AUTO_CAL['BELL_PASS_LOSS_FRACTION']) \
+        if fixed and band['low'] == fixed[0] else 0
     def highest_clean(limit):
         for exit_value in range(limit, lo, -1):
-            if bottom <= exit_value <= top or structural.get(exit_value, math.inf) <= structural[best_exit]:
+            if (bottom <= exit_value <= top or structural.get(exit_value, math.inf) <= structural[best_exit]) and (
+                    not keep or pass_count(laps_for(enter, exit_value)) >= keep):
                 return exit_value
         return None
     wanted = highest_clean(min(exit_at, enter - math.ceil(enter * AUTO_CAL['MIN_EXIT_GAP_OF_ENTER'])))
