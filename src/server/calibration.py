@@ -38,6 +38,7 @@ AUTO_CAL = {
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
+    'CLEAN_PEAK_WINDOW_S': 1,   # around a crossing, the signal should rise past halfway to its peak only once
     'TRAILING_NOISE_WINDOW_S': 5,  # noise crossings after the last pass this close to the end of the recording are ignored
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
     'LANDING_LONG_RATIO': 2.5,  #  or longer than this many, are the landing after the race
@@ -307,9 +308,27 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         extra = [s for s in stamps(lower) if all(abs(s - u) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for u in upper_stamps)]
         return (unlimited_time and bool(extra) and len(extra) * 2 < len(upper_stamps)
                 and min(extra) > max(upper_stamps))
+    def clean_peak(lap):
+        # a gate pass rises past halfway from the trace minimum to its peak once; a messy crossing
+        #  does so several times
+        start = lap['crossingStart'] - AUTO_CAL['CLEAN_PEAK_WINDOW_S']
+        end = lap['crossingEnd'] + AUTO_CAL['CLEAN_PEAK_WINDOW_S']
+        segment = [value for value, time in zip(values, times) if start <= time <= end]
+        if not segment:
+            return False
+        half = (max(segment) + lo) / 2
+        rises = int(segment[0] >= half) + sum(1 for a, b in zip(segment, segment[1:]) if a < half <= b)
+        return rises == 1
+    def messy_only(lower, upper):
+        # passes a lower band adds that all lack a clean peak are not worth its lower EnterAt
+        upper_stamps = stamps(upper)
+        extra = [lap for lap in lower if not lap['deleted'] and not _after_race(lap) and
+                 all(abs(lap['lap_time_stamp'] - u) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for u in upper_stamps)]
+        return bool(extra) and not any(clean_peak(lap) for lap in extra)
     for p in plateaus:
         if p['high'] - p['low'] >= widest * AUTO_CAL['WIDE_FRACTION'] and (band is None or (p['count'] > band['count']
-                and not trailing_only(scan[p['high']], scan[band['high']]))):
+                and not trailing_only(scan[p['high']], scan[band['high']])
+                and not messy_only(scan[p['high']], scan[band['high']]))):
             band = p  # the first found at a count is the higher, keeping more margin over the noise
     if band is None or band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION']):
         return None, NoSuggestion.NO_GATE_PASSES
