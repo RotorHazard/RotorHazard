@@ -31,6 +31,7 @@ AUTO_CAL = {
     'MAX_CROSSING_S': 20,       # a crossing longer than this is not a gate pass
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
+    'HOLESHOT_MATCH_S': 1,      # the passes after a stepped-down holeshot stay this close to the band's
     'DEFAULT_MIN_LAP_MS': 5000, # gap between crossings treated as one pass when no minimum lap is set
     'NOISE_PENALTY': 3,         # per crossing too close to the previous one
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
@@ -133,6 +134,13 @@ def _has_early_crossing(laps):
     return any(not lap['deleted'] and lap['lap_time_stamp'] <= AUTO_CAL['HOLESHOT_WINDOW_S'] * 1000
                for lap in laps)
 
+def _adds_holeshot_only(laps, base_laps):
+    # one early crossing more than the base laps, with the counted crossings after it unchanged
+    stamps = [lap['lap_time_stamp'] for lap in laps if not lap['deleted']]
+    base = [lap['lap_time_stamp'] for lap in base_laps if not lap['deleted']]
+    return (len(stamps) == len(base) + 1 and stamps[0] <= AUTO_CAL['HOLESHOT_WINDOW_S'] * 1000 and
+            all(abs(a - b) <= AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for a, b in zip(stamps[1:], base)))
+
 def _score_calibration(laps, min_lap_ms, with_duration=True):
     # lower is better: crossings too close together to be laps, a crossing left open or overlong,
     #  merged passes, and (with_duration) the time spent in the counted crossings
@@ -212,13 +220,13 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         return None, NoSuggestion.NO_GATE_PASSES
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
     # a weak holeshot peaks at the top of the ripple; with no early crossing in the band, step
-    #  down to the first EnterAt that adds exactly one, early, and keeps the set clean
+    #  down to the first EnterAt that adds exactly one, early, keeps the later passes and keeps the set clean
     if not _has_early_crossing(scan[enter]):
         base_score = _score_calibration(scan[enter], min_lap_ms)
         for e in range(band['low'] - 1, band['low'] - AUTO_CAL['HOLESHOT_SEARCH'] - 1, -1):
             if e not in scan:
                 break
-            if pass_count(scan[e]) == band['count'] + 1 and _has_early_crossing(scan[e]) and \
+            if pass_count(scan[e]) == band['count'] + 1 and _adds_holeshot_only(scan[e], scan[enter]) and \
                     _crossings_usable(scan[e]) and _score_calibration(scan[e], min_lap_ms) <= base_score:
                 enter = e
                 break
