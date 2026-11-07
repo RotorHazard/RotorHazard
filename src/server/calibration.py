@@ -50,6 +50,7 @@ AUTO_CAL = {
     'MIN_LAP_TOO_LONG_FRACTION': 0.75,  # a minimum lap longer than this fraction of the typical lap is
                                         #  replaced by half the typical lap
     'CLEAN_PEAK_WINDOW_S': 1,   # around a crossing, the signal should rise past halfway to its peak only once
+    'DOUBLE_WINDOW_S': 1.0,     # a crossing this close to a stronger one is a second bump of the same pass
     'TRAILING_NOISE_WINDOW_S': 5,  # noise crossings after the last pass this close to the end of the recording are ignored
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
     'LANDING_LONG_RATIO': 2.5,  #  or longer than this many, are the landing after the race
@@ -139,6 +140,17 @@ def _regular_lap_times(stamps):
         return None, False
     return (lap_times[len(lap_times) // 2],
             lap_times[len(lap_times) * 3 // 4] <= lap_times[len(lap_times) // 4] * AUTO_CAL['TYPICAL_LAP_SPREAD'])
+
+def _without_doubles(laps):
+    # a crossing this close to a stronger one is a second bump of the same pass
+    window = AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+    candidates = [lap for lap in laps if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap)]
+    def rank(lap):
+        return (not lap['deleted'], lap.get('peak_rssi', 0), -lap['lap_time_stamp'])
+    doubles = {id(lap) for lap in candidates for other in candidates
+               if other is not lap and abs(other['lap_time_stamp'] - lap['lap_time_stamp']) <= window
+               and rank(other) > rank(lap)}
+    return [lap for lap in laps if id(lap) not in doubles]
 
 def _mark_after_lap_limit(laps, lap_limit):
     # crossings after the pilot's last counted lap in a first-to-laps race, deleted ones included,
@@ -393,7 +405,23 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     if peaks:
         weakest = min(peaks)
         margin = min(weakest * AUTO_CAL['PEAK_MARGIN_FRACTION'], (weakest - lo) * AUTO_CAL['PEAK_MARGIN_SPAN_FRACTION'])
-        enter = max(band['low'], min(enter, weakest - _js_round(margin)))
+        target = weakest - _js_round(margin)
+        # below the band, EnterAt may still go down through values that add only second bumps of the
+        #  band's passes
+        lowest = band['low']
+        band_stamps = stamps(scan[band['high']])
+        while lowest - 1 > target and lowest - 1 in scan and _crossings_usable(scan[lowest - 1], skip_late=True):
+            core = [lap for lap in _without_doubles(scan[lowest - 1])
+                    if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap)]
+            if len(core) != len(band_stamps) or any(
+                    min(abs(lap['lap_time_stamp'] - s) for s in band_stamps) > AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+                    for lap in core):
+                break
+            lowest -= 1
+        # with no such values below the band, the margin keeps EnterAt in the upper half of the band
+        if lowest == band['low']:
+            lowest = _js_round((band['low'] + band['high']) / 2)
+        enter = max(lowest, min(enter, target))
     # a weak holeshot peaks at the top of the ripple; with no early crossing in the band, step
     #  down to the first EnterAt that adds exactly one, early, keeps the later passes and keeps the set clean
     if not _has_early_crossing(scan[enter]):
