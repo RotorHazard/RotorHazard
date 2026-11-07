@@ -20,6 +20,8 @@ AUTO_CAL = {
     'SCAN_EXIT_FRACTION': 0.25, # provisional ExitAt, as a fraction of the way from EnterAt to the minimum
     'MIN_BAND': 3,              # a steady band narrower than this (or the fraction below) is not a gate
     'MIN_BAND_FRACTION': 0.05,
+    'MIN_REGULAR_BAND_FRACTION': 0.04,  # or of the way from the band to the trace minimum, for passes at a regular pace
+    'NARROW_BAND_NOISE_FRACTION': 0.05,  #  with noise crossings at most this fraction of its passes
     'WIDE_FRACTION': 0.75,      # bands at least this wide, relative to the widest, compete on pass count
     'BAND_POSITION': 2 / 3,     # EnterAt placed this far up the steady band,
     'PEAK_MARGIN_FRACTION': 0.1,  #  but at least this fraction of the weakest pass's peak below it,
@@ -365,8 +367,27 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                 and not trailing_only(scan[p['high']], scan[band['high']])
                 and not messy_only(scan[p['high']], scan[band['high']]))):
             band = p  # the first found at a count is the higher, keeping more margin over the noise
-    if band is None or band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION']):
-        return None, NoSuggestion.NO_GATE_PASSES
+    # a band narrower than the fraction of the trace span still counts when it is a fraction of the way
+    #  to the minimum and its passes come at a regular pace with few noise crossings
+    def too_narrow(band):
+        return band is None or band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION']) and (
+            band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (band['high'] - lo) * AUTO_CAL['MIN_REGULAR_BAND_FRACTION'])
+            or band['noise'] > band['count'] * AUTO_CAL['NARROW_BAND_NOISE_FRACTION']
+            or not _regular_lap_times(stamps(scan[band['high']]))[1])
+    if too_narrow(band):
+        # with no band otherwise, adjacent bands with the same number of crossings, noise crossings
+        #  included, are joined, and the highest joined band wide enough is taken
+        joined = []
+        for p in plateaus:
+            if joined and joined[-1]['crossings'] == p['count'] + p['noise'] and joined[-1]['low'] == p['high'] + 1:
+                joined[-1] = dict(joined[-1], low=p['low'], count=min(joined[-1]['count'], p['count']),
+                                  noise=max(joined[-1]['noise'], p['noise']))
+            else:
+                joined.append(dict(p, crossings=p['count'] + p['noise']))
+        wide = [p for p in joined if p['high'] - p['low'] >= max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION'])]
+        band = wide[0] if wide else None
+        if band is None:
+            return None, NoSuggestion.NO_GATE_PASSES
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
     peaks = [lap['peak_rssi'] for lap in scan[enter] if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
     if peaks:
