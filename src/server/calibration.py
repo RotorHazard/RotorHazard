@@ -21,7 +21,9 @@ AUTO_CAL = {
     'MIN_BAND': 3,              # a steady band narrower than this (or the fraction below) is not a gate
     'MIN_BAND_FRACTION': 0.05,
     'WIDE_FRACTION': 0.75,      # bands at least this wide, relative to the widest, compete on pass count
-    'BAND_POSITION': 2 / 3,     # EnterAt placed this far up the steady band
+    'BAND_POSITION': 2 / 3,     # EnterAt placed this far up the steady band,
+    'PEAK_MARGIN_FRACTION': 0.1,  #  but at least this fraction of the weakest pass's peak below it,
+    'PEAK_MARGIN_SPAN_FRACTION': 0.2,  #  or this fraction of the way from that peak to the minimum, if less
     'MIN_EXIT_GAP': 3,          # smallest gap of ExitAt below EnterAt
     'MIN_EXIT_GAP_FRACTION': 0.1,  # or this fraction of the way from EnterAt to the trace minimum
     'EXIT_TOP_MARGIN_FRACTION': 0.05,  # ExitAt this fraction of the way to the trace minimum below the top of the clean range
@@ -338,6 +340,11 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     if band is None or band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION']):
         return None, NoSuggestion.NO_GATE_PASSES
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
+    peaks = [lap['peak_rssi'] for lap in scan[enter] if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
+    if peaks:
+        weakest = min(peaks)
+        margin = min(weakest * AUTO_CAL['PEAK_MARGIN_FRACTION'], (weakest - lo) * AUTO_CAL['PEAK_MARGIN_SPAN_FRACTION'])
+        enter = max(band['low'], min(enter, weakest - _js_round(margin)))
     # a weak holeshot peaks at the top of the ripple; with no early crossing in the band, step
     #  down to the first EnterAt that adds exactly one, early, keeps the later passes and keeps the set clean
     if not _has_early_crossing(scan[enter]):
