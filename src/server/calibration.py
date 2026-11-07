@@ -43,6 +43,10 @@ AUTO_CAL = {
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
+    'TYPICAL_LAP_MIN_CROSSINGS': 8,     # crossings needed to estimate the typical lap,
+    'TYPICAL_LAP_SPREAD': 2,            #  with the longer quartile lap at most this many times the shorter
+    'MIN_LAP_TOO_LONG_FRACTION': 0.75,  # a minimum lap longer than this fraction of the typical lap is
+                                        #  replaced by half the typical lap
     'CLEAN_PEAK_WINDOW_S': 1,   # around a crossing, the signal should rise past halfway to its peak only once
     'TRAILING_NOISE_WINDOW_S': 5,  # noise crossings after the last pass this close to the end of the recording are ignored
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
@@ -125,6 +129,14 @@ def compute_laps(values, times, start_time, enter_at, exit_at, unlimited_time, r
         elif not unlimited_time and lap['lap_time_stamp'] > race_time_sec * 1000:
             finished = True
     return laps
+
+def _regular_lap_times(stamps):
+    # (median lap, whether the longer quartile lap is within the spread of the shorter)
+    lap_times = sorted(b - a for a, b in zip(stamps, stamps[1:]))
+    if len(lap_times) < AUTO_CAL['TYPICAL_LAP_MIN_CROSSINGS'] - 1:
+        return None, False
+    return (lap_times[len(lap_times) // 2],
+            lap_times[len(lap_times) * 3 // 4] <= lap_times[len(lap_times) // 4] * AUTO_CAL['TYPICAL_LAP_SPREAD'])
 
 def _mark_after_lap_limit(laps, lap_limit):
     # crossings after the pilot's last counted lap in a first-to-laps race, deleted ones included,
@@ -276,6 +288,22 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         return laps
     def pass_count(laps):
         return len([lap for lap in laps if not _after_race(lap)]) - _count_noise_crossings(laps, min_lap_ms)
+    # a minimum lap close to or longer than the laps flown would class real passes as noise; the
+    #  widest run of EnterAt values with a steady number of crossings gives the typical lap
+    runs = []
+    for enter in range(hi - 1, lo + AUTO_CAL['BAND_MARGIN'], -1):
+        laps = laps_for(enter, enter - max(1, _js_round((enter - lo) * AUTO_CAL['SCAN_EXIT_FRACTION'])))
+        crossing_stamps = [lap['lap_time_stamp'] for lap in laps
+                           if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap)]
+        if runs and runs[-1]['count'] == len(crossing_stamps):
+            runs[-1]['low'] = enter
+        else:
+            runs.append({'count': len(crossing_stamps), 'high': enter, 'low': enter, 'stamps': crossing_stamps})
+    runs = [run for run in runs if run['count'] >= AUTO_CAL['TYPICAL_LAP_MIN_CROSSINGS']]
+    if runs:
+        typical_lap, regular = _regular_lap_times(max(runs, key=lambda run: run['high'] - run['low'])['stamps'])
+        if regular and (min_lap_ms or AUTO_CAL['DEFAULT_MIN_LAP_MS']) > typical_lap * AUTO_CAL['MIN_LAP_TOO_LONG_FRACTION']:
+            min_lap_ms = typical_lap / 2
     scan = {}
     plateaus = []
     run = None
