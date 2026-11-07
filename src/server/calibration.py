@@ -37,6 +37,8 @@ AUTO_CAL = {
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
+    'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
+    'LANDING_LONG_RATIO': 2.5,  #  or longer than this many, are the landing after the race
     'DURATION_WEIGHT': 1.0,     # per second of crossing time over all counted crossings
 }
 
@@ -107,11 +109,34 @@ def compute_laps(values, times, start_time, enter_at, exit_at, unlimited_time, r
             finished = True
     return laps
 
+def _mark_landing(laps):
+    # with no time limit, the crossings after the last lap of ordinary length are the landing
+    counted = [lap for lap in laps if not lap['deleted']]
+    lap_times = [counted[i]['lap_time_stamp'] - counted[i - 1]['lap_time_stamp'] for i in range(1, len(counted))]
+    if len(lap_times) < 3:
+        return
+    median = sorted(lap_times)[len(lap_times) // 2]
+    last = len(counted) - 1
+    while last > 0 and not (median * AUTO_CAL['LANDING_SHORT_RATIO'] <= lap_times[last - 1]
+                            <= median * AUTO_CAL['LANDING_LONG_RATIO']):
+        last -= 1
+    if last == 0:
+        return
+    end = counted[last]['lap_time_stamp']
+    for lap in laps:
+        if lap['lap_time_stamp'] > end and not lap['deleted']:
+            lap['deleted'] = True
+            lap['late'] = True
+
+def _after_race(lap):
+    # a lap after the race, or a crossing the recording ended in that is no longer than a gate pass
+    return lap.get('late') or (lap.get('open') and lap['crossingEnd'] - lap['crossingStart'] <= AUTO_CAL['MAX_CROSSING_S'])
+
 def _crossings_usable(laps, skip_late=False):
     # a crossing that never closes, or that lasts far longer than a gate pass, is the threshold
     #  sitting in the ripple or the noise; laps after the race can be left out
     return not any(lap.get('open') or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_CROSSING_S']
-                   for lap in laps if not (skip_late and lap.get('late')))
+                   for lap in laps if not (skip_late and _after_race(lap)))
 
 def _count_noise_crossings(laps, min_lap_ms):
     # crossings within the minimum lap time of the previous one, plus any already deleted as such;
@@ -179,10 +204,13 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     if hi - lo < AUTO_CAL['MIN_SPAN']:
         return None, NoSuggestion.WEAK_SIGNAL
     def laps_for(enter, exit_at):
-        return compute_laps(values, times, start_time, enter, exit_at, unlimited_time, race_time_sec,
+        laps = compute_laps(values, times, start_time, enter, exit_at, unlimited_time, race_time_sec,
                             min_lap_ms, min_lap_behavior, min_first_crossing_ms)
+        if unlimited_time:
+            _mark_landing(laps)
+        return laps
     def pass_count(laps):
-        return len([lap for lap in laps if not lap.get('late')]) - _count_noise_crossings(laps, min_lap_ms)
+        return len([lap for lap in laps if not _after_race(lap)]) - _count_noise_crossings(laps, min_lap_ms)
     scan = {}
     plateaus = []
     run = None
@@ -196,7 +224,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         # passes and merged crossings must both hold for the band to continue; laps after the
         #  race come and go with the landing, so they are left out
         noise = _count_noise_crossings(laps, min_lap_ms)
-        count = len([lap for lap in laps if not lap.get('late')]) - noise
+        count = len([lap for lap in laps if not _after_race(lap)]) - noise
         if run and run['count'] == count and run['noise'] == noise:
             run['low'] = enter
         elif (run and run['high'] == run['low'] and len(plateaus) > 1 and run['count'] == count
@@ -213,8 +241,18 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     #  band holds weaker real passes, since ripple would have broken it up
     widest = max((p['high'] - p['low'] for p in plateaus), default=0)
     band = None
+    def stamps(laps):
+        return [lap['lap_time_stamp'] for lap in laps if not lap['deleted'] and not _after_race(lap)]
+    def trailing_only(lower, upper):
+        # with no time limit, passes a lower band adds only after the last pass of a higher band are
+        #  flying after the race, when they are few beside the higher band's passes
+        upper_stamps = stamps(upper)
+        extra = [s for s in stamps(lower) if all(abs(s - u) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for u in upper_stamps)]
+        return (unlimited_time and bool(extra) and len(extra) * 2 < len(upper_stamps)
+                and min(extra) > max(upper_stamps))
     for p in plateaus:
-        if p['high'] - p['low'] >= widest * AUTO_CAL['WIDE_FRACTION'] and (band is None or p['count'] > band['count']):
+        if p['high'] - p['low'] >= widest * AUTO_CAL['WIDE_FRACTION'] and (band is None or (p['count'] > band['count']
+                and not trailing_only(scan[p['high']], scan[band['high']]))):
             band = p  # the first found at a count is the higher, keeping more margin over the noise
     if band is None or band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (hi - lo) * AUTO_CAL['MIN_BAND_FRACTION']):
         return None, NoSuggestion.NO_GATE_PASSES
@@ -241,7 +279,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     for skip_late in (False, True):
         for exit_at in range(enter - min_gap, lo, -1):
             laps = laps_for(enter, exit_at)
-            if not _crossings_usable(laps, skip_late):
+            if not _crossings_usable(laps, skip_late) or pass_count(laps) < band['count']:
                 continue
             structural[exit_at] = _score_calibration(laps, min_lap_ms, with_duration=False)
             score = _score_calibration(laps, min_lap_ms)
