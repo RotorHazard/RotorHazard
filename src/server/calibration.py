@@ -32,11 +32,13 @@ AUTO_CAL = {
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
     'HOLESHOT_MATCH_S': 1,      # the passes after a stepped-down holeshot stay this close to the band's
-    'DEFAULT_MIN_LAP_MS': 5000, # gap between crossings treated as one pass when no minimum lap is set
+    'DEFAULT_MIN_LAP_MS': 5000, # gap between crossings treated as one pass when no minimum lap is set,
+                                #  and the least gap for noise at the end of the recording
     'NOISE_PENALTY': 3,         # per crossing too close to the previous one
     'OPEN_PENALTY': 8,          # a crossing left open or overlong
     'MERGED_RATIO': 1.9,        # a lap this many times the median is two passes merged
     'MERGED_PENALTY': 6,
+    'TRAILING_NOISE_WINDOW_S': 5,  # noise crossings after the last pass this close to the end of the recording are ignored
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
     'LANDING_LONG_RATIO': 2.5,  #  or longer than this many, are the landing after the race
     'DURATION_WEIGHT': 1.0,     # per second of crossing time over all counted crossings
@@ -128,6 +130,25 @@ def _mark_after_lap_limit(laps, lap_limit):
             lap['late'] = True
         elif not lap['deleted']:
             count += 1
+
+def _mark_trailing_noise(laps, min_lap_ms, end_ms):
+    # crossings within the minimum lap time of any crossing before, after the last pass and near the
+    #  end of the recording, are the landing or the signal settling
+    min_gap = max(min_lap_ms, AUTO_CAL['DEFAULT_MIN_LAP_MS'])
+    flagged = []
+    last_stamp = None
+    for lap in laps:
+        if lap.get('late') or (lap['deleted'] and not lap.get('noise')):
+            continue
+        flagged.append((lap, lap.get('noise') or
+                        (last_stamp is not None and lap['lap_time_stamp'] - last_stamp < min_gap)))
+        last_stamp = lap['lap_time_stamp']
+    window_start = end_ms - AUTO_CAL['TRAILING_NOISE_WINDOW_S'] * 1000
+    while flagged and flagged[-1][1] and flagged[-1][0]['lap_time_stamp'] >= window_start:
+        lap = flagged.pop()[0]
+        lap['deleted'] = True
+        lap['late'] = True
+        lap['landing'] = True
 
 def _mark_landing(laps):
     # with no time limit, the crossings after the last lap of ordinary length are the landing
@@ -234,6 +255,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                             min_lap_ms, min_lap_behavior, min_first_crossing_ms)
         if lap_limit:
             _mark_after_lap_limit(laps, lap_limit)
+        _mark_trailing_noise(laps, min_lap_ms, (times[-1] - start_time) * 1000)
         if unlimited_time:
             _mark_landing(laps)
         return laps
