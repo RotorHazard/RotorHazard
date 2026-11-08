@@ -446,16 +446,16 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         return (unlimited_time and bool(extra) and len(extra) * 2 < len(upper_stamps)
                 and min(extra) > max(upper_stamps))
     def clean_peak(lap):
-        # a gate pass rises past halfway from the trace minimum to its peak once; a messy crossing
-        #  does so several times
+        # a gate pass rises past halfway, or three-quarters of the way, from the trace minimum to its
+        #  peak once; a messy crossing does so several times at both levels
         start = lap['crossingStart'] - AUTO_CAL['CLEAN_PEAK_WINDOW_S']
         end = lap['crossingEnd'] + AUTO_CAL['CLEAN_PEAK_WINDOW_S']
         segment = [value for value, time in zip(values, times) if start <= time <= end]
         if not segment:
             return False
-        half = (max(segment) + lo) / 2
-        rises = int(segment[0] >= half) + sum(1 for a, b in zip(segment, segment[1:]) if a < half <= b)
-        return rises == 1
+        def rises(level):
+            return int(segment[0] >= level) + sum(1 for a, b in zip(segment, segment[1:]) if a < level <= b)
+        return any(rises(lo + (max(segment) - lo) * fraction) == 1 for fraction in (0.5, 0.75))
     def messy_only(lower, upper):
         # passes a lower band adds that all lack a clean peak are not worth its lower EnterAt
         upper_stamps = stamps(upper)
