@@ -38,6 +38,7 @@ AUTO_CAL = {
     'FALLBACK_MIN_SPAN': 30,    #  on a trace spanning at least this much
     'MAX_CROSSING_S': 20,       # a crossing longer than this is not a gate pass
     'MAX_PASS_CROSSING_S': 3,   # with no pass crossing shorter than this, there is no suggestion
+    'CUT_ROUNDS': 20,           # most times bad crossings below the band are cut out and the suggestion found again
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
     'HOLESHOT_MATCH_S': 1,      # the passes after a stepped-down holeshot stay this close to the band's
@@ -275,6 +276,29 @@ def _score_calibration(laps, min_lap_ms, with_duration=True):
         score += AUTO_CAL['MERGED_PENALTY'] * sum(1 for t in lap_times if t > median * AUTO_CAL['MERGED_RATIO'])
     return score
 
+def _clean_peak(values, times, lo, lap):
+    # a gate pass rises past halfway, or three-quarters of the way, from the trace minimum to its peak
+    #  once; a messy crossing does so several times at both levels; a dip below the level for a single
+    #  reading does not separate two rises
+    start = lap['crossingStart'] - AUTO_CAL['CLEAN_PEAK_WINDOW_S']
+    end = lap['crossingEnd'] + AUTO_CAL['CLEAN_PEAK_WINDOW_S']
+    segment = [(value, time) for value, time in zip(values, times) if start <= time <= end]
+    if not segment:
+        return False
+    def rises(level):
+        count = 0
+        below = set()
+        for value, time in segment:
+            if value >= level:
+                if count == 0 or len(below) > 1:
+                    count += 1
+                below = set()
+            else:
+                below.add(time)
+        return count
+    peak = max(value for value, _ in segment)
+    return any(rises(lo + (peak - lo) * fraction) == 1 for fraction in (0.5, 0.75))
+
 def _clean_peaks(values, times):
     # (value, time) of the peaks above halfway up the trace that fall steadily on both sides
     lo = min(values)
@@ -369,7 +393,59 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                                          min_lap_behavior, min_first_crossing_ms, lap_limit, (enter, len(passes)))
                 if found:
                     reason = None
+    if found:
+        found = _cut_bad_crossings(found, values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                                   min_lap_behavior, min_first_crossing_ms, lap_limit)
     return found, reason
+
+def _cut_bad_crossings(found, values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                       min_lap_behavior, min_first_crossing_ms, lap_limit):
+    # while EnterAt is held above the margin below the weakest good pass, the crossings below the band
+    #  that are messy or overlong and away from the passes are cut out of the trace, with the rest of
+    #  their burst, and the suggestion found again; this stops at a crossing near a pass or a new good one
+    lo = min(values)
+    min_gap = min(min_lap_ms or AUTO_CAL['DEFAULT_MIN_LAP_MS'], AUTO_CAL['DEFAULT_MIN_LAP_MS']) / 1000
+    values = list(values)
+    for _ in range(AUTO_CAL['CUT_ROUNDS']):
+        good = [peak for _, peak, ok in found['passes'] if ok]
+        if not good:
+            break
+        weakest = min(good)
+        target = weakest - _js_round(min(weakest * AUTO_CAL['PEAK_MARGIN_FRACTION'],
+                                         (weakest - lo) * AUTO_CAL['PEAK_MARGIN_SPAN_FRACTION']))
+        if found['enter_at'] <= target:
+            break
+        pass_times = [time for time, _, _ in found['passes']]
+        cut = []
+        for enter in range(found['band'][0] - 1, target - 1, -1):
+            exit_at = enter - max(1, _js_round((enter - lo) * AUTO_CAL['SCAN_EXIT_FRACTION']))
+            laps = [lap for lap in compute_laps(values, times, start_time, enter, exit_at, unlimited_time,
+                                                race_time_sec, 0, 0, min_first_crossing_ms)
+                    if not lap['deleted'] and not lap.get('late') and not lap.get('open')]
+            new = [lap for lap in laps if not any(lap['crossingStart'] <= t <= lap['crossingEnd'] for t in pass_times)]
+            if not new:
+                continue
+            if any(abs(start_time + lap['lap_time_stamp'] / 1000 - t) < min_gap for lap in new for t in pass_times) or \
+                    any(_clean_peak(values, times, lo, lap) and
+                        lap['crossingEnd'] - lap['crossingStart'] <= AUTO_CAL['MAX_PASS_CROSSING_S'] for lap in new):
+                break
+            cut = new
+            break
+        if not cut:
+            break
+        for lap in cut:
+            # the whole burst around the crossing, clear of the passes
+            span = [i for i, time in enumerate(times) if lap['crossingStart'] - min_gap <= time <= lap['crossingEnd'] + min_gap
+                    and all(abs(time - t) > min_gap / 2 for t in pass_times)]
+            low = min(values[i] for i in span)
+            for i in span:
+                values[i] = low
+        again, _ = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
+                                 min_lap_behavior, min_first_crossing_ms, lap_limit)
+        if not again:
+            break
+        found = again
+    return found
 
 def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                   min_lap_behavior, min_first_crossing_ms, lap_limit, fixed=None):
@@ -446,27 +522,7 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         return (unlimited_time and bool(extra) and len(extra) * 2 < len(upper_stamps)
                 and min(extra) > max(upper_stamps))
     def clean_peak(lap):
-        # a gate pass rises past halfway, or three-quarters of the way, from the trace minimum to its
-        #  peak once; a messy crossing does so several times at both levels; a dip below the level for a
-        #  single reading does not separate two rises
-        start = lap['crossingStart'] - AUTO_CAL['CLEAN_PEAK_WINDOW_S']
-        end = lap['crossingEnd'] + AUTO_CAL['CLEAN_PEAK_WINDOW_S']
-        segment = [(value, time) for value, time in zip(values, times) if start <= time <= end]
-        if not segment:
-            return False
-        def rises(level):
-            count = 0
-            below = set()
-            for value, time in segment:
-                if value >= level:
-                    if count == 0 or len(below) > 1:
-                        count += 1
-                    below = set()
-                else:
-                    below.add(time)
-            return count
-        peak = max(value for value, _ in segment)
-        return any(rises(lo + (peak - lo) * fraction) == 1 for fraction in (0.5, 0.75))
+        return _clean_peak(values, times, lo, lap)
     def messy_only(lower, upper):
         # passes a lower band adds that all lack a clean peak are not worth its lower EnterAt
         upper_stamps = stamps(upper)
@@ -623,7 +679,13 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     if all(double(lap) or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_PASS_CROSSING_S']
            for lap in laps if not lap['deleted'] and not _after_race(lap)):
         return None, NoSuggestion.NO_GATE_PASSES
-    return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps,
+    # each counted pass with its peak time and value, and whether it is a good pass: a clean peak, no
+    #  double peaks and no overlong crossing
+    passes = [(start_time + lap['lap_time_stamp'] / 1000, lap['peak_rssi'],
+               not double(lap) and lap['crossingEnd'] - lap['crossingStart'] <= AUTO_CAL['MAX_PASS_CROSSING_S']
+               and clean_peak(lap))
+              for lap in laps if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
+    return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps, 'passes': passes,
             'lap_count': len([lap for lap in laps if not lap['deleted']]), 'band': [band['low'], band['high']]}, None
 
 class Calibration:
