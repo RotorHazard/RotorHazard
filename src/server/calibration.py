@@ -581,6 +581,15 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     else:
         return None, NoSuggestion.NO_CLEAN_EXIT
     laps = laps_for(enter, exit_at)
+    # a pass that splits into crossings within the double window at the usual ExitAt gap has double
+    #  peaks and is not a valid pass; with no valid passes there is no suggestion
+    split = [start_time + lap['lap_time_stamp'] / 1000 for lap in laps_for(enter, enter - _js_round(gap))
+             if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap)]
+    def double(lap):
+        inside = [t for t in split if lap['crossingStart'] <= t <= lap['crossingEnd']]
+        return any(b - a <= AUTO_CAL['DOUBLE_WINDOW_S'] for a, b in zip(inside, inside[1:]))
+    if all(double(lap) for lap in laps if not lap['deleted'] and not _after_race(lap)):
+        return None, NoSuggestion.NO_GATE_PASSES
     return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps,
             'lap_count': len([lap for lap in laps if not lap['deleted']]), 'band': [band['low'], band['high']]}, None
 
