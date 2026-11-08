@@ -529,11 +529,30 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     best_exit = None
     best_score = math.inf
     min_gap = max(AUTO_CAL['MIN_EXIT_GAP'], _js_round((enter - lo) * AUTO_CAL['MIN_EXIT_GAP_FRACTION']))
+    # a pass that splits into crossings within the double window at the usual ExitAt gap from the
+    #  trace minimum has double peaks; while other passes remain, its crossings are left out of the
+    #  ExitAt scoring
+    window = AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+    first_gap = max((enter - lo) * AUTO_CAL['EXIT_GAP_FRACTION'],
+                    min((hi - lo) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - lo) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
+    first_stamps = sorted(lap['lap_time_stamp'] for lap in laps_for(enter, enter - _js_round(first_gap))
+                          if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap))
+    doubles = []
+    for a, b in zip(first_stamps, first_stamps[1:]):
+        if b - a <= window:
+            if doubles and doubles[-1][1] == a:
+                doubles[-1] = (doubles[-1][0], b)
+            else:
+                doubles.append((a, b))
+    if all(any(a <= s <= b for a, b in doubles) for s in first_stamps):
+        doubles = []
+    def scored(laps):
+        return [lap for lap in laps if not any(a - window <= lap['lap_time_stamp'] <= b + window for a, b in doubles)]
     # laps after the race are left out only when no ExitAt is clean with them
     for skip_late in (False, True):
         for exit_at in range(enter - min_gap, lo, -1):
-            laps = laps_for(enter, exit_at)
-            if not _crossings_usable(laps, skip_late) or pass_count(laps) < band['count']:
+            laps = scored(laps_for(enter, exit_at))
+            if not _crossings_usable(laps, skip_late) or pass_count(laps) < band['count'] - len(doubles):
                 continue
             structural[exit_at] = _score_calibration(laps, min_lap_ms, with_duration=False)
             score = _score_calibration(laps, min_lap_ms)
@@ -564,12 +583,12 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     #  gives laps at least as clean as the chosen one; on a strong trace the fallback gap may be used
     #  while it stays clear of the trace minimum; otherwise no suggestion
     # with a fixed EnterAt, a lower ExitAt also must keep the passes of the chosen one
-    keep = pass_count(laps_for(enter, best_exit)) * (1 - AUTO_CAL['BELL_PASS_LOSS_FRACTION']) \
+    keep = pass_count(scored(laps_for(enter, best_exit))) * (1 - AUTO_CAL['BELL_PASS_LOSS_FRACTION']) \
         if fixed and band['low'] == fixed[0] else 0
     def highest_clean(limit):
         for exit_value in range(limit, lo, -1):
             if (bottom <= exit_value <= top or structural.get(exit_value, math.inf) <= structural[best_exit]) and (
-                    not keep or pass_count(laps_for(enter, exit_value)) >= keep):
+                    not keep or pass_count(scored(laps_for(enter, exit_value))) >= keep):
                 return exit_value
         return None
     wanted = highest_clean(min(exit_at, enter - math.ceil(enter * AUTO_CAL['MIN_EXIT_GAP_OF_ENTER'])))
