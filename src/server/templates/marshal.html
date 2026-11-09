@@ -154,6 +154,22 @@
 		$('#exitat').val(calibration.exit);
 	}
 
+	function viewRange(range) {
+		// show the visible graph range (seconds) without overwriting a field being typed in
+		var fmt = function(v) { return Math.round(v * 10) / 10; };
+		if (!$('#graph-view-from').is(':focus')) {
+			$('#graph-view-from').val(fmt(range.from));
+		}
+		if (!$('#graph-view-to').is(':focus')) {
+			$('#graph-view-to').val(fmt(range.to));
+		}
+		$('#graph-view-from, #graph-view-to').attr('max', fmt(range.duration));
+		$('#graph-view-reset').prop('disabled', !range.zoomed);
+		$('#graph-view-out').prop('disabled', !range.zoomed);
+		$('#graph-view-start, #graph-view-left').prop('disabled', !range.zoomed || range.from <= 0);
+		$('#graph-view-end, #graph-view-right').prop('disabled', !range.zoomed || range.to >= range.duration);
+	}
+
 	var marshal = new RHMarshal({
 		elements: {
 			graph_canvas_id: 'race-graph',
@@ -172,6 +188,7 @@
 			graphInteractTap: graphInteractTap,
 			recalcRace: recalcRace,
 			calibration: calibration,
+			viewRange: viewRange,
 		},
 	});
 
@@ -183,11 +200,14 @@
 			$('#load-transitions').prop('disabled', true);
 			$('#save-transitions').prop('disabled', true);
 			$('#auto-calibrate').prop('disabled', true);
+			$('#graph-view-controls button, #graph-view-controls input').prop('disabled', true);
 
 			$('#race-title').html(__('Select Race'));
 			marshal.clearGraph();
 			$('#enterat').val('');
 			$('#exitat').val('');
+			$('#graph-view-from').val('');
+			$('#graph-view-to').val('');
 		}
 		$('#manual-lap-time').prop('disabled', true);
 		$('#add-lap').prop('disabled', true);
@@ -204,6 +224,8 @@
 		$('#load-transitions').prop('disabled', false);
 		$('#save-transitions').prop('disabled', false);
 		$('#auto-calibrate').prop('disabled', false);
+		$('#graph-view-from, #graph-view-to, #graph-view-in').prop('disabled', false);
+		marshal.notifyViewRange(); // sets zoom-out/reset state
 		$('#manual-lap-time').prop('disabled', false);
 		$('#add-lap').prop('disabled', false);
 		$('#clean-laps').prop('disabled', false);
@@ -862,6 +884,47 @@
 			}
 		});
 
+		// graph x-range (zoom)
+		$('#graph-view-from, #graph-view-to').on('change', function() {
+			var from = parseFloat($('#graph-view-from').val());
+			var to = parseFloat($('#graph-view-to').val());
+			var range = marshal.getViewRange();
+			if (!marshal.setViewRange(isNaN(from) ? range.from : from, isNaN(to) ? range.to : to)) {
+				marshal.notifyViewRange();
+			}
+		});
+
+		$('#graph-view-in').on('click', function() {
+			marshal.zoomViewRange(0.5);
+		});
+
+		$('#graph-view-out').on('click', function() {
+			marshal.zoomViewRange(2);
+		});
+
+		$('#graph-view-reset').on('click', function() {
+			marshal.resetViewRange();
+		});
+
+		// navigate at the current zoom level
+		$('#graph-view-start').on('click', function() {
+			var range = marshal.getViewRange();
+			marshal.setViewRange(0, range.to - range.from);
+		});
+
+		$('#graph-view-left').on('click', function() {
+			marshal.panViewRange(-0.25);
+		});
+
+		$('#graph-view-right').on('click', function() {
+			marshal.panViewRange(0.25);
+		});
+
+		$('#graph-view-end').on('click', function() {
+			var range = marshal.getViewRange();
+			marshal.setViewRange(range.duration - (range.to - range.from), range.duration);
+		});
+
 		// lap list hotkey
 		$(document).on('keyup', function(e) {
 			// keyboard shortcuts
@@ -908,6 +971,24 @@
 
 			<div id="race-view">
 				<canvas id="race-graph" style="width:100%; height:200px"></canvas>
+
+				<div id="graph-view-controls" class="control-set">
+					<label for="graph-view-from">{{ __('Graph from') }}</label>
+					<input type="number" id="graph-view-from" min="0" step="0.1" disabled />
+					<label for="graph-view-to">{{ __('to') }}</label>
+					<input type="number" id="graph-view-to" min="0" step="0.1" disabled />
+					<span>s</span>
+					<button id="graph-view-in" title="{{ __('Zoom in') }}" disabled>+</button>
+					<button id="graph-view-out" title="{{ __('Zoom out') }}" disabled>&minus;</button>
+					<button id="graph-view-reset" disabled>{{ __('Full Race') }}</button>
+					<span class="graph-view-nav">
+						<button id="graph-view-start" title="{{ __('Go to start') }}" disabled>&#x21E4;</button>
+						<button id="graph-view-left" title="{{ __('Move left by 25%') }}" disabled>&larr;</button>
+						<button id="graph-view-right" title="{{ __('Move right by 25%') }}" disabled>&rarr;</button>
+						<button id="graph-view-end" title="{{ __('Go to end') }}" disabled>&#x21E5;</button>
+					</span>
+					<p class="graph-view-hint">{{ __('Ctrl + mouse wheel on the graph zooms, Shift + mouse wheel scrolls') }}</p>
+				</div>
 
 				<table id="laps">
 				<thead>
