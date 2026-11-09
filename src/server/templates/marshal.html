@@ -360,9 +360,9 @@
 					no_history: __('Auto calibration found no RSSI data for this pilot'),
 					pass_peak_only: __('Auto calibration needs RSSI data, but this node records only pass peaks'),
 					weak_signal: __('Auto calibration found the RSSI signal too weak to show gate passes'),
-					no_gate_passes: __('Auto calibration found no gate passes in the RSSI data'),
+					no_gate_passes: __('Auto calibration could not determine valid gate passes in the RSSI data'),
 				};
-				push_message(reasons[msg.reason] || __('Auto calibration could not find suggested values'));
+				push_message(reasons[msg.reason] || __('Auto calibration could not determine values'));
 			} else {
 				marshal.setEnterExit(msg.enter_at, msg.exit_at);  // fills the fields and recalculates
 			}
