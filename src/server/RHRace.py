@@ -1072,7 +1072,10 @@ class RHRace():
                                     self._racecontext.rhui.emit_first_pass_registered(node.index) # play first-pass sound
                                     if not self.race_initial_pass_flag:
                                         self.race_initial_pass_flag = True
-                                        self._racecontext.events.trigger(Evt.RACE_INITIAL_PASS)
+                                        self._racecontext.events.trigger(Evt.RACE_INITIAL_PASS, {
+                                            'pilot_id': pilot_id,
+                                            'node_index': node.index
+                                        })
 
                                 if race_format.start_behavior == StartBehavior.FIRST_LAP:
                                     lap_number += 1
