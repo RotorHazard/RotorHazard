@@ -567,17 +567,27 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     def counted(laps):
         return [lap for lap in laps if not lap['deleted'] and not _after_race(lap)]
     band_stamps_all = stamps(scan[band['low']]) if band in plateaus else []
-    band_laps = sorted(b - a for a, b in zip(band_stamps_all, band_stamps_all[1:]))
-    cadence = band_laps[len(band_laps) // 2] if band_laps else 0
+    def median_gap(pass_stamps):
+        gaps = sorted(b - a for a, b in zip(pass_stamps, pass_stamps[1:]))
+        return gaps[len(gaps) // 2] if gaps else 0
+    band_cadence = median_gap(band_stamps_all)
+    cadence = band_cadence
     def spaced(lap, laps):
         # a pass at least most of a typical lap from every other pass
         return all(abs(other['lap_time_stamp'] - lap['lap_time_stamp']) >= cadence * AUTO_CAL['STEP_SPACING_FRACTION']
                    for other in counted(laps) if other is not lap)
-    if cadence > 0 and band in plateaus and all(good(lap) for lap in counted(scan[band['high']])):
+    def steady(p):
+        # the step's passes are the same at every EnterAt in it
+        ref = stamps(scan[p['low']])
+        return all(len(stamps(scan[e])) == len(ref) and
+                   all(min(abs(s - r) for r in ref) <= AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for s in stamps(scan[e]))
+                   for e in range(p['low'], p['high'] + 1))
+    if band in plateaus and all(good(lap) for lap in counted(scan[band['high']])):
         base = stamps(scan[band['low']])
         low = band['low']
         count = band['count']
         step = None
+        gained = False
         ended_early = unlimited_time or times[-1] - start_time < race_time_sec - AUTO_CAL['EARLY_END_S']
         for p in plateaus[plateaus.index(band) + 1:]:
             if p['high'] != low - 1 or p['count'] < count:
@@ -590,6 +600,10 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
                 break
             added = [lap for lap in counted(laps)
                      if all(abs(lap['lap_time_stamp'] - b) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for b in base)]
+            # with a single pass in the band, the typical lap is the median gap between the step's passes,
+            #  once it has three
+            if not band_cadence:
+                cadence = median_gap(stamps(laps)) if len(counted(laps)) >= 3 else 0
             below = scan.get(p['low'] - 1, laps)
             def split(lap):
                 # a second crossing within the double window just below the step marks a double peak
@@ -600,13 +614,33 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             last = counted(laps)[-1] if counted(laps) else None
             if added and ended_early and all(lap is last and (times[-1] - start_time) * 1000 - lap['lap_time_stamp'] < cadence for lap in added):
                 break
-            if added and (not any(good(lap) and not split(lap) for lap in added) or not all(spaced(lap, laps) for lap in added)):
+            # with two passes in the band, a good pass that splits their gap into two near-equal parts shows
+            #  the gap was two laps, so the typical lap is halved
+            if len(band_stamps_all) == 2 and cadence == band_cadence:
+                for lap in added:
+                    t = lap['lap_time_stamp']
+                    before = max((b for b in base if b < t), default=None)
+                    after = min((b for b in base if b > t), default=None)
+                    if before is not None and after is not None and good(lap) and not split(lap) and \
+                            min(t - before, after - t) >= max(t - before, after - t) * AUTO_CAL['STEP_SPACING_FRACTION']:
+                        cadence = (after - before) / 2
+            # with the band's typical lap the added passes are checked, with the step's own all its passes
+            checked = added if band_cadence else counted(laps) if cadence else []
+            if added and not any(good(lap) and not split(lap) for lap in added):
+                # a step that adds only messy passes is passed over
+                low = p['low']
+                count = p['count']
+                base = stamps(laps)
+                continue
+            if added and not all(spaced(lap, laps) for lap in checked):
                 break
+            # a step is taken only once the walk has added a good pass
+            gained = gained or bool(added)
             low = p['low']
             count = p['count']
             base = stamps(laps)
-            if p['noise'] == 0 and p['count'] > band['count'] and p['high'] - p['low'] >= AUTO_CAL['MIN_BAND'] and \
-                    min(lap.get('peak_rssi', 0) for lap in counted(laps)) >= band['low'] * (1 - AUTO_CAL['PEAK_MARGIN_FRACTION']):
+            if gained and cadence and steady(p) and p['noise'] == 0 and p['count'] > band['count'] and \
+                    p['high'] - p['low'] + 1 >= AUTO_CAL['MIN_BAND']:
                 step = p
         if step and band['low'] - step['low'] >= (band['high'] - band['low']) * AUTO_CAL['STEP_REACH_FRACTION']:
             band = step
@@ -617,15 +651,22 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         margin = min(weakest * AUTO_CAL['PEAK_MARGIN_FRACTION'], (weakest - lo) * AUTO_CAL['PEAK_MARGIN_SPAN_FRACTION'])
         target = weakest - _js_round(margin)
         # below the band, EnterAt may still go down through values that add only second bumps of the
-        #  band's passes
+        #  band's passes or bad peaks
         lowest = band['low']
         band_stamps = stamps(scan[band['high']])
+        # crossings that are messy, overlong or double-peaked down at the target are bad peaks, which are
+        #  ignored here rather than holding EnterAt up
+        target_laps = scan.get(max(target, min(scan)), [])
+        def bad(lap):
+            return not good(lap) or any(
+                0 < abs(other['lap_time_stamp'] - lap['lap_time_stamp']) <= AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+                for other in target_laps if not other['deleted'] or other.get('noise'))
         while lowest - 1 > target and lowest - 1 in scan and _crossings_usable(scan[lowest - 1], skip_late=True):
             core = [lap for lap in _without_doubles(scan[lowest - 1])
                     if (not lap['deleted'] or lap.get('noise')) and not _after_race(lap)]
-            if len(core) != len(band_stamps) or any(
-                    min(abs(lap['lap_time_stamp'] - s) for s in band_stamps) > AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
-                    for lap in core):
+            extra = [lap for lap in core if min(abs(lap['lap_time_stamp'] - s) for s in band_stamps) >
+                     AUTO_CAL['DOUBLE_WINDOW_S'] * 1000]
+            if len(core) - len(extra) != len(band_stamps) or not all(bad(lap) for lap in extra):
                 break
             lowest -= 1
         # with no such values below the band, the margin keeps EnterAt in the upper half of the band
