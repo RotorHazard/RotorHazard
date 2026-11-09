@@ -222,7 +222,9 @@ class RHData():
                 dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if use_filename:
-                bkp_name = self._DB_BKP_DIR_NAME + '/' + use_filename + dbext
+                use_filename = RHUtils.cleanFileName(use_filename)
+                if use_filename:
+                    bkp_name = self._DB_BKP_DIR_NAME + '/' + use_filename + dbext
 
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
