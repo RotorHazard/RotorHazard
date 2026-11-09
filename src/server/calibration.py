@@ -39,6 +39,9 @@ AUTO_CAL = {
     'MAX_CROSSING_S': 20,       # a crossing longer than this is not a gate pass
     'MAX_PASS_CROSSING_S': 3,   # with no pass crossing shorter than this, there is no suggestion
     'CUT_ROUNDS': 20,           # most times bad crossings below the band are cut out and the suggestion found again
+    'STEP_SPACING_FRACTION': 0.75,  # a pass a step below the band adds is at least this fraction of a typical lap from the others
+    'EARLY_END_S': 1,               # a recording ending this long before the race time was stopped early
+    'STEP_REACH_FRACTION': 0.5,     # steps below the band are taken when they reach this fraction of its width below it
     'HOLESHOT_WINDOW_S': 20,    # a crossing this soon after the start is the holeshot
     'HOLESHOT_SEARCH': 12,      # how far below the band to look for a weak holeshot
     'HOLESHOT_MATCH_S': 1,      # the passes after a stepped-down holeshot stay this close to the band's
@@ -557,6 +560,56 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             if fixed is None or fixed[0] not in scan:
                 return None, NoSuggestion.NO_GATE_PASSES
             band = {'count': fixed[1], 'noise': 0, 'high': fixed[0], 'low': fixed[0]}
+    # below a band of good passes, narrow steady steps that each add a good pass, with no noise other
+    #  than second bumps, hold weaker real passes; the lowest such step is taken as the band
+    def good(lap):
+        return clean_peak(lap) and lap['crossingEnd'] - lap['crossingStart'] <= AUTO_CAL['MAX_PASS_CROSSING_S']
+    def counted(laps):
+        return [lap for lap in laps if not lap['deleted'] and not _after_race(lap)]
+    band_stamps_all = stamps(scan[band['low']]) if band in plateaus else []
+    band_laps = sorted(b - a for a, b in zip(band_stamps_all, band_stamps_all[1:]))
+    cadence = band_laps[len(band_laps) // 2] if band_laps else 0
+    def spaced(lap, laps):
+        # a pass at least most of a typical lap from every other pass
+        return all(abs(other['lap_time_stamp'] - lap['lap_time_stamp']) >= cadence * AUTO_CAL['STEP_SPACING_FRACTION']
+                   for other in counted(laps) if other is not lap)
+    if cadence > 0 and band in plateaus and all(good(lap) for lap in counted(scan[band['high']])):
+        base = stamps(scan[band['low']])
+        low = band['low']
+        count = band['count']
+        step = None
+        ended_early = unlimited_time or times[-1] - start_time < race_time_sec - AUTO_CAL['EARLY_END_S']
+        for p in plateaus[plateaus.index(band) + 1:]:
+            if p['high'] != low - 1 or p['count'] < count:
+                break
+            laps = scan[p['low']]
+            kept = [lap for lap in laps if not lap['deleted'] or lap.get('noise')]
+            if any(lap.get('noise') and not any(other is not lap and not other.get('noise') and
+                                                abs(other['lap_time_stamp'] - lap['lap_time_stamp']) <= AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+                                                for other in kept) for lap in laps):
+                break
+            added = [lap for lap in counted(laps)
+                     if all(abs(lap['lap_time_stamp'] - b) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for b in base)]
+            below = scan.get(p['low'] - 1, laps)
+            def split(lap):
+                # a second crossing within the double window just below the step marks a double peak
+                return any(0 < abs(other['lap_time_stamp'] - lap['lap_time_stamp']) <= AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
+                           for other in below if not other['deleted'] or other.get('noise'))
+            # when the recording ends before the race time, a final crossing within a lap of its end may be
+            #  the landing, so it does not count as a new pass
+            last = counted(laps)[-1] if counted(laps) else None
+            if added and ended_early and all(lap is last and (times[-1] - start_time) * 1000 - lap['lap_time_stamp'] < cadence for lap in added):
+                break
+            if added and (not any(good(lap) and not split(lap) for lap in added) or not all(spaced(lap, laps) for lap in added)):
+                break
+            low = p['low']
+            count = p['count']
+            base = stamps(laps)
+            if p['noise'] == 0 and p['count'] > band['count'] and p['high'] - p['low'] >= AUTO_CAL['MIN_BAND'] and \
+                    min(lap.get('peak_rssi', 0) for lap in counted(laps)) >= band['low'] * (1 - AUTO_CAL['PEAK_MARGIN_FRACTION']):
+                step = p
+        if step and band['low'] - step['low'] >= (band['high'] - band['low']) * AUTO_CAL['STEP_REACH_FRACTION']:
+            band = step
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
     peaks = [lap['peak_rssi'] for lap in scan[enter] if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
     if peaks:
