@@ -452,6 +452,10 @@ def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
 def cleanVarName(varStr): 
     return re.sub(r'\W|^(?=\d)','_', varStr)
 
+# Replaces characters not allowed in file names and trims leading/trailing spaces and dots
+def cleanFileName(name_str):
+    return re.sub(r'[\\/:*?"<>|\x00-\x1f]', '-', name_str).strip().strip('.')
+
 # Logs a warning message if the version of python in use is lower than the specified version
 def checkPythonVersion(majorVer, minorVer):
     try:

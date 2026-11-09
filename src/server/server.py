@@ -1749,15 +1749,19 @@ def on_reset_database(data):
     RaceContext.pagecache.set_valid(False)
 
     on_stop_race()
-    on_discard_laps()
-    RaceContext.rhdata.clear_lapSplits()
 
     if with_archive:
         # if this is not a secondary/split timer then try to use event name for backup filename
         bkp_filename = RaceContext.rhdata.get_option('eventName') \
                     if RaceContext.race.format is not RaceContext.serverstate.secondary_race_format else None
-        RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename)
+        if not RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename):
+            # leave the data in place if it could not be archived
+            RaceContext.rhui.emit_priority_message(__('Database reset cancelled: unable to archive current data'), True)
+            return
         on_list_backups()
+
+    on_discard_laps()
+    RaceContext.rhdata.clear_lapSplits()
 
     if reset_type == 'races':
         RaceContext.race.reset_current_laps()
