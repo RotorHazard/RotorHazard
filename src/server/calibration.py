@@ -5,6 +5,7 @@ import json
 import bisect
 import math
 import RHUtils
+import frequencies
 from eventmanager import Evt
 from RHUtils import catchLogExceptionsWrapper
 from filtermanager import Flt
@@ -335,6 +336,10 @@ def _clean_peaks(values, times):
             last_time = time
     return peaks
 
+def _secs(stamps_ms):
+    # lap time stamps as seconds, for the debug log
+    return ', '.join('{:.1f}'.format(stamp / 1000) for stamp in stamps_ms)
+
 def suggest_calibration(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                         min_lap_behavior, min_first_crossing_ms, lap_limit=0):
     '''EnterAt/ExitAt from the RSSI history: the widest run of EnterAt values over which the pass
@@ -354,6 +359,9 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
     kept = [(value, time) for value, time in zip(values, times) if start_time <= time <= race_end]
     values = [value for value, _ in kept]
     times = [time for _, time in kept]
+    logger.debug('Auto calibration: {} readings in the race window, race time {}, MinLap {} ms, MinLapBehavior {}, '
+                 'MinFirstCrossing {} ms, lap limit {}'.format(len(values), 'unlimited' if unlimited_time else race_time_sec,
+                                                                min_lap_ms, min_lap_behavior, min_first_crossing_ms, lap_limit))
     if len(values) < 3:
         return None, NoSuggestion.NO_HISTORY
     found, reason = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
@@ -363,6 +371,7 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
         #  peak height
         peaks = _clean_peaks(values, times)
         lo = min(values)
+        logger.debug('Auto calibration: no band, clean-peak fallback with {} clean peaks'.format(len(peaks)))
         if peaks:
             median = sorted(value for value, _ in peaks)[len(peaks) // 2]
             passes = [(value, time) for value, time in peaks if value >= lo + (median - lo) * AUTO_CAL['BELL_PASS_FRACTION']]
@@ -392,10 +401,15 @@ def suggest_calibration_with_reason(values, times, start_time, unlimited_time, r
                     above = below
                 weakest = min([value for value, _ in peaks if value >= floor] + [weakest])
                 enter = weakest - max(AUTO_CAL['BELL_ENTER_MIN'], _js_round(weakest * AUTO_CAL['BELL_ENTER_FRACTION']))
+                logger.debug('Auto calibration: fallback with {} passes, weakest peak {}, fixed EnterAt {}'.format(
+                    len(passes), weakest, enter))
                 found, _ = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                                          min_lap_behavior, min_first_crossing_ms, lap_limit, (enter, len(passes)))
                 if found:
                     reason = None
+            else:
+                logger.debug('Auto calibration: fallback has {} passes, fewer than {}'.format(
+                    len(passes), AUTO_CAL['TYPICAL_LAP_MIN_CROSSINGS']))
     if found:
         found = _cut_bad_crossings(found, values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                                    min_lap_behavior, min_first_crossing_ms, lap_limit)
@@ -436,6 +450,8 @@ def _cut_bad_crossings(found, values, times, start_time, unlimited_time, race_ti
             break
         if not cut:
             break
+        logger.debug('Auto calibration: EnterAt {} is above the target {} below the weakest good pass; cutting '
+                     'bad crossings at {} s'.format(found['enter_at'], target, _secs(lap['lap_time_stamp'] for lap in cut)))
         for lap in cut:
             # the whole burst around the crossing, clear of the passes
             span = [i for i, time in enumerate(times) if lap['crossingStart'] - min_gap <= time <= lap['crossingEnd'] + min_gap
@@ -446,6 +462,7 @@ def _cut_bad_crossings(found, values, times, start_time, unlimited_time, race_ti
         again, _ = _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_lap_ms,
                                  min_lap_behavior, min_first_crossing_ms, lap_limit)
         if not again:
+            logger.debug('Auto calibration: no suggestion after the cut, keeping EnterAt {}'.format(found['enter_at']))
             break
         found = again
     return found
@@ -456,6 +473,7 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     #  and the number of passes it should keep, used when no band stands out
     lo = min(values)
     hi = max(values)
+    logger.debug('Auto calibration: trace {} to {}{}'.format(lo, hi, ', fixed EnterAt {}'.format(fixed[0]) if fixed else ''))
     if hi - lo < AUTO_CAL['MIN_SPAN']:
         return None, NoSuggestion.WEAK_SIGNAL
     def laps_for(enter, exit_at):
@@ -484,6 +502,8 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     if runs:
         typical_lap, regular = _regular_lap_times(max(runs, key=lambda run: run['high'] - run['low'])['stamps'])
         if regular and (min_lap_ms or AUTO_CAL['DEFAULT_MIN_LAP_MS']) > typical_lap * AUTO_CAL['MIN_LAP_TOO_LONG_FRACTION']:
+            logger.debug('Auto calibration: minimum lap {} ms is too long for the typical lap {:.0f} ms; using {:.0f} ms'.format(
+                min_lap_ms, typical_lap, typical_lap / 2))
             min_lap_ms = typical_lap / 2
     scan = {}
     plateaus = []
@@ -514,6 +534,9 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     # among the bands nearly as wide as the widest, the one with the most passes: a wide lower
     #  band holds weaker real passes, since ripple would have broken it up
     widest = max((p['high'] - p['low'] for p in plateaus), default=0)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug('Auto calibration: bands (EnterAt range: passes/noise): {}'.format(
+            ', '.join('{}-{}: {}/{}'.format(p['high'], p['low'], p['count'], p['noise']) for p in plateaus)))
     band = None
     def stamps(laps):
         return [lap['lap_time_stamp'] for lap in laps if not lap['deleted'] and not _after_race(lap)]
@@ -544,7 +567,11 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             band['high'] - band['low'] < max(AUTO_CAL['MIN_BAND'], (band['high'] - lo) * AUTO_CAL['MIN_REGULAR_BAND_FRACTION'])
             or band['noise'] > band['count'] * AUTO_CAL['NARROW_BAND_NOISE_FRACTION']
             or not _regular_lap_times(stamps(scan[band['high']]))[1])
+    if band:
+        logger.debug('Auto calibration: band {}-{} chosen, {} passes at {} s'.format(
+            band['low'], band['high'], band['count'], _secs(stamps(scan[band['high']]))))
     if too_narrow(band):
+        logger.debug('Auto calibration: band too narrow or none, joining bands')
         # with no band otherwise, adjacent bands with the same number of crossings, noise crossings
         #  included, are joined, and the highest joined band wide enough is taken
         joined = []
@@ -558,8 +585,10 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         band = wide[0] if wide else None
         if band is None:
             if fixed is None or fixed[0] not in scan:
+                logger.debug('Auto calibration: no band wide enough')
                 return None, NoSuggestion.NO_GATE_PASSES
             band = {'count': fixed[1], 'noise': 0, 'high': fixed[0], 'low': fixed[0]}
+        logger.debug('Auto calibration: using band {}-{} with {} passes'.format(band['low'], band['high'], band['count']))
     # below a band of good passes, narrow steady steps that each add a good pass, with no noise other
     #  than second bumps, hold weaker real passes; the lowest such step is taken as the band
     def good(lap):
@@ -593,10 +622,12 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             if p['high'] != low - 1 or p['count'] < count:
                 break
             laps = scan[p['low']]
+            step_name = 'Auto calibration: step {}-{}'.format(p['low'], p['high'])
             kept = [lap for lap in laps if not lap['deleted'] or lap.get('noise')]
             if any(lap.get('noise') and not any(other is not lap and not other.get('noise') and
                                                 abs(other['lap_time_stamp'] - lap['lap_time_stamp']) <= AUTO_CAL['DOUBLE_WINDOW_S'] * 1000
                                                 for other in kept) for lap in laps):
+                logger.debug('{} has noise other than second bumps; step-down ends'.format(step_name))
                 break
             added = [lap for lap in counted(laps)
                      if all(abs(lap['lap_time_stamp'] - b) > AUTO_CAL['HOLESHOT_MATCH_S'] * 1000 for b in base)]
@@ -613,6 +644,7 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             #  the landing, so it does not count as a new pass
             last = counted(laps)[-1] if counted(laps) else None
             if added and ended_early and all(lap is last and (times[-1] - start_time) * 1000 - lap['lap_time_stamp'] < cadence for lap in added):
+                logger.debug('{} adds only the final crossing, near the early end of the recording; step-down ends'.format(step_name))
                 break
             # with two passes in the band, a good pass that splits their gap into two near-equal parts shows
             #  the gap was two laps, so the typical lap is halved
@@ -623,16 +655,22 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
                     after = min((b for b in base if b > t), default=None)
                     if before is not None and after is not None and good(lap) and not split(lap) and \
                             min(t - before, after - t) >= max(t - before, after - t) * AUTO_CAL['STEP_SPACING_FRACTION']:
+                        logger.debug('{} adds {:.1f} s, splitting a {:.0f} ms gap; typical lap halved'.format(
+                            step_name, t / 1000, after - before))
                         cadence = (after - before) / 2
             # with the band's typical lap the added passes are checked, with the step's own all its passes
             checked = added if band_cadence else counted(laps) if cadence else []
             if added and not any(good(lap) and not split(lap) for lap in added):
                 # a step that adds only messy passes is passed over
+                logger.debug('{} adds only messy passes at {} s; passed over'.format(
+                    step_name, _secs(lap['lap_time_stamp'] for lap in added)))
                 low = p['low']
                 count = p['count']
                 base = stamps(laps)
                 continue
             if added and not all(spaced(lap, laps) for lap in checked):
+                logger.debug('{} has passes closer than {:.0%} of the typical lap {:.0f} ms; step-down ends'.format(
+                    step_name, AUTO_CAL['STEP_SPACING_FRACTION'], cadence))
                 break
             # a step is taken only once the walk has added a good pass
             gained = gained or bool(added)
@@ -642,8 +680,19 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
             if gained and cadence and steady(p) and p['noise'] == 0 and p['count'] > band['count'] and \
                     p['high'] - p['low'] + 1 >= AUTO_CAL['MIN_BAND']:
                 step = p
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('{}: {} passes, adds {}{}'.format(step_name, p['count'],
+                             '{} s'.format(_secs(lap['lap_time_stamp'] for lap in added)) if added else 'none',
+                             ', can be taken' if step is p else ''))
         if step and band['low'] - step['low'] >= (band['high'] - band['low']) * AUTO_CAL['STEP_REACH_FRACTION']:
+            logger.debug('Auto calibration: band stepped down to {}-{} with {} passes'.format(
+                step['low'], step['high'], step['count']))
             band = step
+        elif step:
+            logger.debug('Auto calibration: steps reach only to {}, less than {:.0%} of the band width below it'.format(
+                step['low'], AUTO_CAL['STEP_REACH_FRACTION']))
+    elif band in plateaus:
+        logger.debug('Auto calibration: band has a messy, double-peaked or long pass; no step-down')
     enter = band['low'] + _js_round((band['high'] - band['low']) * AUTO_CAL['BAND_POSITION'])
     peaks = [lap['peak_rssi'] for lap in scan[enter] if not lap['deleted'] and not _after_race(lap) and 'peak_rssi' in lap]
     if peaks:
@@ -668,10 +717,15 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
                      AUTO_CAL['DOUBLE_WINDOW_S'] * 1000]
             if len(core) - len(extra) != len(band_stamps) or not all(bad(lap) for lap in extra):
                 break
+            if extra:
+                logger.debug('Auto calibration: EnterAt {} adds only bad peaks at {} s, which are ignored'.format(
+                    lowest - 1, _secs(lap['lap_time_stamp'] for lap in extra)))
             lowest -= 1
         # with no such values below the band, the margin keeps EnterAt in the upper half of the band
         if lowest == band['low']:
             lowest = _js_round((band['low'] + band['high']) / 2)
+        logger.debug('Auto calibration: EnterAt start {}, weakest pass peak {}, margin target {}, lowest allowed {}'.format(
+            enter, weakest, target, lowest))
         enter = max(lowest, min(enter, target))
     # a weak holeshot peaks at the top of the ripple; with no early crossing in the band, step
     #  down to the first EnterAt that adds exactly one, early, keeps the later passes and keeps the set clean
@@ -682,6 +736,7 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
                 break
             if pass_count(scan[e]) == band['count'] + 1 and _adds_holeshot_only(scan[e], scan[enter]) and \
                     _crossings_usable(scan[e]) and _score_calibration(scan[e], min_lap_ms) <= base_score:
+                logger.debug('Auto calibration: EnterAt stepped down from {} to {} to take a weak holeshot'.format(enter, e))
                 enter = e
                 break
     # ExitAt: the lowest score, with the time spent in crossings counted, marks the clean range,
@@ -708,6 +763,9 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
                 doubles.append((a, b))
     if all(any(a <= s <= b for a, b in doubles) for s in first_stamps):
         doubles = []
+    if doubles:
+        logger.debug('Auto calibration: double-peaked passes at {} s left out of the ExitAt scoring'.format(
+            _secs(a for a, _ in doubles)))
     def scored(laps):
         return [lap for lap in laps if not any(a - window <= lap['lap_time_stamp'] <= b + window for a, b in doubles)]
     # laps after the race are left out only when no ExitAt is clean with them
@@ -724,6 +782,7 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         if best_exit is not None:
             break
     if best_exit is None:
+        logger.debug('Auto calibration: no ExitAt below EnterAt {} keeps the passes with usable crossings'.format(enter))
         return None, NoSuggestion.NO_CLEAN_EXIT
     top = best_exit
     while structural.get(top + 1) == structural[best_exit]:
@@ -741,6 +800,8 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     gap = max((enter - floor) * AUTO_CAL['EXIT_GAP_FRACTION'],
               min((hi - floor) * AUTO_CAL['EXIT_SPAN_FRACTION'], (enter - floor) * AUTO_CAL['EXIT_SPAN_CAP_FRACTION']))
     exit_at = max(bottom, min(top - _js_round((enter - lo) * AUTO_CAL['EXIT_TOP_MARGIN_FRACTION']), enter - _js_round(gap)))
+    logger.debug('Auto calibration: EnterAt {}, best ExitAt {}, clean range {}-{}, floor {}, gap {:.0f}, ExitAt placed at {}'.format(
+        enter, best_exit, bottom, top, floor, gap, exit_at))
     # keep the smallest gap, taking the highest ExitAt at or below it that is within the clean range or
     #  gives laps at least as clean as the chosen one; on a strong trace the fallback gap may be used
     #  while it stays clear of the trace minimum; otherwise no suggestion
@@ -758,8 +819,11 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     if wanted is not None:
         exit_at = wanted
     elif hi - lo >= AUTO_CAL['FALLBACK_MIN_SPAN'] and fallback is not None and fallback - lo >= AUTO_CAL['MIN_EXIT_GAP']:
+        logger.debug('Auto calibration: no clean ExitAt {:.0%} below EnterAt; using the {:.0%} separation'.format(
+            AUTO_CAL['MIN_EXIT_GAP_OF_ENTER'], AUTO_CAL['MIN_EXIT_GAP_OF_ENTER_FALLBACK']))
         exit_at = fallback
     else:
+        logger.debug('Auto calibration: no clean ExitAt far enough below EnterAt {}'.format(enter))
         return None, NoSuggestion.NO_CLEAN_EXIT
     laps = laps_for(enter, exit_at)
     # a pass that splits into crossings within the double window at the usual ExitAt gap has double
@@ -772,6 +836,8 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
         return any(b - a <= AUTO_CAL['DOUBLE_WINDOW_S'] for a, b in zip(inside, inside[1:]))
     if all(double(lap) or lap['crossingEnd'] - lap['crossingStart'] > AUTO_CAL['MAX_PASS_CROSSING_S']
            for lap in laps if not lap['deleted'] and not _after_race(lap)):
+        logger.debug('Auto calibration: every pass at {}/{} is double-peaked or longer than {} s'.format(
+            enter, exit_at, AUTO_CAL['MAX_PASS_CROSSING_S']))
         return None, NoSuggestion.NO_GATE_PASSES
     # each counted pass with its peak time and value, and whether it is a good pass: a clean peak, no
     #  double peaks and no overlong crossing
@@ -1002,8 +1068,10 @@ class Calibration:
             return None, NoSuggestion.NO_HISTORY
         # a secondary timer saves its races with no format
         race_format = rhdata.get_raceFormat(race_meta.format_id)
+        label = self._run_label(race_meta.heat_id, 'Round {}'.format(race_meta.round_id), pilotrace.pilot_id,
+                                pilotrace.node_index, pilotrace.frequency)
         return self._suggest(json.loads(pilotrace.history_values), json.loads(pilotrace.history_times),
-                             race_meta.start_time, race_format)
+                             race_meta.start_time, race_format, label)
 
     def suggest_for_seat(self, seat_index):
         '''Suggested EnterAt/ExitAt for a seat in the current (stopped, unsaved) race: (suggestion, None) or (None, reason).'''
@@ -1013,10 +1081,36 @@ class Calibration:
         node = self._racecontext.interface.nodes[seat_index]
         if _pass_peak_only(self._racecontext.interface.node_map[seat_index].interface.marshal_type):
             return None, NoSuggestion.PASS_PEAK_ONLY
+        label = self._run_label(race.current_heat, 'current race', race.node_pilots.get(seat_index),
+                                seat_index, node.frequency)
         return self._suggest(node.history_values, node.history_times, race.start_time_monotonic,
-                             race.format)
+                             race.format, label)
 
-    def _suggest(self, values, times, start_time, race_format):
+    def _run_label(self, heat_id, round_name, pilot_id, node_index, frequency):
+        # the pilot run as the Marshal page names it, e.g. 'Qualifying 2 Round 7 Novacore.r1 (1) - R1 5658'
+        try:
+            rhdata = self._racecontext.rhdata
+            heat = rhdata.get_heat(heat_id) if heat_id and heat_id != RHUtils.HEAT_ID_NONE else None
+            pilot = rhdata.get_pilot(pilot_id) if pilot_id and pilot_id != RHUtils.PILOT_ID_NONE else None
+            label = ' '.join(part for part in (heat.display_name if heat else 'Practice', round_name,
+                                               pilot.callsign if pilot else '', '({})'.format(node_index + 1)) if part)
+            if frequency:
+                band_channel = None
+                profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
+                if frequency == profile_freqs['f'][node_index] and profile_freqs['b'][node_index] and \
+                        profile_freqs['c'][node_index]:
+                    band_channel = '{}{}'.format(profile_freqs['b'][node_index], profile_freqs['c'][node_index])
+                else:
+                    band, channel = frequencies.band_channel_for(frequency)
+                    if band:
+                        band_channel = '{}{}'.format(band, channel)
+                label += ' - {}'.format('{} {}'.format(band_channel, frequency) if band_channel else frequency)
+            return label
+        except Exception:
+            return 'node {}'.format(node_index + 1)
+
+    def _suggest(self, values, times, start_time, race_format, label):
+        logger.debug('Auto calibration for {}'.format(label))
         rhdata = self._racecontext.rhdata
         # with no format there is no race time, so no laps count as late
         unlimited_time = race_format.unlimited_time if race_format else True
@@ -1026,8 +1120,8 @@ class Calibration:
                                      self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior'),
                                      rhdata.get_optionInt('MinFirstCrossingSec') * 1000, _lap_limit(race_format))
         if result:
-            logger.debug('Calibration suggestion: EnterAt {}, ExitAt {}, band {}-{}, {} laps'.format(
-                result['enter_at'], result['exit_at'], result['band'][0], result['band'][1], result['lap_count']))
+            logger.info('Calibration suggestion for {}: EnterAt {}, ExitAt {}, band {}-{}, {} laps'.format(
+                label, result['enter_at'], result['exit_at'], result['band'][0], result['band'][1], result['lap_count']))
         else:
-            logger.debug('No calibration suggestion: {}'.format(reason))
+            logger.info('No calibration suggestion for {}: {}'.format(label, reason))
         return result, reason
