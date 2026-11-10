@@ -163,11 +163,15 @@
 		if (!$('#graph-view-to').is(':focus')) {
 			$('#graph-view-to').val(fmt(range.to));
 		}
-		$('#graph-view-from, #graph-view-to').attr('max', fmt(range.duration));
+		$('#graph-view-from, #graph-view-to')
+			.attr('min', Math.floor(range.min * 10) / 10)
+			.attr('max', Math.ceil(range.max * 10) / 10);
+		// a blank keeps the row's height the same with or without the range
+		$('#graph-view-summary').text(range.zoomed ? `${fmt(range.from)} – ${fmt(range.to)} ${__('secs')}` : ' ');
 		$('#graph-view-reset').prop('disabled', !range.zoomed);
 		$('#graph-view-out').prop('disabled', !range.zoomed);
-		$('#graph-view-start, #graph-view-left').prop('disabled', !range.zoomed || range.from <= 0);
-		$('#graph-view-end, #graph-view-right').prop('disabled', !range.zoomed || range.to >= range.duration);
+		$('#graph-view-start, #graph-view-left').prop('disabled', !range.zoomed || range.from <= range.min);
+		$('#graph-view-end, #graph-view-right').prop('disabled', !range.zoomed || range.to >= range.max);
 	}
 
 	var marshal = new RHMarshal({
@@ -884,7 +888,25 @@
 			}
 		});
 
-		// graph x-range (zoom)
+		// graph x-range (zoom); the controls panel stays open or closed as last left
+		function setGraphViewOpen(open) {
+			$('#graph-view-panel').toggleClass('open', open);
+			$('#graph-view-controls').prop('hidden', !open);
+			$('#graph-view-toggle').attr('aria-expanded', open ? 'true' : 'false');
+		}
+		var graph_view_open = false;
+		try {
+			graph_view_open = localStorage.getItem('marshal_graph_zoom_open') == '1';
+		} catch (e) {}
+		setGraphViewOpen(graph_view_open);
+		$('#graph-view-toggle').on('click', function() {
+			var open = !$('#graph-view-panel').hasClass('open');
+			setGraphViewOpen(open);
+			try {
+				localStorage.setItem('marshal_graph_zoom_open', open ? '1' : '0');
+			} catch (e) {}
+		});
+
 		$('#graph-view-from, #graph-view-to').on('change', function() {
 			var from = parseFloat($('#graph-view-from').val());
 			var to = parseFloat($('#graph-view-to').val());
@@ -909,7 +931,7 @@
 		// navigate at the current zoom level
 		$('#graph-view-start').on('click', function() {
 			var range = marshal.getViewRange();
-			marshal.setViewRange(0, range.to - range.from);
+			marshal.setViewRange(range.min, range.min + (range.to - range.from));
 		});
 
 		$('#graph-view-left').on('click', function() {
@@ -922,12 +944,15 @@
 
 		$('#graph-view-end').on('click', function() {
 			var range = marshal.getViewRange();
-			marshal.setViewRange(range.duration - (range.to - range.from), range.duration);
+			marshal.setViewRange(range.max - (range.to - range.from), range.max);
 		});
 
 		// lap list hotkey
 		$(document).on('keyup', function(e) {
-			// keyboard shortcuts
+			// keyboard shortcuts, not applied while typing in a field
+			if ($(e.target).is('input, textarea, select')) {
+				return;
+			}
 			switch (e.key) {
 				case 'Delete':
 				case 'x':
@@ -970,14 +995,15 @@
 			</div>
 
 			<div id="race-view">
-				<canvas id="race-graph" style="width:100%; height:200px"></canvas>
-
-				<div id="graph-view-controls" class="control-set">
+				<div id="graph-view-panel">
+				<button type="button" id="graph-view-toggle" title="{{ __('Graph Zoom') }}" aria-label="{{ __('Graph Zoom') }}" aria-controls="graph-view-controls" aria-expanded="false"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1 L8 5 L3 9 Z" fill="currentColor"/></svg></button>
+				<span id="graph-view-summary">&nbsp;</span>
+				<div id="graph-view-controls" class="control-set" hidden>
 					<label for="graph-view-from">{{ __('Graph from') }}</label>
-					<input type="number" id="graph-view-from" min="0" step="0.1" disabled />
+					<input type="number" id="graph-view-from" step="0.1" disabled />
 					<label for="graph-view-to">{{ __('to') }}</label>
-					<input type="number" id="graph-view-to" min="0" step="0.1" disabled />
-					<span>s</span>
+					<input type="number" id="graph-view-to" step="0.1" disabled />
+					<span class="graph-view-unit">{{ __('secs') }}</span>
 					<button id="graph-view-in" title="{{ __('Zoom in') }}" disabled>+</button>
 					<button id="graph-view-out" title="{{ __('Zoom out') }}" disabled>&minus;</button>
 					<button id="graph-view-reset" disabled>{{ __('Full Race') }}</button>
@@ -987,8 +1013,10 @@
 						<button id="graph-view-right" title="{{ __('Move right by 25%') }}" disabled>&rarr;</button>
 						<button id="graph-view-end" title="{{ __('Go to end') }}" disabled>&#x21E5;</button>
 					</span>
-					<p class="graph-view-hint">{{ __('Ctrl + mouse wheel on the graph zooms, Shift + mouse wheel scrolls') }}</p>
 				</div>
+				</div>
+
+				<canvas id="race-graph" style="width:100%; height:200px"></canvas>
 
 				<table id="laps">
 				<thead>

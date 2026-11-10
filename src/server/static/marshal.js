@@ -58,7 +58,7 @@ class RHMarshal {
 		from: null,
 		to: null,
 	}
-	min_view_span = 0.5; // seconds
+	min_view_span = 0.1; // seconds
 
 	seriesStyle = {
 		rssi: {lineWidth:1.7,
@@ -94,9 +94,33 @@ class RHMarshal {
 		startingExit: false,
 		startingX: false,
 		startingY: false,
+		startingClientX: 0,
+		startingClientY: 0,
+		startingView: null,
+		dragAxis: null, // 'x' scrolls the graph, 'y' adjusts EnterAt/ExitAt
+		isPanning: false,
+		isPinching: false,
+		pinched: false, // a pinch happened in the current touch sequence
+		pinchStartDist: 0,
+		pinchStartMid: 0,
+		pinchStartView: null,
+		longPressed: false, // the current press toggled the point dots, so it does nothing else
 		adjustEnter: true,
 		isTouchEvent: false,
 	}
+	drag_threshold_px = 3;
+	wheel_guard_until = 0;
+	wheel_guard_ms = 300;
+	wheel_guard_scroll = null;
+	hover_timer = null;
+	hover_delay_ms = 100;
+	hover_radius_px = 10;
+	tooltip_el = null;
+	dots_el = null;
+	dot_radius_px = 1.5;
+	show_points = false; // show-points mode: point dots always shown, and the point tooltip on hover
+	long_press_timer = null;
+	long_press_ms = 500;
 
 	constructor(options) {
 		self = this;
@@ -137,21 +161,31 @@ class RHMarshal {
 		});
 
 		// mouse handlers
+		// a drag started on the graph continues outside it until the button is released
 		$(self.elements.graph_canvas).on('mousedown', self.graphInteractMouseDown);
-		$(self.elements.graph_canvas).on('mousemove', self.graphInteractMouseMove);
-		$(self.elements.graph_canvas).on('mouseup', self.graphInteractMouseUp);
-		$(self.elements.graph_canvas).on('mouseout', self.graphInteractMouseOut);
-		$(document).on('mouseup', self.graphInteractCancel);
+
+		// info tooltip for the RSSI point under a paused mouse cursor
+		$(self.elements.graph_canvas).on('mousemove', self.graphHoverMove);
+		$(self.elements.graph_canvas).on('mouseleave mousedown', self.hideGraphTooltip);
+		$(self.elements.graph_canvas).on('contextmenu', function(evt) {
+			if (self.interact.isTouchEvent) { // a long tap is the dots toggle, not the browser menu
+				evt.preventDefault();
+			}
+		});
+		$(document).on('mousemove', self.graphInteractMouseMove);
+		$(document).on('mouseup', self.graphInteractMouseUp);
 
 		// touch handlers
 		$(self.elements.graph_canvas).on('touchstart', self.graphInteractTouchStart);
 		$(self.elements.graph_canvas).on('touchmove', self.graphInteractTouchMove);
 		$(self.elements.graph_canvas).on('touchend', self.graphInteractTouchEnd);
-		$(self.elements.graph_canvas).on('touchCancel', self.graphInteractTouchCancel);
+		$(self.elements.graph_canvas).on('touchcancel', self.graphInteractTouchCancel);
 		$(document).on('touchend', self.graphInteractCancel);
 
-		// zoom (ctrl + wheel) and pan (shift + wheel, or horizontal wheel while zoomed)
-		$(self.elements.graph_canvas).on('wheel', self.graphInteractWheel);
+		// zoom with the mouse wheel; the page is held at its scroll position during and briefly
+		//  after a zoom gesture, as some browsers scroll it even though the wheel events are prevented
+		self.elements.graph_canvas.addEventListener('wheel', self.graphInteractWheel, {passive: false});
+		window.addEventListener('scroll', self.graphScrollGuard, {passive: true});
 
 		// graph resize catch
 		var resizeTimer;
@@ -231,7 +265,7 @@ class RHMarshal {
 		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
 			var times = [];
 			var values = [];
-			times.push(0);
+			times.push(self.race.start_time);
 			values.push(0);
 			for (var i in self.race.laps) {
 				var lap = self.race.laps[i];
@@ -255,16 +289,21 @@ class RHMarshal {
 		// set initial display of loaded data
 		self.race_loaded = true;
 		if (self.race.history_times.length) {
+			self.race.start_time_data = self.race.history_times[0];
 			self.race.end_time = self.race.history_times[self.race.history_times.length - 1];
 			self.graph.options.minValue = Math.min.apply(null, self.race.history_values) - 2;
 			self.graph.options.maxValue = Math.max.apply(null, self.race.history_values) + 2;
 		} else {
+			self.race.start_time_data = self.race.start_time;
 			self.race.end_time = self.race.start_time + 1
 			self.graph.options.minValue = self.race.exit_at;
 			self.graph.options.maxValue = self.race.enter_at;
 		}
 
-		self.race.history_duration = self.race.end_time - self.race.start_time;
+		// the graph spans all the data, which can start before the race; graph times are seconds from race start
+		self.race.history_duration = self.race.end_time - self.race.start_time_data;
+		self.race.graph_start = self.race.start_time_data - self.race.start_time;
+		self.race.graph_end = self.race.end_time - self.race.start_time;
 		self.view.from = null;
 		self.view.to = null;
 		self.notifyViewRange();
@@ -293,6 +332,12 @@ class RHMarshal {
 		self.graph_series.race_bounds.clear();
 		self.graph_series.race_bounds.data = [];
 
+		// highlight before start
+		if (self.race.graph_start < 0) {
+			self.graph_series.race_bounds.append(self.race.graph_start - .001, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(-0.001, self.graph.options.maxValue + 10);
+		}
+
 		if (self.min_first_crossing_ms) {
 			self.graph_series.race_bounds.append(0, self.graph.options.maxValue + 10);
 			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000 - .001, self.graph.options.maxValue + 10);
@@ -305,9 +350,11 @@ class RHMarshal {
 			// convert lap time to history time
 			var finish_time = self.race.race_format.race_time_sec;
 			// highlight after finish
-			self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
-			self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
+			if (finish_time < self.race.graph_end) {
+				self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
+				self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
+				self.graph_series.race_bounds.append(self.race.graph_end + .001, self.graph.options.maxValue + 10);
+			}
 		}
 
 		// Lap marker series lines drawn below the bottom of the graph
@@ -452,6 +499,7 @@ class RHMarshal {
 	}
 
 	renderGraph() {
+		self.hideGraphTooltip();
 		var graphWidth = self.elements.graph_canvas.offsetWidth;
 		var range = self.getViewRange();
 		var span = (range.to - range.from) / graphWidth;
@@ -464,14 +512,21 @@ class RHMarshal {
 
 		self.graph.lastChartTimestamp = 0;  // page renders on demand, so never let smoothie skip a paint as "same frame"
 		self.graph.render(self.elements.graph_canvas, range.to);
+		if (self.show_points) {
+			self.showGraphDots();
+		}
 	}
 
 	getViewRange() {
-		var duration = self.race.history_duration || 0;
+		// visible range plus the full graph's start and end (min/max), in seconds from race start
+		var min = self.race.graph_start || 0;
+		var max = (self.race.graph_end === undefined) ? (self.race.history_duration || 0) : self.race.graph_end;
 		return {
-			from: (self.view.from === null) ? 0 : self.view.from,
-			to: (self.view.to === null) ? duration : self.view.to,
-			duration: duration,
+			from: (self.view.from === null) ? min : self.view.from,
+			to: (self.view.to === null) ? max : self.view.to,
+			min: min,
+			max: max,
+			duration: max - min,
 		};
 	}
 
@@ -479,9 +534,15 @@ class RHMarshal {
 		return self.view.from !== null;
 	}
 
+	canZoom() {
+		// wheel zoom and drag scrolling only where the page shows the zoom controls
+		return typeof self.callbacks.viewRange === 'function';
+	}
+
 	setViewRange(from, to, render=true) {
 		// show only the given range (seconds from race start) across the graph width
-		var duration = self.race.history_duration || 0;
+		var full = self.getViewRange();
+		var duration = full.duration;
 		from = Number(from);
 		to = Number(to);
 		if (!self.race_loaded || !isFinite(from) || !isFinite(to) || duration <= 0) {
@@ -497,17 +558,17 @@ class RHMarshal {
 			to = mid + minSpan / 2;
 		}
 		// shift (not shrink) a range that runs past either end
-		if (from < 0) {
-			to -= from;
-			from = 0;
+		if (from < full.min) {
+			to += full.min - from;
+			from = full.min;
 		}
-		if (to > duration) {
-			from -= to - duration;
-			to = duration;
+		if (to > full.max) {
+			from -= to - full.max;
+			to = full.max;
 		}
-		from = Math.max(from, 0);
+		from = Math.max(from, full.min);
 
-		if (from <= 0 && to >= duration) {
+		if (from <= full.min && to >= full.max) {
 			self.view.from = null;
 			self.view.to = null;
 		} else {
@@ -557,8 +618,194 @@ class RHMarshal {
 		}
 	}
 
+	graphHoverMove(evt) {
+		// the point tooltip is shown only in show-points mode
+		if (!self.show_points || !self.race_loaded || self.interact.canDrag || self.interact.isTouchEvent) {
+			self.hideGraphTooltip();
+			return;
+		}
+		var clientX = evt.clientX, clientY = evt.clientY;
+		var near = self.findGraphPoint(clientX, clientY) !== null;
+		// while the tooltip is showing it follows the cursor along the points; otherwise it waits for a pause
+		if (near && self.tooltip_el && self.tooltip_el.is(':visible')) {
+			self.showGraphTooltip(clientX, clientY);
+			return;
+		}
+		clearTimeout(self.hover_timer);
+		self.hover_timer = null;
+		if (self.tooltip_el) {
+			self.tooltip_el.hide();
+		}
+		if (near) {
+			self.hover_timer = setTimeout(function() {
+				self.showGraphTooltip(clientX, clientY);
+			}, self.hover_delay_ms);
+		}
+	}
+
+	findGraphPoint(clientX, clientY) {
+		// nearest RSSI point within hover_radius_px of the cursor, with its position in client coordinates
+		var data = self.graph_series.rssi.data;
+		var rect = self.elements.graph_canvas.getBoundingClientRect();
+		var range = self.getViewRange();
+		var span = range.to - range.from;
+		var minV = self.graph.options.minValue, maxV = self.graph.options.maxValue;
+		if (!data || !data.length || span <= 0 || maxV <= minV || rect.width <= 0) {
+			return null;
+		}
+		var toX = function(t) { return rect.left + (t - range.from) / span * rect.width; };
+		var toY = function(v) { return rect.top + (maxV - v) / (maxV - minV) * rect.height; };
+		var time = range.from + (clientX - rect.left) / rect.width * span;
+		var lo = 0, hi = data.length;
+		while (lo < hi) { // first point at or after the cursor time
+			var mid = (lo + hi) >> 1;
+			if (data[mid][0] < time) {
+				lo = mid + 1;
+			} else {
+				hi = mid;
+			}
+		}
+		var best = null;
+		var bestDist = self.hover_radius_px;
+		var check = function(i) {
+			var x = toX(data[i][0]);
+			if (Math.abs(x - clientX) > self.hover_radius_px) {
+				return false;
+			}
+			var y = toY(data[i][1]);
+			var dist = Math.hypot(x - clientX, y - clientY);
+			if (dist <= bestDist) {
+				bestDist = dist;
+				best = {time: data[i][0], value: data[i][1], x: x, y: y};
+			}
+			return true;
+		};
+		for (var i = lo; i < data.length && check(i); i++) {}
+		for (var i = lo - 1; i >= 0 && check(i); i--) {}
+		return best;
+	}
+
+	showGraphTooltip(clientX, clientY) {
+		// returns whether a point was found and shown
+		var point = self.findGraphPoint(clientX, clientY);
+		if (!point) {
+			return false;
+		}
+		if (!self.tooltip_el) {
+			self.tooltip_el = $('<div class="graph-tooltip" role="tooltip"></div>').appendTo('body');
+		}
+		if (!(self.dots_el && self.dots_el.is(':visible'))) {
+			self.showGraphDots();
+		}
+		var label = (typeof __ === 'function') ? __ : function(s) { return s; };
+		self.tooltip_el
+			.html(`${label('Time')}: ${point.time.toFixed(3)} s<br>${label('RSSI')}: ${Math.round(point.value)}`)
+			.show();
+		// just above and right of the cursor, flipped to the left or below (clear of the pointer) near the window edges
+		var tip = self.tooltip_el[0].getBoundingClientRect();
+		var left = clientX + 4;
+		if (left + tip.width > window.innerWidth - 4) {
+			left = clientX - 4 - tip.width;
+		}
+		var top = clientY - tip.height - 4;
+		if (top < 4) {
+			top = clientY + 20;
+		}
+		self.tooltip_el.css({left: left + window.scrollX, top: top + window.scrollY});
+		return true;
+	}
+
+	hideGraphTooltip() {
+		clearTimeout(self.hover_timer);
+		self.hover_timer = null;
+		if (self.tooltip_el) {
+			self.tooltip_el.hide();
+		}
+		if (self.dots_el && !self.show_points) {
+			self.dots_el.hide();
+		}
+	}
+
+	toggleShowPoints() {
+		// a long press switches between show-points mode (point dots and tooltip) and the default without them
+		self.show_points = !self.show_points;
+		self.hideGraphTooltip();
+		if (self.show_points) {
+			self.showGraphDots();
+		} else if (self.dots_el) {
+			self.dots_el.hide();
+		}
+	}
+
+	startLongPress() {
+		self.cancelLongPress();
+		if (!self.race_loaded) {
+			return;
+		}
+		self.long_press_timer = setTimeout(function() {
+			self.long_press_timer = null;
+			if (self.interact.dragAxis || self.interact.pinched) {
+				return;
+			}
+			self.interact.longPressed = true;
+			self.toggleShowPoints();
+		}, self.long_press_ms);
+	}
+
+	cancelLongPress() {
+		clearTimeout(self.long_press_timer);
+		self.long_press_timer = null;
+	}
+
+	showGraphDots() {
+		// marks the visible RSSI points with small white dots, on a layer over the graph
+		var data = self.graph_series.rssi.data;
+		var rect = self.elements.graph_canvas.getBoundingClientRect();
+		var range = self.getViewRange();
+		var span = range.to - range.from;
+		var minV = self.graph.options.minValue, maxV = self.graph.options.maxValue;
+		if (!data || !data.length || span <= 0 || maxV <= minV || rect.width <= 0) {
+			return;
+		}
+		if (!self.dots_el) {
+			// the layer shares a wrapper with the graph so it moves with it
+			$(self.elements.graph_canvas).wrap('<div class="graph-wrap"></div>');
+			self.dots_el = $('<canvas class="graph-dots" aria-hidden="true"></canvas>')
+				.insertAfter(self.elements.graph_canvas);
+		}
+		var canvas = self.dots_el[0];
+		var ratio = window.devicePixelRatio || 1;
+		canvas.width = Math.round(rect.width * ratio);
+		canvas.height = Math.round(rect.height * ratio);
+		self.dots_el.css({
+			left: self.elements.graph_canvas.offsetLeft,
+			top: self.elements.graph_canvas.offsetTop,
+			width: rect.width,
+			height: rect.height,
+		}).show();
+		var ctx = canvas.getContext('2d');
+		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+		ctx.clearRect(0, 0, rect.width, rect.height);
+		ctx.fillStyle = '#fff';
+		ctx.beginPath();
+		for (var i = 0; i < data.length; i++) {
+			var t = data[i][0];
+			if (t < range.from || t > range.to) {
+				continue;
+			}
+			var x = (t - range.from) / span * rect.width;
+			var y = (maxV - data[i][1]) / (maxV - minV) * rect.height;
+			ctx.moveTo(x + self.dot_radius_px, y);
+			ctx.arc(x, y, self.dot_radius_px, 0, 2 * Math.PI);
+		}
+		ctx.fill();
+	}
+
 	clearGraph(){
 		self.context.clearRect(0, 0, self.elements.graph_canvas.width, self.elements.graph_canvas.height);
+		if (self.dots_el) {
+			self.dots_el.hide();
+		}
 	}
 
 	processRXData() {
@@ -847,12 +1094,14 @@ class RHMarshal {
 		var rect = self.graph.canvas.getBoundingClientRect();
 
 		if (evt.targetTouches) {
-			var x = (evt.targetTouches[0].clientX - rect.x) / evt.target.offsetWidth;
-			var y = (evt.targetTouches[0].clientY - rect.y) / evt.target.offsetHeight;
+			var clientX = evt.targetTouches[0].clientX;
+			var clientY = evt.targetTouches[0].clientY;
 		} else {
-			var x = (evt.clientX - rect.x) / evt.target.offsetWidth;
-			var y = (evt.clientY - rect.y) / evt.target.offsetHeight;
+			var clientX = evt.clientX;
+			var clientY = evt.clientY;
 		}
+		var x = (clientX - rect.x) / rect.width;
+		var y = (clientY - rect.y) / rect.height;
 
 		var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
 
@@ -860,6 +1109,14 @@ class RHMarshal {
 		self.interact.startingExit = self.race.exit_at;
 		self.interact.startingX = x;
 		self.interact.startingY = y;
+		self.interact.startingClientX = clientX;
+		self.interact.startingClientY = clientY;
+		self.interact.startingView = self.getViewRange();
+		self.interact.dragAxis = null;
+		self.interact.isDragging = false;
+		self.interact.isPanning = false;
+		self.interact.longPressed = false;
+		self.startLongPress();
 
 		if (self.interact.startingEnter > self.graph.options.maxValue) {
 			self.interact.adjustEnter = true;
@@ -874,18 +1131,46 @@ class RHMarshal {
 	}
 
 	handleGraphInteractionMove(evt) {
-		// user drags on graph
+		// user drags on graph: up/down adjusts EnterAt/ExitAt, left/right scrolls a zoomed graph
+		if (self.interact.longPressed) {
+			return;
+		}
 		var rect = self.graph.canvas.getBoundingClientRect();
 
 		if (evt.targetTouches) {
-			var y = (evt.targetTouches[0].clientY - rect.top) / evt.target.offsetHeight;
+			var clientX = evt.targetTouches[0].clientX;
+			var clientY = evt.targetTouches[0].clientY;
 		} else {
-			var y = (evt.clientY - rect.top) / evt.target.offsetHeight;
+			var clientX = evt.clientX;
+			var clientY = evt.clientY;
 		}
 
-		if (Math.abs(y - self.interact.startingY) > 0.01 || self.interact.isDragging) { // prevent accidental drag
+		if (!self.interact.dragAxis) {
+			var dx = Math.abs(clientX - self.interact.startingClientX);
+			var dy = Math.abs(clientY - self.interact.startingClientY);
+			if (Math.max(dx, dy) >= self.drag_threshold_px) { // moved: not a long press
+				self.cancelLongPress();
+			}
+			if (self.canZoom() && dx >= self.drag_threshold_px && dx > dy) {
+				self.interact.dragAxis = 'x';
+			} else if (dy >= self.drag_threshold_px) {
+				self.interact.dragAxis = 'y';
+			} else { // prevent accidental drag
+				return;
+			}
+		}
+
+		if (self.interact.dragAxis == 'x') {
+			self.interact.isPanning = true;
+			if (self.isZoomed()) {
+				var view = self.interact.startingView;
+				var shift = (self.interact.startingClientX - clientX) / rect.width * (view.to - view.from);
+				self.setViewRange(view.from + shift, view.to + shift);
+			}
+		} else {
 			self.interact.isDragging = true;
 
+			var y = (clientY - rect.top) / rect.height;
 			var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
 
 			if (self.interact.adjustEnter) {
@@ -901,12 +1186,12 @@ class RHMarshal {
 		var range = self.getViewRange();
 		var time = self.race.start_time + self.mapRange(self.interact.startingX, range.from, range.to);
 
-		if (!$.isEmptyObject(self.calc_result)) {
+		if (!$.isEmptyObject(self.race.calc_result)) {
 			// find closest start/end time to "time" point
 			var delta = Infinity;
 			var selectedLap = null;
-			for (var i in self.calc_result) {
-				var lap = self.calc_result[i];
+			for (var i in self.race.calc_result) {
+				var lap = self.race.calc_result[i];
 
 				if (time > lap.crossingEnd) {
 					selectedLap = i;
@@ -916,7 +1201,7 @@ class RHMarshal {
 					selectedLap = i;
 					break;
 				} else {
-					diff = Math.abs(time - lap.crossingStart);
+					var diff = Math.abs(time - lap.crossingStart);
 					if (diff < delta) {
 						selectedLap = i;
 					}
@@ -926,7 +1211,7 @@ class RHMarshal {
 
 			if (typeof self.callbacks.graphInteractTap === 'function') {
 				self.callbacks.graphInteractTap({
-					'lapTimeStamp': self.calc_result[selectedLap].lap_time_stamp,
+					'lapTimeStamp': self.race.calc_result[selectedLap].lap_time_stamp,
 				});
 			}
 		} else {
@@ -948,15 +1233,27 @@ class RHMarshal {
 
 	graphInteractCancel() {
 		if (self.interact.canDrag) {
-			self.interact.canDrag = false;
-			self.interact.isDragging = false;
-			self.handleGraphInteractionCancel();
+			var wasPanning = self.interact.isPanning;
+			self.endGraphInteraction();
+			if (!wasPanning) {
+				self.handleGraphInteractionCancel();
+			}
 		}
+	}
+
+	endGraphInteraction() {
+		self.cancelLongPress();
+		self.interact.canDrag = false;
+		self.interact.isDragging = false;
+		self.interact.isPanning = false;
+		self.interact.dragAxis = null;
+		self.interact.longPressed = false;
 	}
 
 	// mouse handlers
 	graphInteractMouseDown(evt) {
-		if (!self.interact.isTouchEvent) {
+		if (!self.interact.isTouchEvent && evt.button === 0) { // left button only
+			evt.preventDefault(); // no text selection while dragging
 			self.interact.canDrag = true;
 			self.handleGraphInteractionStart(evt);
 		}
@@ -966,63 +1263,91 @@ class RHMarshal {
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.canDrag) {
 				self.handleGraphInteractionMove(evt);
-				self.recalcRace();
+				if (self.interact.isDragging) {
+					self.recalcRace();
+				}
 			}
 		}
 	}
 
 	graphInteractMouseUp(evt){
-		if (!self.interact.isTouchEvent) {
-			if (self.interact.isDragging) {
+		if (evt.button !== 0) {
+			return;
+		}
+		if (!self.interact.isTouchEvent && self.interact.canDrag) {
+			self.cancelLongPress();
+			if (self.interact.longPressed || self.interact.isPanning) {
+				// long press or scrolling only; no tap or lap recalculation
+			} else if (self.interact.isDragging) {
 				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
-			self.interact.canDrag = false;
-			self.interact.isDragging = false;
-		}
-		self.interact.isTouchEvent = false;
-		evt.stopPropagation();
-	}
-
-	graphInteractMouseOut(evt){
-		if (!self.interact.isTouchEvent) {
-			if (self.interact.isDragging) {
-				self.handleGraphInteractionCancel();
-			}
+			self.endGraphInteraction();
 		}
 		self.interact.isTouchEvent = false;
 	}
 
 	graphInteractWheel(evt) {
-		if (!self.race_loaded) {
+		if (!self.race_loaded || !self.canZoom()) {
 			return;
 		}
 		var e = evt.originalEvent || evt;
+		evt.preventDefault();
+		var now = performance.now();
+		if (now >= self.wheel_guard_until) { // gesture start: hold the page here
+			self.wheel_guard_scroll = {x: window.scrollX, y: window.scrollY};
+		}
+		self.wheel_guard_until = now + self.wheel_guard_ms;
+		if (!e.deltaY) {
+			return;
+		}
 		var rect = self.elements.graph_canvas.getBoundingClientRect();
 		var anchor = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-		var delta = e.deltaY || e.deltaX;
-		if (e.ctrlKey || e.metaKey) {
-			evt.preventDefault();
-			self.zoomViewRange(delta < 0 ? 0.8 : 1.25, anchor);
-		} else if (self.isZoomed() && (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
-			evt.preventDefault();
-			self.panViewRange((delta > 0 ? 1 : -1) * 0.1);
+		// zoom by wheel distance (a wheel notch is about 100 px) so trackpads zoom smoothly
+		var px = e.deltaY * (e.deltaMode == 1 ? 33 : (e.deltaMode == 2 ? 400 : 1));
+		px = Math.max(Math.min(px, 300), -300);
+		// a touchpad pinch arrives as ctrl + wheel, scaled like browser page zoom so the graph follows the fingers
+		var factor = e.ctrlKey ? Math.exp(px / 100) : Math.pow(1.25, px / 100);
+		self.zoomViewRange(factor, anchor);
+	}
+
+	graphScrollGuard() {
+		// undoes page scrolling while a graph zoom gesture is still arriving
+		var held = self.wheel_guard_scroll;
+		if (held && performance.now() < self.wheel_guard_until
+			&& (window.scrollX != held.x || window.scrollY != held.y)) {
+			window.scrollTo({left: held.x, top: held.y, behavior: 'instant'});
 		}
 	}
 
 	// touch handlers
 	graphInteractTouchStart(evt) {
 		evt.preventDefault();
-		if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+		if (evt.targetTouches.length == 1) {
+			self.interact.pinched = false;
 			self.handleGraphInteractionStart(evt);
+		} else {
+			self.cancelLongPress(); // more than one finger: not a long press
+		}
+		if (evt.targetTouches.length == 2 && self.race_loaded && self.canZoom() && !self.interact.longPressed) {
+			// second finger down: pinch zoom instead of any one-finger drag
+			if (self.interact.isDragging) {
+				self.handleGraphInteractionCancel();
+			}
+			self.interact.isDragging = false;
+			self.interact.isPanning = false;
+			self.interact.dragAxis = null;
+			self.handlePinchStart(evt);
 		}
 		self.interact.isTouchEvent = true;
 	}
 
 	graphInteractTouchMove(evt) {
 		evt.preventDefault();
-		if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+		if (self.interact.isPinching && evt.targetTouches.length >= 2) {
+			self.handlePinchMove(evt);
+		} else if (evt.targetTouches.length == 1 && !self.interact.pinched) { // ignore a finger left over from a pinch
 			self.handleGraphInteractionMove(evt);
 		}
 	}
@@ -1030,17 +1355,62 @@ class RHMarshal {
 	graphInteractTouchEnd(evt){
 		evt.preventDefault();
 		if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
-			if (self.interact.isDragging) {
+			self.cancelLongPress();
+			if (self.interact.longPressed || self.interact.pinched || self.interact.isPanning) {
+				// long press, zooming or scrolling only; no tap or lap recalculation
+			} else if (self.interact.isDragging) {
 				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
+			self.interact.isDragging = false;
+			self.interact.isPanning = false;
+			self.interact.dragAxis = null;
+			self.interact.isPinching = false;
+			self.interact.pinched = false;
+			self.interact.longPressed = false;
+		} else if (evt.targetTouches && evt.targetTouches.length < 2) {
+			self.interact.isPinching = false;
 		}
 		evt.stopPropagation();
 	}
 
+	pinchInfo(evt) {
+		// finger distance in px and the midpoint as a fraction of the graph width
+		var rect = self.elements.graph_canvas.getBoundingClientRect();
+		var t0 = evt.targetTouches[0], t1 = evt.targetTouches[1];
+		return {
+			dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+			mid: ((t0.clientX + t1.clientX) / 2 - rect.left) / rect.width,
+		};
+	}
+
+	handlePinchStart(evt) {
+		var info = self.pinchInfo(evt);
+		self.interact.isPinching = true;
+		self.interact.pinched = true;
+		self.interact.pinchStartDist = Math.max(info.dist, 1);
+		self.interact.pinchStartMid = info.mid;
+		self.interact.pinchStartView = self.getViewRange();
+	}
+
+	handlePinchMove(evt) {
+		// keeps the time first under the fingers' midpoint under it while the fingers spread or close
+		var info = self.pinchInfo(evt);
+		if (info.dist < 1) {
+			return;
+		}
+		var view = self.interact.pinchStartView;
+		var span = view.to - view.from;
+		var at = view.from + span * self.interact.pinchStartMid;
+		var newSpan = span * self.interact.pinchStartDist / info.dist;
+		var from = at - newSpan * info.mid;
+		self.setViewRange(from, from + newSpan);
+	}
+
 	graphInteractTouchCancel(evt) {
 		evt.preventDefault();
+		self.cancelLongPress();
 		self.handleGraphInteractionCancel();
 		self.interact.isTouchEvent = true;
 	}
