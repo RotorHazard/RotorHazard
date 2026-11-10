@@ -2497,12 +2497,49 @@ button .wide {
 	margin: 0 0.5em;
 }
 
-#graph-view-controls {
+#graph-view-panel {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.25em 0.5em;
-	margin: 0.5em 0 1em;
+	gap: calc(0.25em / 0.9) calc(0.5em / 0.9); /* the controls' 0.25em 0.5em at their font size */
+	margin: -0.5em 0 0.25em; /* closer to the race title */
+	font-size: 0.9em;
+}
+
+#graph-view-panel #graph-view-toggle {
+	margin: 0;
+	padding: 0 0.25em;
+	min-height: 0;
+	background: none;
+	border: none;
+	box-shadow: none;
+	color: inherit;
+	line-height: 1;
+	cursor: pointer;
+}
+
+#graph-view-toggle svg {
+	display: block;
+	width: 0.9em;
+	height: 0.9em;
+	transition: transform 0.15s;
+}
+
+#graph-view-panel.open #graph-view-toggle svg {
+	transform: rotate(90deg);
+}
+
+#graph-view-panel.open #graph-view-summary {
+	display: none;
+}
+
+#graph-view-controls {
+	display: contents; /* the controls wrap in the panel's row, after the toggle */
+	font-size: calc(1em / 0.9);
+}
+
+#graph-view-controls[hidden] {
+	display: none;
 }
 
 #graph-view-controls input[type=number] {
@@ -2510,19 +2547,30 @@ button .wide {
 	margin: 0;
 }
 
-#graph-view-controls button {
+#graph-view-controls button,
+#graph-view-controls label,
+#graph-view-controls > span {
 	margin: 0;
+}
+
+#graph-view-controls .graph-view-unit {
+	margin-right: 0.5em;
 }
 
 #graph-view-controls .graph-view-nav {
 	display: inline-flex;
 	gap: 0.25em;
+	margin: 0;
 }
 
 #race-view,
 #m-race-view {
 	flex: 1 1 24em;
 	margin: 0 0.5em 1em;
+}
+
+.page-marshal #race-view {
+	min-width: 0; /* narrower than the lap table on small screens, so the graph and its controls fit */
 }
 
 .sidebar-controls {
