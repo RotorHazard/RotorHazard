@@ -927,7 +927,10 @@
 
 		// lap list hotkey
 		$(document).on('keyup', function(e) {
-			// keyboard shortcuts
+			// keyboard shortcuts, not applied while typing in a field
+			if ($(e.target).is('input, textarea, select')) {
+				return;
+			}
 			switch (e.key) {
 				case 'Delete':
 				case 'x':
