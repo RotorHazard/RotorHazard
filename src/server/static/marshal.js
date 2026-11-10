@@ -265,7 +265,7 @@ class RHMarshal {
 		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
 			var times = [];
 			var values = [];
-			times.push(0);
+			times.push(self.race.start_time);
 			values.push(0);
 			for (var i in self.race.laps) {
 				var lap = self.race.laps[i];
@@ -289,16 +289,21 @@ class RHMarshal {
 		// set initial display of loaded data
 		self.race_loaded = true;
 		if (self.race.history_times.length) {
+			self.race.start_time_data = self.race.history_times[0];
 			self.race.end_time = self.race.history_times[self.race.history_times.length - 1];
 			self.graph.options.minValue = Math.min.apply(null, self.race.history_values) - 2;
 			self.graph.options.maxValue = Math.max.apply(null, self.race.history_values) + 2;
 		} else {
+			self.race.start_time_data = self.race.start_time;
 			self.race.end_time = self.race.start_time + 1
 			self.graph.options.minValue = self.race.exit_at;
 			self.graph.options.maxValue = self.race.enter_at;
 		}
 
-		self.race.history_duration = self.race.end_time - self.race.start_time;
+		// the graph spans all the data, which can start before the race; graph times are seconds from race start
+		self.race.history_duration = self.race.end_time - self.race.start_time_data;
+		self.race.graph_start = self.race.start_time_data - self.race.start_time;
+		self.race.graph_end = self.race.end_time - self.race.start_time;
 		self.view.from = null;
 		self.view.to = null;
 		self.notifyViewRange();
@@ -327,6 +332,12 @@ class RHMarshal {
 		self.graph_series.race_bounds.clear();
 		self.graph_series.race_bounds.data = [];
 
+		// highlight before start
+		if (self.race.graph_start < 0) {
+			self.graph_series.race_bounds.append(self.race.graph_start - .001, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(-0.001, self.graph.options.maxValue + 10);
+		}
+
 		if (self.min_first_crossing_ms) {
 			self.graph_series.race_bounds.append(0, self.graph.options.maxValue + 10);
 			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000 - .001, self.graph.options.maxValue + 10);
@@ -339,9 +350,11 @@ class RHMarshal {
 			// convert lap time to history time
 			var finish_time = self.race.race_format.race_time_sec;
 			// highlight after finish
-			self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
-			self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
+			if (finish_time < self.race.graph_end) {
+				self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
+				self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
+				self.graph_series.race_bounds.append(self.race.graph_end + .001, self.graph.options.maxValue + 10);
+			}
 		}
 
 		// Lap marker series lines drawn below the bottom of the graph
@@ -505,11 +518,15 @@ class RHMarshal {
 	}
 
 	getViewRange() {
-		var duration = self.race.history_duration || 0;
+		// visible range plus the full graph's start and end (min/max), in seconds from race start
+		var min = self.race.graph_start || 0;
+		var max = (self.race.graph_end === undefined) ? (self.race.history_duration || 0) : self.race.graph_end;
 		return {
-			from: (self.view.from === null) ? 0 : self.view.from,
-			to: (self.view.to === null) ? duration : self.view.to,
-			duration: duration,
+			from: (self.view.from === null) ? min : self.view.from,
+			to: (self.view.to === null) ? max : self.view.to,
+			min: min,
+			max: max,
+			duration: max - min,
 		};
 	}
 
@@ -524,7 +541,8 @@ class RHMarshal {
 
 	setViewRange(from, to, render=true) {
 		// show only the given range (seconds from race start) across the graph width
-		var duration = self.race.history_duration || 0;
+		var full = self.getViewRange();
+		var duration = full.duration;
 		from = Number(from);
 		to = Number(to);
 		if (!self.race_loaded || !isFinite(from) || !isFinite(to) || duration <= 0) {
@@ -540,17 +558,17 @@ class RHMarshal {
 			to = mid + minSpan / 2;
 		}
 		// shift (not shrink) a range that runs past either end
-		if (from < 0) {
-			to -= from;
-			from = 0;
+		if (from < full.min) {
+			to += full.min - from;
+			from = full.min;
 		}
-		if (to > duration) {
-			from -= to - duration;
-			to = duration;
+		if (to > full.max) {
+			from -= to - full.max;
+			to = full.max;
 		}
-		from = Math.max(from, 0);
+		from = Math.max(from, full.min);
 
-		if (from <= 0 && to >= duration) {
+		if (from <= full.min && to >= full.max) {
 			self.view.from = null;
 			self.view.to = null;
 		} else {
