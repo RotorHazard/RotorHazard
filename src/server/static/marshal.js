@@ -58,7 +58,7 @@ class RHMarshal {
 		from: null,
 		to: null,
 	}
-	min_view_span = 0.5; // seconds
+	min_view_span = 0.1; // seconds
 
 	seriesStyle = {
 		rssi: {lineWidth:1.7,
@@ -94,9 +94,18 @@ class RHMarshal {
 		startingExit: false,
 		startingX: false,
 		startingY: false,
+		startingClientX: 0,
+		startingClientY: 0,
+		startingView: null,
+		dragAxis: null, // 'x' scrolls the graph, 'y' adjusts EnterAt/ExitAt
+		isPanning: false,
 		adjustEnter: true,
 		isTouchEvent: false,
 	}
+	drag_threshold_px = 3;
+	wheel_guard_until = 0;
+	wheel_guard_ms = 300;
+	wheel_guard_scroll = null;
 
 	constructor(options) {
 		self = this;
@@ -137,11 +146,10 @@ class RHMarshal {
 		});
 
 		// mouse handlers
+		// a drag started on the graph continues outside it until the button is released
 		$(self.elements.graph_canvas).on('mousedown', self.graphInteractMouseDown);
-		$(self.elements.graph_canvas).on('mousemove', self.graphInteractMouseMove);
-		$(self.elements.graph_canvas).on('mouseup', self.graphInteractMouseUp);
-		$(self.elements.graph_canvas).on('mouseout', self.graphInteractMouseOut);
-		$(document).on('mouseup', self.graphInteractCancel);
+		$(document).on('mousemove', self.graphInteractMouseMove);
+		$(document).on('mouseup', self.graphInteractMouseUp);
 
 		// touch handlers
 		$(self.elements.graph_canvas).on('touchstart', self.graphInteractTouchStart);
@@ -150,8 +158,10 @@ class RHMarshal {
 		$(self.elements.graph_canvas).on('touchCancel', self.graphInteractTouchCancel);
 		$(document).on('touchend', self.graphInteractCancel);
 
-		// zoom (ctrl + wheel) and pan (shift + wheel, or horizontal wheel while zoomed)
-		$(self.elements.graph_canvas).on('wheel', self.graphInteractWheel);
+		// zoom with the mouse wheel; the page is held at its scroll position during and briefly
+		//  after a zoom gesture, as some browsers scroll it even though the wheel events are prevented
+		self.elements.graph_canvas.addEventListener('wheel', self.graphInteractWheel, {passive: false});
+		window.addEventListener('scroll', self.graphScrollGuard, {passive: true});
 
 		// graph resize catch
 		var resizeTimer;
@@ -477,6 +487,11 @@ class RHMarshal {
 
 	isZoomed() {
 		return self.view.from !== null;
+	}
+
+	canZoom() {
+		// wheel zoom and drag scrolling only where the page shows the zoom controls
+		return typeof self.callbacks.viewRange === 'function';
 	}
 
 	setViewRange(from, to, render=true) {
@@ -847,12 +862,14 @@ class RHMarshal {
 		var rect = self.graph.canvas.getBoundingClientRect();
 
 		if (evt.targetTouches) {
-			var x = (evt.targetTouches[0].clientX - rect.x) / evt.target.offsetWidth;
-			var y = (evt.targetTouches[0].clientY - rect.y) / evt.target.offsetHeight;
+			var clientX = evt.targetTouches[0].clientX;
+			var clientY = evt.targetTouches[0].clientY;
 		} else {
-			var x = (evt.clientX - rect.x) / evt.target.offsetWidth;
-			var y = (evt.clientY - rect.y) / evt.target.offsetHeight;
+			var clientX = evt.clientX;
+			var clientY = evt.clientY;
 		}
+		var x = (clientX - rect.x) / rect.width;
+		var y = (clientY - rect.y) / rect.height;
 
 		var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
 
@@ -860,6 +877,12 @@ class RHMarshal {
 		self.interact.startingExit = self.race.exit_at;
 		self.interact.startingX = x;
 		self.interact.startingY = y;
+		self.interact.startingClientX = clientX;
+		self.interact.startingClientY = clientY;
+		self.interact.startingView = self.getViewRange();
+		self.interact.dragAxis = null;
+		self.interact.isDragging = false;
+		self.interact.isPanning = false;
 
 		if (self.interact.startingEnter > self.graph.options.maxValue) {
 			self.interact.adjustEnter = true;
@@ -874,18 +897,40 @@ class RHMarshal {
 	}
 
 	handleGraphInteractionMove(evt) {
-		// user drags on graph
+		// user drags on graph: up/down adjusts EnterAt/ExitAt, left/right scrolls a zoomed graph
 		var rect = self.graph.canvas.getBoundingClientRect();
 
 		if (evt.targetTouches) {
-			var y = (evt.targetTouches[0].clientY - rect.top) / evt.target.offsetHeight;
+			var clientX = evt.targetTouches[0].clientX;
+			var clientY = evt.targetTouches[0].clientY;
 		} else {
-			var y = (evt.clientY - rect.top) / evt.target.offsetHeight;
+			var clientX = evt.clientX;
+			var clientY = evt.clientY;
 		}
 
-		if (Math.abs(y - self.interact.startingY) > 0.01 || self.interact.isDragging) { // prevent accidental drag
+		if (!self.interact.dragAxis) {
+			var dx = Math.abs(clientX - self.interact.startingClientX);
+			var dy = Math.abs(clientY - self.interact.startingClientY);
+			if (self.canZoom() && dx >= self.drag_threshold_px && dx > dy) {
+				self.interact.dragAxis = 'x';
+			} else if (dy >= self.drag_threshold_px) {
+				self.interact.dragAxis = 'y';
+			} else { // prevent accidental drag
+				return;
+			}
+		}
+
+		if (self.interact.dragAxis == 'x') {
+			self.interact.isPanning = true;
+			if (self.isZoomed()) {
+				var view = self.interact.startingView;
+				var shift = (self.interact.startingClientX - clientX) / rect.width * (view.to - view.from);
+				self.setViewRange(view.from + shift, view.to + shift);
+			}
+		} else {
 			self.interact.isDragging = true;
 
+			var y = (clientY - rect.top) / rect.height;
 			var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
 
 			if (self.interact.adjustEnter) {
@@ -948,15 +993,25 @@ class RHMarshal {
 
 	graphInteractCancel() {
 		if (self.interact.canDrag) {
-			self.interact.canDrag = false;
-			self.interact.isDragging = false;
-			self.handleGraphInteractionCancel();
+			var wasPanning = self.interact.isPanning;
+			self.endGraphInteraction();
+			if (!wasPanning) {
+				self.handleGraphInteractionCancel();
+			}
 		}
+	}
+
+	endGraphInteraction() {
+		self.interact.canDrag = false;
+		self.interact.isDragging = false;
+		self.interact.isPanning = false;
+		self.interact.dragAxis = null;
 	}
 
 	// mouse handlers
 	graphInteractMouseDown(evt) {
-		if (!self.interact.isTouchEvent) {
+		if (!self.interact.isTouchEvent && evt.button === 0) { // left button only
+			evt.preventDefault(); // no text selection while dragging
 			self.interact.canDrag = true;
 			self.handleGraphInteractionStart(evt);
 		}
@@ -966,48 +1021,58 @@ class RHMarshal {
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.canDrag) {
 				self.handleGraphInteractionMove(evt);
-				self.recalcRace();
+				if (self.interact.isDragging) {
+					self.recalcRace();
+				}
 			}
 		}
 	}
 
 	graphInteractMouseUp(evt){
-		if (!self.interact.isTouchEvent) {
-			if (self.interact.isDragging) {
+		if (evt.button !== 0) {
+			return;
+		}
+		if (!self.interact.isTouchEvent && self.interact.canDrag) {
+			if (self.interact.isPanning) {
+				// scrolling only; no tap or lap recalculation
+			} else if (self.interact.isDragging) {
 				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
-			self.interact.canDrag = false;
-			self.interact.isDragging = false;
-		}
-		self.interact.isTouchEvent = false;
-		evt.stopPropagation();
-	}
-
-	graphInteractMouseOut(evt){
-		if (!self.interact.isTouchEvent) {
-			if (self.interact.isDragging) {
-				self.handleGraphInteractionCancel();
-			}
+			self.endGraphInteraction();
 		}
 		self.interact.isTouchEvent = false;
 	}
 
 	graphInteractWheel(evt) {
-		if (!self.race_loaded) {
+		if (!self.race_loaded || !self.canZoom()) {
 			return;
 		}
 		var e = evt.originalEvent || evt;
+		evt.preventDefault();
+		var now = performance.now();
+		if (now >= self.wheel_guard_until) { // gesture start: hold the page here
+			self.wheel_guard_scroll = {x: window.scrollX, y: window.scrollY};
+		}
+		self.wheel_guard_until = now + self.wheel_guard_ms;
+		if (!e.deltaY) {
+			return;
+		}
 		var rect = self.elements.graph_canvas.getBoundingClientRect();
 		var anchor = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-		var delta = e.deltaY || e.deltaX;
-		if (e.ctrlKey || e.metaKey) {
-			evt.preventDefault();
-			self.zoomViewRange(delta < 0 ? 0.8 : 1.25, anchor);
-		} else if (self.isZoomed() && (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
-			evt.preventDefault();
-			self.panViewRange((delta > 0 ? 1 : -1) * 0.1);
+		// zoom by wheel distance (a wheel notch is about 100 px) so trackpads zoom smoothly
+		var px = e.deltaY * (e.deltaMode == 1 ? 33 : (e.deltaMode == 2 ? 400 : 1));
+		px = Math.max(Math.min(px, 300), -300);
+		self.zoomViewRange(Math.pow(1.25, px / 100), anchor);
+	}
+
+	graphScrollGuard() {
+		// undoes page scrolling while a graph zoom gesture is still arriving
+		var held = self.wheel_guard_scroll;
+		if (held && performance.now() < self.wheel_guard_until
+			&& (window.scrollX != held.x || window.scrollY != held.y)) {
+			window.scrollTo({left: held.x, top: held.y, behavior: 'instant'});
 		}
 	}
 
@@ -1030,11 +1095,16 @@ class RHMarshal {
 	graphInteractTouchEnd(evt){
 		evt.preventDefault();
 		if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
-			if (self.interact.isDragging) {
+			if (self.interact.isPanning) {
+				// scrolling only; no tap or lap recalculation
+			} else if (self.interact.isDragging) {
 				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
+			self.interact.isDragging = false;
+			self.interact.isPanning = false;
+			self.interact.dragAxis = null;
 		}
 		evt.stopPropagation();
 	}

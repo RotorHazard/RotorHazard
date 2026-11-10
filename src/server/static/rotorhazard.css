@@ -2519,13 +2519,6 @@ button .wide {
 	gap: 0.25em;
 }
 
-#graph-view-controls .graph-view-hint {
-	flex-basis: 100%;
-	margin: 0;
-	font-size: 0.8em;
-	opacity: 0.7;
-}
-
 #race-view,
 #m-race-view {
 	flex: 1 1 24em;
