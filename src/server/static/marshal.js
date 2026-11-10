@@ -901,12 +901,12 @@ class RHMarshal {
 		var range = self.getViewRange();
 		var time = self.race.start_time + self.mapRange(self.interact.startingX, range.from, range.to);
 
-		if (!$.isEmptyObject(self.calc_result)) {
+		if (!$.isEmptyObject(self.race.calc_result)) {
 			// find closest start/end time to "time" point
 			var delta = Infinity;
 			var selectedLap = null;
-			for (var i in self.calc_result) {
-				var lap = self.calc_result[i];
+			for (var i in self.race.calc_result) {
+				var lap = self.race.calc_result[i];
 
 				if (time > lap.crossingEnd) {
 					selectedLap = i;
@@ -916,7 +916,7 @@ class RHMarshal {
 					selectedLap = i;
 					break;
 				} else {
-					diff = Math.abs(time - lap.crossingStart);
+					var diff = Math.abs(time - lap.crossingStart);
 					if (diff < delta) {
 						selectedLap = i;
 					}
@@ -926,7 +926,7 @@ class RHMarshal {
 
 			if (typeof self.callbacks.graphInteractTap === 'function') {
 				self.callbacks.graphInteractTap({
-					'lapTimeStamp': self.calc_result[selectedLap].lap_time_stamp,
+					'lapTimeStamp': self.race.calc_result[selectedLap].lap_time_stamp,
 				});
 			}
 		} else {
