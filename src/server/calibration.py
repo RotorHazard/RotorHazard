@@ -977,6 +977,8 @@ class Calibration:
         races.sort(key=lambda x: x.id, reverse=True)
         pilotRaces = self._racecontext.rhdata.get_savedPilotRaces()
         pilotRaces.sort(key=lambda x: x.id, reverse=True)
+        # get ids of pilot races with at least one non-deleted lap
+        lapPilotRaceIds = {lap.pilotrace_id for lap in self._racecontext.rhdata.get_active_savedRaceLaps()}
 
         # test for disabled node
         if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
@@ -992,7 +994,8 @@ class Calibration:
                 for pilotRace in pilotRaces:
                     if pilotRace.race_id == race.id and \
                         pilotRace.node_index == seat_index and \
-                        pilotRace.frequency == node.frequency:
+                        pilotRace.frequency == node.frequency and \
+                        pilotRace.id in lapPilotRaceIds:
                         logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
                         return {
                             'enter_at_level': pilotRace.enter_at,
@@ -1007,7 +1010,8 @@ class Calibration:
                     if pilotRace.race_id == race.id and \
                         pilotRace.node_index == seat_index and \
                         pilotRace.pilot_id == pilot and \
-                        pilotRace.frequency == node.frequency:
+                        pilotRace.frequency == node.frequency and \
+                        pilotRace.id in lapPilotRaceIds:
                         logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
                         return {
                             'enter_at_level': pilotRace.enter_at,
@@ -1019,7 +1023,8 @@ class Calibration:
         for pilotRace in pilotRaces:
             if pilotRace.node_index == seat_index and \
                 pilotRace.pilot_id == pilot and \
-                pilotRace.frequency == node.frequency:
+                pilotRace.frequency == node.frequency and \
+                pilotRace.id in lapPilotRaceIds:
                 logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
                 return {
                     'enter_at_level': pilotRace.enter_at,
@@ -1029,7 +1034,8 @@ class Calibration:
         # test for same node
         for pilotRace in pilotRaces:
             if pilotRace.node_index == seat_index and \
-                pilotRace.frequency == node.frequency:
+                pilotRace.frequency == node.frequency and \
+                pilotRace.id in lapPilotRaceIds:
                 logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
                 return {
                     'enter_at_level': pilotRace.enter_at,
