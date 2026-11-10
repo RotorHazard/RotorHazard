@@ -242,16 +242,19 @@ class RHMarshal {
 		// set initial display of loaded data
 		self.race_loaded = true;
 		if (self.race.history_times.length) {
+			self.race.start_time_data = self.race.history_times[0];
 			self.race.end_time = self.race.history_times[self.race.history_times.length - 1];
 			self.graph.options.minValue = Math.min.apply(null, self.race.history_values) - 2;
 			self.graph.options.maxValue = Math.max.apply(null, self.race.history_values) + 2;
 		} else {
+			self.start_time_data = self.race.start_time;
 			self.race.end_time = self.race.start_time + 1
 			self.graph.options.minValue = self.race.exit_at;
 			self.graph.options.maxValue = self.race.enter_at;
 		}
 
-		self.race.history_duration = self.race.end_time - self.race.start_time;
+		
+		self.race.history_duration = self.race.end_time - self.race.start_time_data;
 
 		if (!self.race.race_format) {
 			self.race.race_format = {
@@ -288,10 +291,21 @@ class RHMarshal {
 		if (self.race.race_format.race_time_sec) {
 			// convert lap time to history time
 			var finish_time = self.race.race_format.race_time_sec;
+			var start_time = self.race.start_time_data - self.race.start_time;
+
+			// highlight before start
+			if (start_time < 0) {
+				self.graph_series.race_bounds.append(start_time - .001, self.graph.options.maxValue + 10);
+				self.graph_series.race_bounds.append(-0.001, self.graph.options.maxValue + 10);
+				self.graph_series.race_bounds.append(0, self.graph.options.minValue - 10);
+			}
+		
 			// highlight after finish
-			self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
-			self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
+			if (finish_time < self.race.end_time) {
+				self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
+				self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
+				self.graph_series.race_bounds.append(self.race.end_time, self.graph.options.maxValue + 10);
+			}
 		}
 
 		// Lap marker series lines drawn below the bottom of the graph
@@ -439,7 +453,7 @@ class RHMarshal {
 		];
 
 		self.graph.lastChartTimestamp = 0;  // page renders on demand, so never let smoothie skip a paint as "same frame"
-		self.graph.render(self.elements.graph_canvas, self.race.history_duration);
+		self.graph.render(self.elements.graph_canvas, self.race.end_time - self.race.start_time);
 	}
 
 	clearGraph(){
