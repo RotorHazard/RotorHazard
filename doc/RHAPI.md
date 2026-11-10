@@ -1376,6 +1376,14 @@ Current status of system. Returns `RaceStatus`.
 - `RaceStatus.RACING`: Racing is underway
 - `RaceStatus.DONE`: System no longer listening for lap crossings, race results must be saved or discarded
 
+#### race.race_time_sec
+_Read only_
+Duration of the current race in seconds, or `0` if the race is not time-limited. Returns `int` (`float` in co-op mode). Taken from the active race format, but co-op racing mode may override it with the heat's best-time value.
+
+#### race.unlimited_time
+_Read only_
+Whether the race clock counts up rather than down to a fixed duration. Returns `int` used as a boolean. Taken from the active race format, but co-op racing mode may override it.
+
 #### race.stage_time_internal
 _Read only_
 Internal (monotonic) timestamp of race staging start time. Returns `int`

@@ -1193,6 +1193,14 @@ class RaceAPI():
         return self._racecontext.race.phonetic_status_msg
 
     @property
+    def race_time_sec(self):
+        return self._racecontext.race.race_time_sec
+
+    @property
+    def unlimited_time(self):
+        return self._racecontext.race.unlimited_time
+
+    @property
     def stage_time_internal(self):
         return self._racecontext.race.stage_time_monotonic
 
