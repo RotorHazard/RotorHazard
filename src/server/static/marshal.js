@@ -29,6 +29,7 @@ class RHMarshal {
 		graphInteractCancel: false,
 		graphInteractTap: false,
 		recalcRace: false,
+		viewRange: false,
 	}
 
 	race = {
@@ -51,6 +52,13 @@ class RHMarshal {
 		selection: false,
 	}
 	race_loaded = false;
+
+	// visible x-range of the graph in seconds from race start; null = full race
+	view = {
+		from: null,
+		to: null,
+	}
+	min_view_span = 0.5; // seconds
 
 	seriesStyle = {
 		rssi: {lineWidth:1.7,
@@ -106,6 +114,7 @@ class RHMarshal {
 		self.callbacks.graphInteractCancel = options.callbacks.graphInteractCancel;
 		self.callbacks.graphInteractTap = options.callbacks.graphInteractTap;
 		self.callbacks.recalcRace = options.callbacks.recalcRace;
+		self.callbacks.viewRange = options.callbacks.viewRange;
 
 		if (document.readyState !== 'loading') {
 			self.atDOMReady();
@@ -141,6 +150,9 @@ class RHMarshal {
 		$(self.elements.graph_canvas).on('touchCancel', self.graphInteractTouchCancel);
 		$(document).on('touchend', self.graphInteractCancel);
 
+		// zoom (ctrl + wheel) and pan (shift + wheel, or horizontal wheel while zoomed)
+		$(self.elements.graph_canvas).on('wheel', self.graphInteractWheel);
+
 		// graph resize catch
 		var resizeTimer;
 		$(window).on('resize', function(){
@@ -169,6 +181,7 @@ class RHMarshal {
 			},
 			scaleSmoothing: 1,
 			nonRealtimeData: true,
+			maxDataSetLength: Infinity, // keep data scrolled off the left edge when zoomed in
 		});
 		self.graph_series.rssi = new TimeSeries();
 		self.graph.addTimeSeries(self.graph_series.rssi, this.seriesStyle.rssi);
@@ -252,6 +265,9 @@ class RHMarshal {
 		}
 
 		self.race.history_duration = self.race.end_time - self.race.start_time;
+		self.view.from = null;
+		self.view.to = null;
+		self.notifyViewRange();
 
 		if (!self.race.race_format) {
 			self.race.race_format = {
@@ -418,6 +434,13 @@ class RHMarshal {
 		self.graph_series.selection.append(history_time_stamp, self.graph.options.maxValue + 10);
 		self.graph_series.selection.append(history_time_stamp + .001, self.graph.options.maxValue + 10);
 		self.graph_series.selection.append(history_time_stamp + .002, self.graph.options.minValue - 10);
+
+		// keep the marked lap visible when zoomed in
+		var range = self.getViewRange();
+		if (self.isZoomed() && (history_time_stamp < range.from || history_time_stamp > range.to)) {
+			var half = (range.to - range.from) / 2;
+			self.setViewRange(history_time_stamp - half, history_time_stamp + half, false);
+		}
 	}
 
 	clearMarkedLap() {
@@ -430,7 +453,8 @@ class RHMarshal {
 
 	renderGraph() {
 		var graphWidth = self.elements.graph_canvas.offsetWidth;
-		var span = self.race.history_duration / graphWidth;
+		var range = self.getViewRange();
+		var span = (range.to - range.from) / graphWidth;
 
 		self.graph.options.millisPerPixel = span;
 		self.graph.options.horizontalLines = [
@@ -439,7 +463,98 @@ class RHMarshal {
 		];
 
 		self.graph.lastChartTimestamp = 0;  // page renders on demand, so never let smoothie skip a paint as "same frame"
-		self.graph.render(self.elements.graph_canvas, self.race.history_duration);
+		self.graph.render(self.elements.graph_canvas, range.to);
+	}
+
+	getViewRange() {
+		var duration = self.race.history_duration || 0;
+		return {
+			from: (self.view.from === null) ? 0 : self.view.from,
+			to: (self.view.to === null) ? duration : self.view.to,
+			duration: duration,
+		};
+	}
+
+	isZoomed() {
+		return self.view.from !== null;
+	}
+
+	setViewRange(from, to, render=true) {
+		// show only the given range (seconds from race start) across the graph width
+		var duration = self.race.history_duration || 0;
+		from = Number(from);
+		to = Number(to);
+		if (!self.race_loaded || !isFinite(from) || !isFinite(to) || duration <= 0) {
+			return false;
+		}
+		if (to < from) {
+			[from, to] = [to, from];
+		}
+		var minSpan = Math.min(self.min_view_span, duration);
+		if (to - from < minSpan) {
+			var mid = (from + to) / 2;
+			from = mid - minSpan / 2;
+			to = mid + minSpan / 2;
+		}
+		// shift (not shrink) a range that runs past either end
+		if (from < 0) {
+			to -= from;
+			from = 0;
+		}
+		if (to > duration) {
+			from -= to - duration;
+			to = duration;
+		}
+		from = Math.max(from, 0);
+
+		if (from <= 0 && to >= duration) {
+			self.view.from = null;
+			self.view.to = null;
+		} else {
+			self.view.from = from;
+			self.view.to = to;
+		}
+		self.notifyViewRange();
+		if (render) {
+			self.renderGraph();
+		}
+		return true;
+	}
+
+	resetViewRange() {
+		self.view.from = null;
+		self.view.to = null;
+		self.notifyViewRange();
+		if (self.race_loaded) {
+			self.renderGraph();
+		}
+	}
+
+	zoomViewRange(factor, anchor=0.5) {
+		// factor < 1 zooms in, > 1 zooms out; anchor is the graph x-fraction kept in place
+		var range = self.getViewRange();
+		var span = range.to - range.from;
+		var at = range.from + span * anchor;
+		var newSpan = span * factor;
+		self.setViewRange(at - newSpan * anchor, at + newSpan * (1 - anchor));
+	}
+
+	panViewRange(fraction) {
+		// moves the view by a fraction of its width (negative = left)
+		if (!self.isZoomed()) {
+			return;
+		}
+		var range = self.getViewRange();
+		var shift = (range.to - range.from) * fraction;
+		self.setViewRange(range.from + shift, range.to + shift);
+	}
+
+	notifyViewRange() {
+		if (typeof self.callbacks.viewRange === 'function') {
+			var range = self.getViewRange();
+			range.zoomed = self.isZoomed();
+			self.callbacks.viewRange(range);
+		}
 	}
 
 	clearGraph(){
@@ -783,7 +898,8 @@ class RHMarshal {
 
 	handleGraphInteractionTap(evt) {
 		// user taps but does not drag
-		var time = self.mapRange(self.interact.startingX, self.race.start_time, self.race.end_time);
+		var range = self.getViewRange();
+		var time = self.race.start_time + self.mapRange(self.interact.startingX, range.from, range.to);
 
 		if (!$.isEmptyObject(self.calc_result)) {
 			// find closest start/end time to "time" point
@@ -876,6 +992,23 @@ class RHMarshal {
 			}
 		}
 		self.interact.isTouchEvent = false;
+	}
+
+	graphInteractWheel(evt) {
+		if (!self.race_loaded) {
+			return;
+		}
+		var e = evt.originalEvent || evt;
+		var rect = self.elements.graph_canvas.getBoundingClientRect();
+		var anchor = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+		var delta = e.deltaY || e.deltaX;
+		if (e.ctrlKey || e.metaKey) {
+			evt.preventDefault();
+			self.zoomViewRange(delta < 0 ? 0.8 : 1.25, anchor);
+		} else if (self.isZoomed() && (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
+			evt.preventDefault();
+			self.panViewRange((delta > 0 ? 1 : -1) * 0.1);
+		}
 	}
 
 	// touch handlers
