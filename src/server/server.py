@@ -288,7 +288,7 @@ if __name__ == '__main__' and len(sys.argv) > 1:
                 sys.exit(1)
         else:
             print("Usage: python server.py {} N".format(CMDARG_MIN_MOCKS))
-            sys.exit(1) 
+            sys.exit(1)
     if CMDARG_VIEW_DB_STR in sys.argv:
         viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
         if viewdbArgIdx < len(sys.argv):
@@ -1802,26 +1802,23 @@ def download_database(db_file):
 @catchLogExceptionsWrapper
 def on_list_backups(*args):
     '''List database files in db_bkp'''
+    emit('backups_list', {
+        'backup_files': list_backup_files()
+    })
 
+def list_backup_files():
+    '''Returns sorted list of database files in db_bkp, or None if the directory does not exist'''
     if not os.path.exists(DB_BKP_DIR_NAME):
-        emit_payload = {
-            'backup_files': None
-        }
-    else:
-        files = []
-        for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
-            files.extend(filenames)
-            break
+        return None
 
-        files.sort(key=str.casefold)
+    files = []
+    for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
+        files.extend(filenames)
+        break
 
-        files = list(filter(lambda x: x.endswith(".db"), files))
+    files.sort(key=str.casefold)
 
-        emit_payload = {
-            'backup_files': files
-        }
-
-    emit('backups_list', emit_payload)
+    return list(filter(lambda x: x.endswith(".db"), files))
 
 def restore_database_file(db_file_name):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
@@ -1906,6 +1903,146 @@ def on_delete_database_file(data):
             on_list_backups()
         else:
             logger.warning('Unable to delete {0}: File does not exist'.format(backup_file))
+
+DB_UPLOAD_MAX_NAME_LEN = 120
+DB_UPLOAD_FREE_SPACE_RESERVE = 50 * 1024 * 1024  # keep free after upload, so live database and logs can still grow
+
+def validate_uploaded_database_file(db_path):
+    '''Checks that the given file is an intact SQLite database containing RotorHazard event data
+       which can be restored by this server. Returns None if valid, otherwise an error message.'''
+    import sqlite3
+    conn = None
+    try:
+        # open read-only so validation never modifies the uploaded file
+        conn = sqlite3.connect('file:{}?mode=ro'.format(Path(db_path).resolve().as_posix()), uri=True)
+        result = conn.execute('PRAGMA quick_check').fetchone()
+        if not result or str(result[0]).lower() != 'ok':
+            return __('Database file is damaged')
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not {'global_settings', 'pilot', 'heat', 'race_format'}.issubset(tables):
+            return __('File is not a RotorHazard event database')
+        db_api = 0
+        row = conn.execute("SELECT option_value FROM global_settings WHERE option_name='server_api'").fetchone()
+        if row and row[0] is not None:
+            try:
+                db_api = int(row[0])
+            except (TypeError, ValueError):
+                return __('File is not a RotorHazard event database')
+        if db_api > SERVER_API:
+            return __('Database was created by a newer RotorHazard version (API {0}, this server supports {1})').\
+                        format(db_api, SERVER_API)
+    except sqlite3.DatabaseError as ex:
+        logger.info('Uploaded database failed validation: {}'.format(ex))
+        return __('File is not a valid database')
+    finally:
+        if conn:
+            conn.close()
+    return None
+
+@SOCKET_IO.on('upload_database')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def on_upload_database(data):
+    '''Upload an event database file (e.g. from another timer) into the event archive (does not restore it).'''
+
+    def upload_failed(msg):
+        logger.warning('Event database upload rejected: {}'.format(msg))
+        RaceContext.rhui.emit_priority_message(__('Event upload failed: {0}').format(msg), False, nobroadcast=True)
+        emit('database_upload_done', {'ok': False, 'message': msg})
+
+    if not isinstance(data, dict):
+        return upload_failed(__('No file received'))
+
+    file_data = data.get('file_data')
+    if isinstance(file_data, bytearray):
+        file_data = bytes(file_data)
+    if not isinstance(file_data, bytes) or not file_data:
+        return upload_failed(__('No file received'))
+
+    # sanitize file name: strip any path, remove problematic characters, enforce '.db' extension
+    raw_name = str(data.get('file_name') or '')
+    raw_name = raw_name.replace('\\', '/').split('/')[-1]
+    (stem, ext) = os.path.splitext(raw_name)
+    if ext.lower() != '.db':
+        return upload_failed(__('Only database files (.db) can be uploaded'))
+    stem = RHUtils.cleanFileName(stem)
+    if not stem:
+        return upload_failed(__('Invalid file name'))
+    if len(stem) > DB_UPLOAD_MAX_NAME_LEN:
+        return upload_failed(__('File name is too long'))
+    file_name = stem + '.db'
+
+    # quick content check: SQLite header
+    if len(file_data) < 512 or not file_data.startswith(b'SQLite format 3\x00'):
+        return upload_failed(__('File is not a valid database'))
+
+    # check for existing file of same name (case-insensitive, for case-insensitive filesystems)
+    if os.path.exists(DB_BKP_DIR_NAME):
+        for existing in os.listdir(DB_BKP_DIR_NAME):
+            if existing.casefold() == file_name.casefold():
+                return upload_failed(__('An archived event named "{0}" already exists. Rename the file and try again.').\
+                                        format(html.escape(file_name)))
+    else:
+        os.makedirs(DB_BKP_DIR_NAME)
+        RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME)
+
+    # check free disk space: temp file is renamed (not copied), so only the file itself plus
+    #  small SQLite side files (journal/-shm while validating) are needed, plus a safety reserve
+    try:
+        import shutil
+        free_bytes = shutil.disk_usage(DB_BKP_DIR_NAME).free
+    except Exception as ex:
+        logger.warning('Unable to determine free disk space: {}'.format(ex))
+        free_bytes = None
+    if free_bytes is not None:
+        required_bytes = len(file_data) + 1024 * 1024 + DB_UPLOAD_FREE_SPACE_RESERVE
+        if free_bytes < required_bytes:
+            logger.warning('Insufficient disk space for event upload: {} bytes free, {} bytes required'.\
+                           format(free_bytes, required_bytes))
+            return upload_failed(__('Not enough free disk space (required: {0} MB, available: {1} MB)').\
+                                    format(round(required_bytes / 1048576, 1), round(free_bytes / 1048576, 1)))
+
+    target_path = os.path.join(DB_BKP_DIR_NAME, file_name)
+    # write to temporary file (not ending in '.db', so it never appears in the archive list), validate, then move
+    tmp_path = os.path.join(DB_BKP_DIR_NAME, '.upload_{}_{}.tmp'.format(os.getpid(), random.randint(0, 999999)))
+    try:
+        with open(tmp_path, 'wb') as file_obj:
+            file_obj.write(file_data)
+
+        err_msg = validate_uploaded_database_file(tmp_path)
+        if err_msg:
+            return upload_failed(html.escape(err_msg))
+
+        if os.path.exists(target_path):  # re-check in case of concurrent upload
+            return upload_failed(__('An archived event named "{0}" already exists. Rename the file and try again.').\
+                                    format(html.escape(file_name)))
+        os.rename(tmp_path, target_path)
+        RHUtils.checkSetFileOwnerPi(target_path)
+    except OSError as ex:
+        import errno
+        logger.exception('Error saving uploaded event database')
+        if getattr(ex, 'errno', None) == errno.ENOSPC:
+            return upload_failed(__('Not enough free disk space'))
+        return upload_failed(__('Unable to save file (see log)'))
+    except Exception:
+        logger.exception('Error saving uploaded event database')
+        return upload_failed(__('Unable to save file (see log)'))
+    finally:
+        for path in (tmp_path, tmp_path + '-journal', tmp_path + '-wal', tmp_path + '-shm'):
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                logger.warning('Unable to remove temporary upload file {}'.format(path))
+
+    logger.info('Uploaded event database saved as {0} ({1} bytes)'.format(target_path, len(file_data)))
+    Events.trigger(Evt.DATABASE_UPLOAD_BACKUP, {
+        'file_name': file_name,
+        })
+
+    on_list_backups()
+    emit('database_upload_done', {'ok': True, 'file_name': file_name})
+    RaceContext.rhui.emit_priority_message(__('Event uploaded: {0}').format(html.escape(file_name)), False, nobroadcast=True)
 
 @SOCKET_IO.on('reset_database')
 @requires_socketio_auth
@@ -4190,9 +4327,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
             'categories_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_CATEGORIES_URI')
         }
         RaceContext.plugin_manager = PluginInstallationManager(
-            plugin_dir, 
-            remote_config, 
-            ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR))), 
+            plugin_dir,
+            remote_config,
+            ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR))),
             RaceContext.rhui.emit_priority_message
         )
 

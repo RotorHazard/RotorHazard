@@ -3295,6 +3295,64 @@
 			socket.emit('download_database', data);
 		});
 
+		/* Upload event database into archive (does not restore) */
+		var UPLOAD_DB_MAX_BYTES = 50 * 1000 * 1000; // matches server max_http_buffer_size
+
+		$('button#upload_database').click(function (event) {
+			$('#upload_database_file').val('');
+			$('#upload_database_file').trigger('click');
+		});
+
+		$('#upload_database_file').change(function () {
+			var file = $(this).prop('files')[0];
+			$(this).val('');
+			if (!file) {
+				return;
+			}
+			if (!/\.db$/i.test(file.name)) {
+				push_message(__('Only database files (.db) can be uploaded'), true);
+				return;
+			}
+			if (file.size <= 0) {
+				push_message(__('File is empty'), true);
+				return;
+			}
+			if (file.size > UPLOAD_DB_MAX_BYTES) {
+				push_message(__('File is too large (max 50MB)'), true);
+				return;
+			}
+			var lower_name = file.name.toLowerCase();
+			var exists = false;
+			$('#database_list option').each(function () {
+				if (String($(this).val()).toLowerCase() == lower_name) {
+					exists = true;
+				}
+			});
+			if (exists) {
+				push_message(__('An archived event with this name already exists. Rename the file and try again.'), true);
+				return;
+			}
+
+			$('button#upload_database').prop('disabled', true);
+			socket.emit('upload_database', {
+				file_name: file.name,
+				file_data: file
+			});
+		});
+
+		socket.on('database_upload_done', function (msg) {
+			$('button#upload_database').prop('disabled', false);
+			// refreshed list arrives before this; select the uploaded file
+			if (msg.ok && msg.file_name) {
+				var match = $('#database_list option').filter(function () {
+					return $(this).val() == msg.file_name;
+				});
+				if (match.length) {
+					$('#database_list').val(msg.file_name);
+				}
+			}
+		});
+
 		socket.on('reset_confirm', function () {
 			push_message(__('Data Cleared'));
 		});
@@ -3721,6 +3779,8 @@
 			<button data-mfp-src="#database_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Event') }}</button>
 			<button data-mfp-src="#database_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Event') }}</button>
 			<button id="download_database" disabled="disabled">{{ __('Download Event Database') }}</button>
+			<button id="upload_database">{{ __('Upload Event') }}</button>
+			<input type="file" id="upload_database_file" accept=".db" style="display: none;" />
 		</div>
 
 		<div id="database_archive_new_confirm" class="priority-message-interrupt mfp-hide popup">
