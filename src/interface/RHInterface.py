@@ -230,7 +230,11 @@ class RHInterface(BaseHardwareInterface):
                     if node.api_level >= 32:
                         data = node.read_block(self, READ_LAP_PASS_STATS, 8)
                         if data != None:
-                            data.extend(node.read_block(self, READ_LAP_EXTREMUMS, 8))
+                            ext_data = node.read_block(self, READ_LAP_EXTREMUMS, 8)
+                            if ext_data != None:
+                                data.extend(ext_data)
+                            else:
+                                data = None  # skip node if second read failed
                     elif node.api_level >= 21:
                         data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
