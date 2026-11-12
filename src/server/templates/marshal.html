@@ -256,6 +256,77 @@
 	} catch (ex) {  // storage unavailable in a private window
 	}
 
+	// a deep link (e.g. from the results page) selects a race and optionally marks laps:
+	//  ?heat=<heat id>&round=<round>&pilot=<pilot id>[&lap=<crossing index>[&count=<laps>]]
+	//  where the crossing index counts the race's non-deleted crossings from 0, as listed here
+	var pending_deeplink = null;
+	try {
+		var deeplink_params = new URLSearchParams(window.location.search);
+		if (deeplink_params.has('heat')) {
+			pending_selection = {
+				heat: deeplink_params.get('heat'),
+				round: deeplink_params.get('round'),
+				pilot: deeplink_params.get('pilot'),
+			};
+			var deeplink_lap = parseInt(deeplink_params.get('lap'));
+			if (!isNaN(deeplink_lap) && deeplink_lap >= 0) {
+				var deeplink_count = parseInt(deeplink_params.get('count'));
+				pending_deeplink = {
+					heat: pending_selection.heat,
+					round: pending_selection.round,
+					pilot: pending_selection.pilot,
+					lap: deeplink_lap,
+					count: (!isNaN(deeplink_count) && deeplink_count > 0) ? deeplink_count : 1,
+				};
+			}
+			// drop the parameters so a later refresh restores the latest selection instead
+			history.replaceState(null, '', window.location.pathname);
+		}
+	} catch (ex) {
+	}
+
+	// mark the deep-linked laps once their race is shown
+	function apply_deeplink_laps() {
+		var link = pending_deeplink;
+		if (!link) {
+			return;
+		}
+		pending_deeplink = null;
+		if (String(current_race_data.heat_id) != String(link.heat) ||
+			String(current_race_data.round_id) != String(link.round) ||
+			String(current_race_data.pilot_id) != String(link.pilot)) {
+			return;  // the linked race was not found
+		}
+
+		var rows = $('#laps tbody tr').filter(function() {
+			return !$(this).hasClass('lap-deleted');
+		});
+		var first = rows.eq(link.lap);
+		if (!first.length) {
+			return;
+		}
+		clearMarkedLap();
+		rows.slice(link.lap, link.lap + link.count).addClass('lap-highlighted');
+		var last = rows.eq(Math.min(link.lap + link.count, rows.length) - 1);
+
+		// mark the end of the (first) lap and show the marked laps in the graph
+		var first_stamp = parseFloat(first.data('lapTimeStamp'));
+		marshal.markLap(first_stamp);
+		if (link.count > 1) {
+			var prev = rows.eq(link.lap - 1);
+			var from_stamp = (link.lap > 0 && prev.length) ? parseFloat(prev.data('lapTimeStamp')) : first_stamp;
+			var to_stamp = parseFloat(last.data('lapTimeStamp'));
+			var margin = Math.max((to_stamp - from_stamp) / 10000, 1);
+			marshal.setViewRange(from_stamp / 1000 - margin, to_stamp / 1000 + margin, false);
+		}
+		marshal.renderGraph();
+
+		var row_el = first[0];
+		if (row_el && row_el.scrollIntoView) {
+			row_el.scrollIntoView({block: 'nearest'});
+		}
+	}
+
 	function pop_selection(key) {
 		var value = pending_selection[key];
 		pending_selection[key] = null;  // applies to the first selection only
@@ -518,6 +589,7 @@
 			$('#exitat').val(msg.exit_at);
 
 			enableUI();
+			apply_deeplink_laps();
 			return false;
 		});
 
