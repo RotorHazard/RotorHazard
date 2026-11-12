@@ -166,7 +166,7 @@ class StreamToLogger:
         if buf.lstrip().startswith("PYDEV DEBUGGER WARNING"):
             lvl = logging.DEBUG  # don't treat expected debugger warning as error
             buf = buf.lstrip()
-        elif 'Invalid HTTP method:' in buf:
+        elif 'Invalid HTTP method:' in buf or 'Expected GET method;' in buf:
             lvl = logging.WARNING  # don't treat a non-HTTP request (such as an HTTPS attempt) as error
         for line in buf.rstrip().splitlines():
             self.logger.log(lvl, line.rstrip())
@@ -176,9 +176,12 @@ class StreamToLogger:
 
 
 class _InvalidSessionFilter(logging.Filter):
-    '''Logs engineio.server's 'Invalid session' (a client reconnecting with a stale session id) at WARNING.'''
+    '''Logs engineio.server's 'Invalid session', 'Session is disconnected' and 'Session not found' (a client
+       request with a stale session id) at WARNING.'''
     def filter(self, record):
-        if record.levelno == logging.ERROR and str(record.msg).startswith('Invalid session '):
+        # the KeyError-based messages are logged with quotes, as in "'Session is disconnected' <sid>"
+        if record.levelno == logging.ERROR and str(record.msg).lstrip("'").startswith(
+                ('Invalid session ', 'Session is disconnected', 'Session not found')):
             record.levelno = logging.WARNING
             record.levelname = logging.getLevelName(logging.WARNING)
         return True
