@@ -4690,6 +4690,8 @@ def getRaceStatusStrs(rhapi, spoken_flag, race_results, last_race_obj, heat_data
 
 # Text replacer
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
+    if not isinstance(text, str):
+        return ''
     if '%' in text:
         race_results = rhapi.race.results
         # a saved race is cleared from the current-race object, so race-result tokens fall back

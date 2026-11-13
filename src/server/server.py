@@ -2722,15 +2722,27 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
+def get_seat_index_from_data(data):
+    '''Returns the seat index given by 'node'/'seat', or resolved from 'pilot_id' '''
+    seat_index = data.get('node', data.get('seat'))
+    if seat_index is None:
+        pilot_id = data.get('pilot_id')
+        if pilot_id is not None:
+            node_pilots = RaceContext.race.node_pilots or {}
+            seat_index = next((idx for idx, pid in node_pilots.items()
+                               if pid == pilot_id), None)
+    return seat_index
+
 @SOCKET_IO.on('replace_current_laps')
 @requires_socketio_auth
 def replace_current_laps(data):
+    seat_index = get_seat_index_from_data(data)
     on_set_enter_at_level({
-        'node': data['seat'],
+        'node': seat_index,
         'enter_at_level': data['enter_at']
     })
     on_set_exit_at_level({
-        'node': data['seat'],
+        'node': seat_index,
         'exit_at_level': data['exit_at']
     })
     RaceContext.race.replace_laps(data)
@@ -2792,8 +2804,8 @@ def on_set_current_heat(data):
 @SOCKET_IO.on('delete_lap')
 @requires_socketio_auth
 def on_delete_lap(data):
-    node_index = data['node']
-    lap_index = data['lap_index']
+    node_index = get_seat_index_from_data(data)
+    lap_index = data.get('lap_index')
 
     if node_index is None or lap_index is None:
         logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
@@ -2804,8 +2816,8 @@ def on_delete_lap(data):
 @SOCKET_IO.on('restore_deleted_lap')
 @requires_socketio_auth
 def on_restore_deleted_lap(data):
-    node_index = data['node']
-    lap_index = data['lap_index']
+    node_index = get_seat_index_from_data(data)
+    lap_index = data.get('lap_index')
 
     if node_index is None or lap_index is None:
         logger.error(
@@ -2813,6 +2825,52 @@ def on_restore_deleted_lap(data):
         return
 
     RaceContext.race.restore_deleted_lap(node_index, lap_index)
+
+@SOCKET_IO.on('delete_last_lap')
+@requires_socketio_auth
+def on_delete_last_lap(data):
+    '''Deletes the seat's most recent lap, resolved here so a crossing cannot slip in between.'''
+    node_index = get_seat_index_from_data(data)
+    lap_number = None
+    if node_index is None:
+        logger.warning("Bad parameter in 'on_delete_last_lap()':  node_index={0}".format(node_index))
+    else:
+        lap_index = RaceContext.race.get_last_lap_index(node_index)
+        if lap_index is None:
+            logger.info("No lap to delete in 'on_delete_last_lap()':  node_index={0}".format(node_index))
+        else:
+            # read before the delete renumbers the laps
+            lap_number = RaceContext.race.get_displayed_lap_number(
+                RaceContext.race.node_laps[node_index][lap_index].lap_number)
+            RaceContext.race.delete_lap(node_index, lap_index)
+    emit_lap_edited('deleted', data, node_index, lap_number)
+
+@SOCKET_IO.on('restore_last_deleted_lap')
+@requires_socketio_auth
+def on_restore_last_deleted_lap(data):
+    '''Restores the seat's most recently deleted lap; the undo for 'delete_last_lap'.'''
+    node_index = get_seat_index_from_data(data)
+    lap_number = None
+    if node_index is None:
+        logger.warning("Bad parameter in 'on_restore_last_deleted_lap()':  node_index={0}".format(node_index))
+    else:
+        lap_index = RaceContext.race.get_last_deleted_lap_index(node_index)
+        if lap_index is None:
+            logger.info("No lap to restore in 'on_restore_last_deleted_lap()':  node_index={0}".format(node_index))
+        else:
+            RaceContext.race.restore_deleted_lap(node_index, lap_index)
+            # read after the restore renumbers the laps
+            lap_number = RaceContext.race.get_displayed_lap_number(
+                RaceContext.race.node_laps[node_index][lap_index].lap_number)
+    emit_lap_edited('restored', data, node_index, lap_number)
+
+def emit_lap_edited(action, data, node_index, lap_number):
+    '''Replies to the requesting client only; 'lap_number' is None when nothing was done.'''
+    pilot_id = data.get('pilot_id')
+    if pilot_id is None and node_index is not None:
+        pilot_id = (RaceContext.race.node_pilots or {}).get(node_index)
+    emit('lap_edited', {'action': action, 'pilot_id': pilot_id,
+                        'node_index': node_index, 'lap_number': lap_number})
 
 @SOCKET_IO.on('simulate_lap')
 @requires_socketio_auth
@@ -3077,13 +3135,45 @@ def refresh_audio_owners():
     for addr in list(AudioClaimants.keys()):
         update_audio_owner(addr, notify_all=True)
 
+def get_callout_pilot_args(data):
+    '''Builds the doReplace args naming a pilot, from a client-supplied callout'''
+    try:
+        try:
+            node_index = data.get('node_index')
+            node_index = int(node_index) if node_index is not None else None
+        except Exception:
+            node_index = None
+        try:
+            pilot_id = data.get('pilot_id')
+            pilot_id = int(pilot_id) if pilot_id is not None else None
+        except Exception:
+            pilot_id = None
+        if node_index is None:
+            if pilot_id is None:
+                return {}
+            node_pilots = RaceContext.race.node_pilots or {}
+            node_index = next((idx for idx, pid in node_pilots.items() if pid == pilot_id), None)
+            if node_index is None:
+                return {'pilot_id': pilot_id}
+        elif pilot_id is None:
+            node_pilots = RaceContext.race.node_pilots or {}
+            pilot_id = node_pilots.get(node_index)
+            if pilot_id is None:
+                return {'node_index': node_index}
+        # we want to have both items specified, to help with 'doReplace' substitutions
+        return {'node_index': node_index, 'pilot_id': pilot_id}
+    except Exception as ex:
+        logger.warning("Error in 'get_callout_pilot_args': {}".format(ex))
+        return {}
+
 @SOCKET_IO.on('play_callout_text')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
     priority = data.get('priority', False)  # if set then put at front of client speak queue
+    args = get_callout_pilot_args(data)  # names a pilot, for the per-pilot substitutions
     delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
-    message = RHData.doReplace(RHAPI, data['callout'], {}, True, delay_sec_holder)
+    message = RHData.doReplace(RHAPI, data.get('callout'), args, True, delay_sec_holder)
     if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
         RaceContext.rhui.emit_phonetic_text(message, priority=priority, resume_queue=priority)
     else:
@@ -3094,6 +3184,19 @@ def play_callout_text(data):
             for i, piece in enumerate(message):
                 gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece,
                                    priority=priority, resume_queue=priority)
+
+@SOCKET_IO.on('get_callout_text')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def get_callout_text(data):
+    '''Expands a callout and returns it to the caller instead of speaking it.'''
+    callout_str = data.get('callout')
+    args = get_callout_pilot_args(data)  # names a pilot, for the per-pilot substitutions
+    # supplied so %DELAY_#_SECS% and %PILOTS_INTERVAL_#_SECS% behave; a fetch never delays
+    delay_sec_holder = []
+    message = RHData.doReplace(RHAPI, callout_str, args, True, delay_sec_holder)
+    # send to the requesting socket only; 'text' is a list for '%PILOTS_INTERVAL_#_SECS%'
+    emit('callout_text', {'callout': callout_str, 'text': message})
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
