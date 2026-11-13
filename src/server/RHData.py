@@ -91,6 +91,12 @@ class RHData():
                 logger.warning('Results are not a string or dict; wiping all saved results')
                 self.clear_results_all()
 
+            # cached results built by an older results format lack newer fields; rebuild them
+            if self.get_optionInt('resultsFormatVer', 0) < Results.RESULTS_FORMAT_VER:
+                logger.info('Results format changed; clearing cached results')
+                self.clear_results_all()
+                self.set_option('resultsFormatVer', Results.RESULTS_FORMAT_VER)
+
             return True
         except Exception as ex:
             logger.error('Error checking database integrity; err: ' + str(ex))
