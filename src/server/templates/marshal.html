@@ -498,7 +498,7 @@
 				marshal_type: msg.marshal_type
 			}
 			marshal.setPilotData(pilot_args);
-			$('#auto-calibrate').prop('hidden', msg.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY);
+			$('#auto-calibrate').prop('hidden', msg.marshal_type == marshal.MARSHAL_TYPE.PASS_PEAK_ONLY);
 
 			marshal.initRace();
 

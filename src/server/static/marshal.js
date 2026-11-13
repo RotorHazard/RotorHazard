@@ -1,13 +1,13 @@
 /* Marshaling functions */
 
-const MARSHAL_TYPE = {
-	RSSI: 0,
-	HYBRID_PASS_PEAK: 1, // not implemented
-	PASS_PEAK_ONLY: 2,
-};
-
 class RHMarshal {
 	self = false;
+
+	MARSHAL_TYPE = {
+		RSSI: 0,
+		HYBRID_PASS_PEAK: 1, // not implemented
+		PASS_PEAK_ONLY: 2,
+	};
 
 	elements = {
 		graph_canvas_id: false,
@@ -35,7 +35,7 @@ class RHMarshal {
 	race = {
 		history_times: null,
 		history_values: null,
-		marshal_type: MARSHAL_TYPE.RSSI,
+		marshal_type: this.MARSHAL_TYPE.RSSI,
 		laps: null,
 		enter_at: null,
 		exit_at: null,
@@ -262,7 +262,7 @@ class RHMarshal {
 	}
 
 	setHistory(args) {
-		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
+		if (self.race.marshal_type == self.MARSHAL_TYPE.PASS_PEAK_ONLY) {
 			var times = [];
 			var values = [];
 			times.push(self.race.start_time);
@@ -318,6 +318,11 @@ class RHMarshal {
 
 		// prepare graph
 		self.graph_series.rssi.data = [];
+		if (self.race.marshal_type == self.MARSHAL_TYPE.PASS_PEAK_ONLY) {
+			self.graph.options.interpolation = 'step';
+		} else {
+			self.graph.options.interpolation = 'bezier';
+		}
 		for (var idx in self.race.history_times) {
 			var value = self.race.history_times[idx];
 			if (value == lastValue) {
@@ -811,7 +816,7 @@ class RHMarshal {
 	processRXData() {
 		var last_lap_time_stamp = -Infinity;
 		var laps = [];
-		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY || self.race.marshal_type == MARSHAL_TYPE.HYBRID_PASS_PEAK) {
+		if (self.race.marshal_type == self.MARSHAL_TYPE.PASS_PEAK_ONLY || self.race.marshal_type == self.MARSHAL_TYPE.HYBRID_PASS_PEAK) {
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
 				lap.source = 2;
@@ -960,7 +965,7 @@ class RHMarshal {
 	recalcRace() {
 		self.calcLaps();
 		if (self.race_loaded) {
-			if (!self.race.marshal_type || self.race.marshal_type == MARSHAL_TYPE.RSSI) {
+			if (!self.race.marshal_type || self.race.marshal_type == self.MARSHAL_TYPE.RSSI) {
 				var laps = self.race.calc_result;
 				for (var lap_i in self.race.laps) {
 					var lap = self.race.laps[lap_i];

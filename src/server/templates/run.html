@@ -2549,12 +2549,33 @@
 						node.graph.options.minValue = Math.min.apply(null, msg.seats[seat].history_values) - 2;
 						node.graph.options.maxValue = Math.max.apply(null, msg.seats[seat].history_values) + 2;
 
-						for (var idx in msg.seats[seat].history_times) {
-							var value = msg.seats[seat].history_times[idx];
+						var times = [];
+						var values = [];
+						if (node.marshal_data.marshal_type == marshal.MARSHAL_TYPE.PASS_PEAK_ONLY) {
+							node.graph.options.interpolation = 'step';
+							times.push(0);
+							values.push(0);
+							for (var i in node.marshal_data.laps) {
+								var lap = node.marshal_data.laps[i];
+								times.push(race_args.start_time + (lap.lap_time_stamp / 1000));
+								values.push(lap.peak_rssi);
+								times.push(race_args.start_time + (lap.lap_time_stamp + 1) / 1000);
+								values.push(0);
+							}
+							times.push(times[times.length - 1] + 10);
+							values.push(0);
+						} else {
+							node.graph.options.interpolation = 'bezier';
+							times = msg.seats[seat].history_times;
+							values = msg.seats[seat].history_values;
+						}
+
+						for (var idx in times) {
+							var value = times[idx];
 							if (value == lastValue) {
-								node.marshal_series.append((msg.seats[seat].history_times[idx] - race_args.start_time) + 0.001, msg.seats[seat].history_values[idx]);
+								node.marshal_series.append((times[idx] - race_args.start_time) + 0.001, values[idx]);
 							} else {
-								node.marshal_series.append((msg.seats[seat].history_times[idx] - race_args.start_time), msg.seats[seat].history_values[idx]);
+								node.marshal_series.append((times[idx] - race_args.start_time), values[idx]);
 							}
 							var lastValue = value;
 						}
