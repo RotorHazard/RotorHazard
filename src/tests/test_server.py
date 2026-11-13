@@ -39,7 +39,7 @@ server.RaceContext.serverconfig.config['GENERAL']['DEBUG'] = True
 from Node import Node
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
-from Database import LapSource
+from Database import LapSource, RoundType
 import frequencies
 
 class ServerTest(unittest.TestCase):
@@ -219,6 +219,24 @@ class ServerTest(unittest.TestCase):
         self.client.emit('add_heat')
         resp = self.get_response('heat_data')
         self.assertEqual(len(resp['heats']), num_heats+1)
+
+    def test_add_heat_grouped_current_round(self):
+        rhdata = server.RaceContext.rhdata
+        race_class = rhdata.add_raceClass()
+        race_class.round_type = RoundType.GROUPED
+        rhdata.commit()
+        flown = rhdata.add_heat(init={'class_id': race_class.id, 'group_id': 0})
+        rhdata.alter_heat({'heat': flown.id, 'active': False})
+        rhdata.add_heat(init={'class_id': race_class.id, 'group_id': 1})
+        rhdata.add_heat(init={'class_id': race_class.id, 'group_id': 2})
+        # lowest round among active heats
+        self.assertEqual(rhdata.add_heat(init={'class_id': race_class.id}).group_id, 1)
+        # a given round is kept
+        self.assertEqual(rhdata.add_heat(init={'class_id': race_class.id, 'group_id': 0}).group_id, 0)
+        # highest round when no heats are active
+        for heat in rhdata.get_heats_by_class(race_class.id):
+            rhdata.alter_heat({'heat': heat.id, 'active': False})
+        self.assertEqual(rhdata.add_heat(init={'class_id': race_class.id}).group_id, 2)
 
     def test_alter_heat(self):
         self.client.emit('add_pilot')
