@@ -14,6 +14,8 @@ The nodes may also be attached (via USB) to [any computer running the RotorHazar
 
 USB nodes need to be configured in the server. On the _Advanced Settings_ page in the _Hardware_ panel, you can add ports in the _Serial Ports_ section. Simply type an item into the `New Port` input and complete the entry (click outside or use the tab key to defocus). A new `Port` entry will be added. Add multiple items if desired, or clear the input to remove.
 
+The `List Ports` button below the port entries shows all serial ports the server process can see, including alias names (such as the stable `/dev/serial/by-id/...` names on Linux), a device description, and whether the server has read/write access to the port. Use the `Add` button next to a port to add it to the configuration; it uses the most stable name available, which does not change when devices are re-plugged. If a port shows "No access" on Linux, the server user typically needs to be added to the group shown (usually `dialout`).
+
 #### Raspberry Pi
 
 On the Raspberry Pi, an attached USB node will be referenced with a serial port name like "/dev/ttyUSB0". The command ```ls /dev/ttyUSB*``` will show the current USB serial ports.

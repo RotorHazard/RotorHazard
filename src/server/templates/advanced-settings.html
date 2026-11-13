@@ -90,6 +90,12 @@
 					.prop('id', 'serial-port-ui')
 					.addClass('form')
 					.appendTo('#serial-port-setup');
+				var list_ui = $('<div id="serial-port-list">').appendTo('#serial-port-setup');
+				var list_controls = $('<div class="control-set">').appendTo(list_ui);
+				$('<button type="button" id="serial-port-list-btn">')
+					.text(__('List Ports'))
+					.appendTo(list_controls);
+				$('<div id="serial-port-list-result">').appendTo(list_ui);
 			}
 
 			if ($(`#serial-port--new`).length) {
@@ -163,6 +169,133 @@
 					}
 				}]
 			});
+		});
+
+		function list_serial_ports() {
+			var btn = $('#serial-port-list-btn');
+			var result_el = $('#serial-port-list-result');
+			btn.prop('disabled', true);
+			result_el.empty().append($('<p>').text(__('Loading...')));
+			socket.emit('list_serial_ports', {}, function (msg) {
+				btn.prop('disabled', false);
+				display_serial_port_list(msg);
+			});
+		}
+
+		function serial_port_access_text(port, msg) {
+			if (port.access == 'ok') {
+				return __('OK');
+			}
+			if (port.access == 'denied') {
+				var text = __('No access');
+				if (port.owner || port.group) {
+					text += ` (${port.owner}:${port.group} ${port.mode || ''})`;
+				}
+				if (port.group && msg.groups && msg.groups.indexOf(port.group) == -1 && msg.user) {
+					text += ' – ' + __('Add user "{0}" to group "{1}", then log in again or reboot')
+						.replace('{0}', msg.user).replace('{1}', port.group);
+				}
+				return text;
+			}
+			if (port.access == 'missing') {
+				return __('Not found');
+			}
+			return __('Unknown');
+		}
+
+		function display_serial_port_list(msg) {
+			var result_el = $('#serial-port-list-result').empty();
+			if (!msg) {
+				result_el.append($('<p>').text(__('Unable to list serial ports')));
+				return;
+			}
+
+			var info = [];
+			if (msg.user) {
+				info.push(__('Server process user') + ': ' + msg.user);
+			}
+			if (msg.groups) {
+				info.push(__('Groups') + ': ' + msg.groups.join(', '));
+			}
+			if (info.length) {
+				result_el.append($('<p class="serial-port-list-info">').text(info.join(' · ')));
+			}
+
+			if (!msg.pyserial) {
+				result_el.append($('<p>').text(__("Library 'pyserial' is not installed")));
+			}
+
+			if (msg.configured_missing && msg.configured_missing.length) {
+				result_el.append($('<p class="serial-port-list-warning">')
+					.text(__('Configured but not found') + ': ' + msg.configured_missing.join(', ')));
+			}
+
+			if (!msg.ports || !msg.ports.length) {
+				result_el.append($('<p>').text(__('No serial ports found')));
+				return;
+			}
+
+			var table = $('<table class="serial-port-list-table">');
+			$('<tr>')
+				.append($('<th>').text(__('Port')))
+				.append($('<th>').text(__('Aliases')))
+				.append($('<th>').text(__('Description')))
+				.append($('<th>').text(__('Access')))
+				.append($('<th>'))
+				.appendTo(table);
+
+			for (var i in msg.ports) {
+				var port = msg.ports[i];
+				var row = $('<tr>').appendTo(table);
+
+				$('<td>').append($('<code>').text(port.device)).appendTo(row);
+
+				var alias_cell = $('<td>').appendTo(row);
+				for (var a in port.aliases) {
+					$('<div>').append($('<code>').text(port.aliases[a])).appendTo(alias_cell);
+				}
+
+				var desc = [];
+				if (port.description) desc.push(port.description);
+				if (port.manufacturer && (!port.description || port.description.indexOf(port.manufacturer) == -1)) {
+					desc.push(port.manufacturer);
+				}
+				if (port.serial_number) desc.push('S/N ' + port.serial_number);
+				var desc_cell = $('<td>').appendTo(row);
+				$('<div>').text(desc.join(', ')).appendTo(desc_cell);
+				if (port.hwid) {
+					$('<div class="desc">').text(port.hwid).appendTo(desc_cell);
+				}
+
+				$('<td>')
+					.addClass('serial-port-access-' + port.access)
+					.text(serial_port_access_text(port, msg))
+					.appendTo(row);
+
+				var action_cell = $('<td>').appendTo(row);
+				if (port.configured) {
+					action_cell.text(__('Configured'));
+				} else {
+					$('<button type="button" class="serial-port-add">')
+						.text(__('Add'))
+						.attr('title', port.recommended)
+						.data('port', port.recommended)
+						.appendTo(action_cell);
+				}
+			}
+
+			$('<div class="table-wrap">').append(table).appendTo(result_el);
+			result_el.append($('<p class="desc">').text(
+				__('"Add" uses the most stable name available (e.g. /dev/serial/by-id/... on Linux), which does not change when devices are re-plugged.')));
+		}
+
+		$(document).on('click', '#serial-port-list-btn', function () {
+			list_serial_ports();
+		});
+
+		$(document).on('click', '.serial-port-add', function () {
+			$('#serial-port--new input').val($(this).data('port')).trigger('change');
+			$(this).replaceWith(document.createTextNode(__('Configured')));
 		});
 	});
 

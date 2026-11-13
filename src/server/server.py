@@ -2898,6 +2898,18 @@ def on_set_config(data):
         'value': event_value,
         })
 
+@SOCKET_IO.on('list_serial_ports')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_list_serial_ports(*args):
+    '''Returns (via ack callback) the serial ports visible to the server process.'''
+    import util.SerialPortInfo as SerialPortInfo
+    configured = list(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or [])
+    led_port = RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT')
+    if led_port:
+        configured.append(led_port)
+    return SerialPortInfo.list_serial_ports(configured)
+
 @SOCKET_IO.on('get_admin_password')
 @requires_socketio_credential_auth
 @catchLogExceptionsWrapper
