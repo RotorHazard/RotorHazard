@@ -2248,6 +2248,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 	for (var i in leaderboard) {
 		var row = $('<tr>');
+		row.data('entry', leaderboard[i]);  // lets a page enhance the cells, e.g. with links
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');

@@ -191,6 +191,106 @@
 				return '<span class="from_start">(' + lap.speed.toFixed(2) + ')</span>';
 			}
 
+			// link to a race on the marshal page; lap is the race's crossing index (non-deleted, from 0)
+			function marshal_url(heat_id, round_id, pilot_id, lap, count) {
+				var params = new URLSearchParams({heat: heat_id, round: round_id, pilot: pilot_id});
+				if (lap !== null && typeof(lap) !== 'undefined') {
+					params.set('lap', lap);
+					if (count && count > 1) {
+						params.set('count', count);
+					}
+				}
+				return '/marshal?' + params.toString();
+			}
+
+			// a graph icon linking to the marshal page, placed after a cell's text so a click on
+			//  the text keeps its own behavior (e.g. showing the source); the marshal page is
+			//  admin-only, so only admins (like its nav entry) get the links (null otherwise)
+			function marshal_icon_link(url) {
+				if (!rotorhazard.admin) {
+					return null;
+				}
+				return $('<a class="marshal-icon-link">')
+					.attr('href', url)
+					.attr('title', __('Marshal'))
+					.attr('aria-label', __('Marshal'))
+					.html('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1v14h14" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 11l3-4 3 2.5 4.5-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>')
+					.on('click', function(event) { event.stopPropagation(); });
+			}
+
+			// non-deleted crossings of a pilot in a race, with the number of leading crossings that are not laps
+			function find_race_crossings(heat_id, round_id, pilot_id) {
+				var heat = msg.heats[heat_id];
+				if (!heat) {
+					return null;
+				}
+				var race = heat.rounds.find(function(r) { return r.id == round_id; });
+				if (!race) {
+					return null;
+				}
+				var node = race.nodes.find(function(n) { return n.pilot_id == pilot_id; });
+				if (!node) {
+					return null;
+				}
+				var meta = race.leaderboard && race.leaderboard.meta ? race.leaderboard.meta : {};
+				return {
+					crossings: node.laps.filter(function(lap) { return !lap.deleted; }),
+					offset: meta.start_behavior == 1 ? 0 : 1,  // first crossing is a lap with 'first lap' start behavior
+				};
+			}
+
+			// turn a leaderboard's pilot, fastest and consecutive cells into marshal page links
+			function link_leaderboard(lb_el, race_heat_id, race_round_id) {
+				if (!rotorhazard.admin) {
+					return lb_el;
+				}
+				lb_el.find('tbody tr').each(function() {
+					var row = $(this);
+					var entry = row.data('entry');
+					if (!entry || !entry.pilot_id) {
+						return;
+					}
+
+					if (race_heat_id !== undefined) {
+						var pilot_td = row.children('td.pilot');
+						pilot_td.append(marshal_icon_link(marshal_url(race_heat_id, race_round_id, entry.pilot_id)));
+					}
+
+					var source = entry.fastest_lap_source;
+					if (source && source.heat && source.round && entry.fastest_lap_raw) {
+						var race = find_race_crossings(source.heat, source.round, entry.pilot_id);
+						if (race) {
+							var best = null;
+							for (var i = race.offset; i < race.crossings.length; i++) {
+								if (best === null || race.crossings[i].lap_time < race.crossings[best].lap_time) {
+									best = i;
+								}
+							}
+							if (best !== null) {
+								var fast_td = row.children('td.fast');
+								fast_td.append(marshal_icon_link(marshal_url(source.heat, source.round, entry.pilot_id, best)));
+							}
+						}
+					}
+
+					var source = entry.consecutives_source;
+					if (source && source.heat && source.round && entry.consecutives_base) {
+						var race = find_race_crossings(source.heat, source.round, entry.pilot_id);
+						if (race) {
+							var start = race.offset;
+							if (entry.consecutive_lap_start) {
+								start += entry.consecutive_lap_start - 1;
+							}
+							if (start < race.crossings.length) {
+								var cons_td = row.children('td.consecutive');
+								cons_td.append(marshal_icon_link(marshal_url(source.heat, source.round, entry.pilot_id, start, entry.consecutives_base)));
+							}
+						}
+					}
+				});
+				return lb_el;
+			}
+
 			function order_boards(primary) {
 				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });
@@ -270,13 +370,13 @@
 							for (var i in boards) {
 								if (boards[i] == 'by_race_time') {
 									class_leaderboard_content.append('<h4>' + __('Race Totals') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', current_class.leaderboard.meta, true));
+									class_leaderboard_content.append(link_leaderboard(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', current_class.leaderboard.meta, true)));
 								} else if (boards[i] == 'by_fastest_lap') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true));
+									class_leaderboard_content.append(link_leaderboard(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true)));
 								} else if (boards[i] == 'by_consecutives') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Consecutive Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true));
+									class_leaderboard_content.append(link_leaderboard(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true)));
 								}
 							}
 
@@ -311,7 +411,7 @@
 									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
 									var heat_summary_panel_content = $('<div class="panel-content">');
 									var heat_leaderboard = $('<div class="leaderboard">');
-									heat_leaderboard.append(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true));
+									heat_leaderboard.append(link_leaderboard(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true)));
 									heat_summary_panel_content.append(heat_leaderboard);
 									heat_summary_panel.append(heat_summary_panel_content);
 									panel_content.append(heat_summary_panel);
@@ -327,7 +427,7 @@
 									var round_content = $('<div class="panel-content">');
 									// race leaderboards
 									var race_leaderboard = $('<div class="leaderboard">');
-									race_leaderboard.append(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', round.leaderboard.meta));
+									race_leaderboard.append(link_leaderboard(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', round.leaderboard.meta), heat.heat_id, round.id));
 
 									var race_results = $('<div class="race-results">');
 
@@ -338,6 +438,7 @@
 											var node_div = $('<div class="node">');
 
 											node_div.append('<h5>' + node.callsign + '</h5>')
+											var crossing_index = 0;
 
 											var table = $('<table class="laps">');
 											var tbody = $('<tbody>');
@@ -356,10 +457,15 @@
 														} else {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(lap) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														var lap_row = $('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(lap) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>');
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(lap) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														var lap_row = $('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(lap) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>');
 													}
+													if (node.pilot_id) {
+														lap_row.children('td').last().append(marshal_icon_link(marshal_url(heat.heat_id, round.id, node.pilot_id, crossing_index)));
+													}
+													crossing_index++;
+													tbody.append(lap_row);
 													lap_index++;
 												}
 											}
@@ -396,16 +502,16 @@
 				var panel_content = $('<div class="panel-content" style="display: none">');
 				var event_leaderboard = $('<div class="event-leaderboards">');
 				event_leaderboard.append('<h3>' + __('Race Totals') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true, true));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true, true)));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta)));
 				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta)));
 				if (msg.event_leaderboard.meta.speed_data) {
 					var speed_board = sort_by_top_speed(msg.event_leaderboard.by_race_time);
 					if (speed_board.length) {
 						event_leaderboard.append('<h3>' + __('Fastest Speeds') + '</h3>');
-						event_leaderboard.append(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta));
+						event_leaderboard.append(link_leaderboard(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta)));
 					}
 				}
 				panel_content.append(event_leaderboard);

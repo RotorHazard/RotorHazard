@@ -1390,6 +1390,27 @@ main.page-home {
 	margin-top: 0;
 }
 
+/* results page: icon link to the marshal page beside a leaderboard value */
+.marshal-icon-link {
+	display: inline-block;
+	margin-left: 0.375em;
+	color: inherit;
+	opacity: 0.6;
+	vertical-align: -0.125em;
+	line-height: 1;
+}
+
+.marshal-icon-link:hover,
+.marshal-icon-link:focus {
+	opacity: 1;
+}
+
+.marshal-icon-link svg {
+	width: 1em;
+	height: 1em;
+	display: block;
+}
+
 .race-results h4 {
 	overflow: clip;
 }
