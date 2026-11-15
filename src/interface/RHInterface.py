@@ -146,34 +146,7 @@ class RHInterface(BaseHardwareInterface):
         self.data_loggers = {}
         if len(self.nodes) > 0:
             for node in self.nodes:
-                node.frequency = self.get_value_16(node, READ_FREQUENCY)
-                if not node.frequency:
-                    raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-                node.init()
-                if node.api_level >= 10:
-                    node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
-                    if node.api_level >= 13:
-                        node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
-                    node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
-                    node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                    if node.multi_node_index < 0:  # (multi-nodes will always have default values)
-                        logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
-                                     node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
-    
-                    if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                        self.data_loggers[node.index] = open("data_{0}.csv".format(node.index+1), 'w')
-                        logger.info("Data logging enabled for node {0}".format(node.index+1))
-
-                else:
-                    logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
-                if node.api_level >= 32:
-                    flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
-                    if flags_val:
-                        node.rhfeature_flags = flags_val
-                        # if first node that supports in-app fw update then save port name
-                        if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
-                                (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
-                            self.set_fwupd_serial_obj(node.serial)
+                self._init_node(node)
         else:
             node = self.info_node_obj  # handle S32_BPill board with no receiver modules attached
             if node and node.api_level >= 32:
@@ -185,9 +158,58 @@ class RHInterface(BaseHardwareInterface):
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
 
+    def _init_node(self, node):
+        node.frequency = self.get_value_16(node, READ_FREQUENCY)
+        if not node.frequency:
+            raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
+        node.init()
+        if node.api_level >= 10:
+            node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
+            if node.api_level >= 13:
+                node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+            node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
+            node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
+            if node.multi_node_index < 0:  # (multi-nodes will always have default values)
+                logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
+                             node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+
+            if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                self.data_loggers[node.index] = open("data_{0}.csv".format(node.index+1), 'w')
+                logger.info("Data logging enabled for node {0}".format(node.index+1))
+
+        else:
+            logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
+        if node.api_level >= 32:
+            flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
+            if flags_val:
+                node.rhfeature_flags = flags_val
+                # if first node that supports in-app fw update then save port name
+                if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
+                        (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
+                    self.set_fwupd_serial_obj(node.serial)
+
     def discover_nodes(self, *args, **kwargs):
         kwargs['set_info_node_obj_fn'] = self.set_info_node_obj
+        self._isS32BPillFlag = kwargs.get('isS32BPillFlag', False)
         self.nodes.discover(includeOffset=True, *args, **kwargs)
+
+    def get_serial_port_names(self):
+        '''Returns the names of the serial ports currently used by nodes.'''
+        return set(node.serial.port for node in self.nodes if getattr(node, 'serial', None))
+
+    def add_serial_ports(self, ports):
+        '''Opens the given serial ports at runtime and returns the list of new nodes found on them.'''
+        import serial_node  # (local import to avoid circular import)
+        new_nodes = []
+        for node in serial_node.discover(len(self.nodes), None, self._isS32BPillFlag, ports=ports, \
+                                         set_info_node_obj_fn=self.set_info_node_obj):
+            try:
+                self._init_node(node)
+                new_nodes.append(node)
+            except Exception as ex:
+                logger.error("Unable to initialize serial node at port '{}': {}".format(node.serial.port, ex))
+        self.nodes.extend(new_nodes)
+        return new_nodes
 
 
     #

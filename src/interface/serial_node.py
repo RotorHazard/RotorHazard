@@ -227,10 +227,11 @@ class SerialNode(Node):
             logger.exception('Error fetching READ_FW_DATE/TIME for serial node')
 
 
-def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
+def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwargs):
+    '''Opens the given serial ports (or the configured SERIAL_PORTS if none given) and returns the nodes found.'''
     nodes = []
-    config_ser_ports = config.get_item('GENERAL', 'SERIAL_PORTS')
-    if isS32BPillFlag and len(config_ser_ports) == 0:
+    config_ser_ports = ports if ports is not None else config.get_item('GENERAL', 'SERIAL_PORTS')
+    if ports is None and isS32BPillFlag and len(config_ser_ports) == 0:
         try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
             def_port = SYS_DEV_DIR_PATH + (DEF_S32BPILL_SERIAL_PORTS[0] \
                                 if DEF_S32BPILL_SERIAL_PORTS[0] in os.listdir(SYS_DEV_DIR_PATH) \

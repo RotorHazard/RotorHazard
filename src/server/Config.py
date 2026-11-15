@@ -190,7 +190,6 @@ class Config:
                 'SHUTDOWN_BUTTON_GPIOPIN',
                 'SHUTDOWN_BUTTON_DELAYMS',
                 'DB_AUTOBKP_NUM_KEEP',
-                'SERIAL_PORTS',
                 'MOCK_NODES'
             ],
             'LOGGING': [

@@ -3015,7 +3015,16 @@ def on_set_option(data):
 def on_set_config(data):
     if data['section'] == 'GENERAL' and data['key'] == 'SECONDARIES' and isinstance(data['value'], list):
         restore_secondary_passwords(data['value'], RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'))
+    old_serial_ports = list(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or [])
     RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
+    if data['section'] == 'GENERAL' and data['key'] == 'SERIAL_PORTS':
+        try:
+            restart_flag = apply_serial_ports_change(old_serial_ports, data['value'])
+        except Exception:
+            logger.exception("Error applying serial-ports change")
+            restart_flag = True
+        if restart_flag:
+            RaceContext.serverstate.set_restart_required()
     if data['section'] == 'GENERAL' and data['key'] == 'ADMIN_SOCKET_AUTH':
         AdminAuth.set_admin_socket_auth_enabled(data['value'])
     if data['section'] == 'GENERAL' and data['key'] == 'DEBUG' and data['value'] is False:
@@ -4022,6 +4031,41 @@ def initialize_rh_interface():
     RaceContext.interface.add_callbacks()
     RaceContext.interface.reindex_nodes()
     return True
+
+def apply_serial_ports_change(old_ports, new_ports):
+    '''Opens newly configured serial ports without a server restart; returns True if restart is still needed'''
+    old_ports = list(old_ports or [])
+    new_ports = list(new_ports or [])
+    if any(port not in new_ports for port in old_ports):
+        return True  # removing/changing an open port requires a restart
+    rh_interface = RaceContext.interface.get_rh_interface()
+    if not rh_interface or not hasattr(rh_interface, 'add_serial_ports'):
+        return True
+    added_ports = [port for port in new_ports if port not in old_ports and \
+                   port not in rh_interface.get_serial_port_names()]
+    if not added_ports:
+        return False
+    if RaceContext.race.race_status != RaceStatus.READY:
+        logger.info("Race in progress; serial port(s) {} will be opened after restart".format(added_ports))
+        return True
+    new_nodes = rh_interface.add_serial_ports(added_ports)
+    if new_nodes:
+        with RaceContext.rhdata.get_db_session_handle():
+            RaceContext.interface.add_nodes(rh_interface, new_nodes)
+            RaceContext.interface.add_callbacks()
+            RaceContext.interface.reindex_nodes()
+            RaceContext.race.num_nodes = len(RaceContext.interface.nodes)
+            RaceContext.rhui.clear_ui_message('node')  # clear "No receiver nodes found" warning
+            init_race_state()
+            RaceContext.race.updateSeatColors()
+            if BACKGROUND_THREADS_ENABLED:
+                RaceContext.interface.start()
+            buildServerInfo()
+            RHAPI.server_info = RaceContext.serverstate.info_dict
+        logger.info("Added {} node(s) from serial port(s) {}; number of nodes now {}".format( \
+                    len(new_nodes), added_ports, RaceContext.race.num_nodes))
+        RaceContext.rhui.emit_refresh_page()
+    return len(new_nodes) < len(added_ports)  # if a port yielded no node, keep restart as fallback
 
 # Create and save server/node information
 def buildServerInfo():
