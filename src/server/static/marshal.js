@@ -820,23 +820,21 @@ class RHMarshal {
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
 				lap.source = 2;
-				lap.crossingStart = lap.lap_time_stamp;
-				lap.crossingEnd = lap.lap_time_stamp + 1;
+				// mark the crossing at the lap's pass time, in seconds like the RSSI history
+				lap.crossingStart = self.race.start_time + (lap.lap_time_stamp / 1000);
+				lap.crossingEnd = self.race.start_time + (lap.lap_time_stamp + 1) / 1000;
 
 				if (lap.lap_time_stamp < self.min_first_crossing_ms) {
 					lap.deleted = true;
 				} else if (lap.peak_rssi < self.race.enter_at) {
 					lap.deleted = true;
+				} else if (self.min_lap_behavior && lap.lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {  // short lap
+					lap.deleted = true;
 				} else {
 					lap.deleted = false;
+					last_lap_time_stamp = lap.lap_time_stamp;
 				}
-
-				if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
-					lapdata.deleted = true;
-				} else {
-					last_lap_time_stamp = lap_time_stamp;
-				}
-				laps.push();
+				laps.push(lap);  // used for the crossing markers and late-lap deletion
 			}
 		} else {
 			var crossing = false;

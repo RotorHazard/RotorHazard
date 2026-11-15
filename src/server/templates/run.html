@@ -2544,31 +2544,33 @@
 					node.graph.removeTimeSeries(node.series);
 					node.graph.removeTimeSeries(node.crossingSeries);
 
-					if (msg.seats[seat].history_times.length) {
-						race_args.end_time = msg.seats[seat].history_times[msg.seats[seat].history_times.length - 1];
-						node.graph.options.minValue = Math.min.apply(null, msg.seats[seat].history_values) - 2;
-						node.graph.options.maxValue = Math.max.apply(null, msg.seats[seat].history_values) + 2;
-
-						var times = [];
-						var values = [];
-						if (node.marshal_data.marshal_type == marshal.MARSHAL_TYPE.PASS_PEAK_ONLY) {
-							node.graph.options.interpolation = 'step';
-							times.push(0);
+					// pass-peak-only nodes are graphed as a step at each lap's peak, with no RSSI history needed
+					var times = [];
+					var values = [];
+					if (node.marshal_data.marshal_type == marshal.MARSHAL_TYPE.PASS_PEAK_ONLY) {
+						node.graph.options.interpolation = 'step';
+						times.push(race_args.start_time);  // start the steps at the race start
+						values.push(0);
+						for (var i in node.marshal_data.laps) {
+							var lap = node.marshal_data.laps[i];
+							times.push(race_args.start_time + (lap.lap_time_stamp / 1000));
+							values.push(lap.peak_rssi);
+							times.push(race_args.start_time + (lap.lap_time_stamp + 1) / 1000);
 							values.push(0);
-							for (var i in node.marshal_data.laps) {
-								var lap = node.marshal_data.laps[i];
-								times.push(race_args.start_time + (lap.lap_time_stamp / 1000));
-								values.push(lap.peak_rssi);
-								times.push(race_args.start_time + (lap.lap_time_stamp + 1) / 1000);
-								values.push(0);
-							}
-							times.push(times[times.length - 1] + 10);
-							values.push(0);
-						} else {
-							node.graph.options.interpolation = 'bezier';
-							times = msg.seats[seat].history_times;
-							values = msg.seats[seat].history_values;
 						}
+						times.push(times[times.length - 1] + 10);
+						values.push(0);
+					} else {
+						node.graph.options.interpolation = 'bezier';
+						times = msg.seats[seat].history_times;
+						values = msg.seats[seat].history_values;
+					}
+
+					// set the graph's time span and value range from the data being plotted
+					if (times.length) {
+						race_args.end_time = times[times.length - 1];
+						node.graph.options.minValue = Math.min.apply(null, values) - 2;
+						node.graph.options.maxValue = Math.max.apply(null, values) + 2;
 
 						for (var idx in times) {
 							var value = times[idx];
