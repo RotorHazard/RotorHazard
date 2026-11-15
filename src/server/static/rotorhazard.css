@@ -585,6 +585,28 @@ dialog > button {
 	overflow-x: auto;
 }
 
+#serial-port-list {
+	margin-top: 1rem;
+}
+
+.serial-port-list-table th,
+.serial-port-list-table td {
+	text-align: left;
+}
+
+.serial-port-list-table code {
+	word-break: break-all;
+}
+
+.serial-port-access-ok {
+	color: hsl(120, 60%, 35%);
+}
+
+.serial-port-access-denied,
+.serial-port-list-warning {
+	color: hsl(0, 70%, 50%);
+}
+
 .screen-reader-text {
 	clip: rect(1px, 1px, 1px, 1px);
 	position: absolute;
