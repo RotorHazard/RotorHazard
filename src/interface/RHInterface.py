@@ -198,6 +198,46 @@ class RHInterface(BaseHardwareInterface):
         nodes = list(self.nodes) + ([self.info_node_obj] if self.info_node_obj else [])
         return set(node.serial.port for node in nodes if getattr(node, 'serial', None))
 
+    def _check_restore_node_settings(self, node):
+        '''After a lost serial port was reopened (e.g. USB node re-plugged and thus reset),
+           sends the node its frequency and enter/exit-at levels again once it responds'''
+        reopen_count = getattr(getattr(node, 'serial', None), 'rh_reopen_count', 0)
+        if reopen_count == getattr(node, 'rh_restored_count', 0):
+            return
+        if node.read_block(self, READ_REVISION_CODE, 2, 0, False) is None:
+            return  # node not ready yet (still booting); try again on next update
+        node_index = self.nodes.index(node)
+        frequency, enter_at_level, exit_at_level = node.frequency, node.enter_at_level, node.exit_at_level
+        if not self.set_frequency(node_index, frequency):
+            node.frequency = frequency  # keep wanted value for next attempt
+        else:
+            self.set_enter_at_level(node_index, enter_at_level)
+            self.set_exit_at_level(node_index, exit_at_level)
+            node.rh_restored_count = reopen_count
+            logger.info("Restored settings for node {} after reconnect: Freq={}, EnterAt={}, ExitAt={}".format( \
+                        node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+
+    def get_serial_port_status(self, max_age_secs=3.0):
+        '''Returns {port: {'nodes': [seat numbers], 'responding': True/False/None}} for the open serial ports;
+           'responding' is None if no node on the port is being polled (e.g. all disabled)'''
+        status = {}
+        now = monotonic()
+        nodes = list(self.nodes)
+        if self.info_node_obj and self.info_node_obj not in nodes:
+            nodes.append(self.info_node_obj)
+        for node in nodes:
+            serial_obj = getattr(node, 'serial', None)
+            if serial_obj is None:
+                continue
+            entry = status.setdefault(serial_obj.port, {'nodes': [], 'responding': None})
+            if node in self.nodes:
+                entry['nodes'].append(node.index + 1)
+                if node.frequency and self.update_thread is not None:  # node is polled by update loop
+                    last_ok = getattr(node, 'last_read_ok_time', None)
+                    node_ok = last_ok is not None and now - last_ok < max_age_secs
+                    entry['responding'] = bool(entry['responding']) or node_ok
+        return status
+
     def remove_serial_ports(self, ports):
         '''Closes the given serial ports at runtime and returns the list of nodes removed with them.'''
         import serial_node  # (local import to avoid circular import)
@@ -269,6 +309,7 @@ class RHInterface(BaseHardwareInterface):
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
         for node in self.nodes:
+            self._check_restore_node_settings(node)
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 32:
