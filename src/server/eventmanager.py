@@ -142,6 +142,7 @@ class Evt:
     DATABASE_RECOVER = 'databaseRecover'
     DATABASE_RESTORE = 'databaseRestore'
     DATABASE_DELETE_BACKUP = 'databaseDeleteBackup'
+    DATABASE_UPLOAD_BACKUP = 'databaseUploadBackup'
     DATABASE_EXPORT = 'databaseExport'
     DATABASE_IMPORT = 'databaseImport'
     # Race setup

@@ -73,7 +73,7 @@ _Minimum Lap Time_ and _Minimum Lap Behavior_ change how RotorHazard handles sho
 
 _Ignore Crossings Before_ discards a pilot's first crossing of the race if it comes sooner than this many seconds after the race start.
 
-_Event Archive_ lists the event databases saved on the timer (archived events and database backups). _Restore Event_ replaces all current data with the selected event, after a confirmation. _Delete Event_ removes the selected file, which cannot be undone. _Download Event Database_ downloads the selected file.
+_Event Archive_ lists the event databases saved on the timer (archived events and database backups). _Restore Event_ replaces all current data with the selected event, after a confirmation. _Delete Event_ removes the selected file, which cannot be undone. _Download Event Database_ downloads the selected file. _Upload Event_ adds an event database file (`.db`) from your computer to the archive, for example an event run offline on another timer, so it can be viewed or restored on this timer. Uploading does not change current data; use _Restore Event_ afterwards to load it. The upload is rejected if an archived event with the same file name already exists, if the file is not a valid RotorHazard database, if it was created by a newer RotorHazard version, or if there is not enough free disk space (a reserve of 50 MB is kept free for the running event).
 
 #### Pilots
 Add an entry for each pilot that will race. The system will announce pilots based on their callsign. A phonetic spelling for a callsign may be used to influence the voice callouts; it is not required.
