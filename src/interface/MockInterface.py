@@ -86,12 +86,16 @@ class MockInterface(BaseHardwareInterface):
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
 
+        # 3 and 4 simulate pass-peak-only hardware; only 4 also records RSSI history
+        signal_mode = self.config.get_item('GENERAL', 'MOCK_NODE_SIGNAL')
+        self.marshal_type = MarshalType.PASS_PEAK_ONLY if signal_mode in (3, 4) else MarshalType.FULL_RSSI
+
         for index, node in enumerate(self.nodes):
             if node.frequency:
                 readtime = monotonic()
 
-                match self.config.get_item('GENERAL', 'MOCK_NODE_SIGNAL'):
-                    case 2:
+                match signal_mode:
+                    case 2 | 3 | 4:
                         if self.mocknodedata[index]['is_crossing']:
                             new_rssi = random.randrange(60,150)
                             pass_peak_rssi = max(self.mocknodedata[index]['pass_peak_rssi'], new_rssi)
@@ -157,6 +161,8 @@ class MockInterface(BaseHardwareInterface):
                             pn_history.nadirRssi = node_data['pn_history.nadirRssi']
                             pn_history.nadirFirstTime = node_data['pn_history.nadirFirstTime']
                             pn_history.nadirLastTime = node_data['pn_history.nadirLastTime']
+                            if signal_mode == 3:
+                                pn_history = None
                             if node.is_valid_rssi(rssi_val):
                                 node.current_rssi = rssi_val
                                 self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)

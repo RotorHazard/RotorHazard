@@ -474,6 +474,8 @@
 					<option value="0" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==0}}>{{ __('None') }}</option>
 					<option value="1" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==1}}>{{ __('Replay') }} mock_data_[n].csv</option>
 					<option value="2" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==2}}>{{ __('Simulated') }}</option>
+					<option value="3" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==3}}>{{ __('Simulated - Pass Peak Only') }}</option>
+					<option value="4" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==4}}>{{ __('Simulated - Pass Peak Only (+RSSI)') }}</option>
 				</select>
 			</li>
 		</ol>
