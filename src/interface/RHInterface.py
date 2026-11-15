@@ -195,7 +195,29 @@ class RHInterface(BaseHardwareInterface):
 
     def get_serial_port_names(self):
         '''Returns the names of the serial ports currently used by nodes.'''
-        return set(node.serial.port for node in self.nodes if getattr(node, 'serial', None))
+        nodes = list(self.nodes) + ([self.info_node_obj] if self.info_node_obj else [])
+        return set(node.serial.port for node in nodes if getattr(node, 'serial', None))
+
+    def remove_serial_ports(self, ports):
+        '''Closes the given serial ports at runtime and returns the list of nodes removed with them.'''
+        import serial_node  # (local import to avoid circular import)
+        def on_ports(node):
+            return node is not None and getattr(node, 'serial', None) is not None and node.serial.port in ports
+        removed_nodes = [node for node in self.nodes if on_ports(node)]
+        serial_objs = set(node.serial for node in removed_nodes)
+        if on_ports(self.info_node_obj):
+            serial_objs.add(self.info_node_obj.serial)
+            self.info_node_obj = None
+        if self.fwupd_serial_obj in serial_objs:
+            self.fwupd_serial_obj = None
+        self.nodes.data = [node for node in self.nodes if not on_ports(node)]
+        with serial_node.node_io_rlock_obj:  # don't close a port while a transfer is in progress
+            for serial_obj in serial_objs:
+                try:
+                    serial_obj.close()
+                except Exception as ex:
+                    logger.warning("Error closing serial port '{}': {}".format(serial_obj.port, ex))
+        return removed_nodes
 
     def add_serial_ports(self, ports):
         '''Opens the given serial ports at runtime and returns the list of new nodes found on them.'''
