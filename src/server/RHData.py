@@ -4199,7 +4199,9 @@ class RHData():
             if isinstance(val, numbers.Real):
                 output = val
             else:
-                output = default_value
+                output = float(val)
+                if output.is_integer():
+                    output = int(output)
         except:
             output = default_value
 
