@@ -599,6 +599,13 @@ dialog > button {
 	word-break: break-all;
 }
 
+#serial-port-list .screen-reader-text {
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
 #serial-port-list-result .table-wrap {
 	margin-top: 0.75rem;
 }
@@ -613,7 +620,7 @@ dialog > button {
 }
 
 .serial-port-access-ok {
-	color: hsl(120, 60%, 35%);
+	color: hsl(120, 60%, 30%);
 }
 
 .serial-port-access-denied,
