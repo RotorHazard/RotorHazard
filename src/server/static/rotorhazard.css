@@ -592,10 +592,24 @@ dialog > button {
 .serial-port-list-table th,
 .serial-port-list-table td {
 	text-align: left;
+	vertical-align: middle;
 }
 
 .serial-port-list-table code {
 	word-break: break-all;
+}
+
+#serial-port-list-result .table-wrap {
+	margin-top: 0.75rem;
+}
+
+.serial-port-list-table .serial-port-details {
+	cursor: help;
+}
+
+.serial-port-list-table td:first-child code {
+	word-break: normal;
+	white-space: nowrap;
 }
 
 .serial-port-access-ok {

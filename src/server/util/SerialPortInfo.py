@@ -10,6 +10,7 @@ adapters, which resets Arduino-based nodes.
 '''
 
 import os
+import re
 import sys
 import logging
 
@@ -182,13 +183,21 @@ def list_serial_ports(configured_ports=None):
                     entry['aliases'].append(tty_twin)
             entry.update(_posix_access_info(device))
 
-        # recommended name: stable by-id alias if available, then by-path, else device
-        recommended = device
-        for alias_dir in LINUX_ALIAS_DIRS:
-            match = [a for a in entry['aliases'] if a.startswith(alias_dir + '/')]
-            if match:
-                recommended = match[0]
-                break
+        # recommended name: by-id alias when the device has a serial number, then by-path,
+        # then by-id, then /dev/serialN (Raspberry Pi), else device
+        by_id = [a for a in entry['aliases'] if a.startswith('/dev/serial/by-id/')]
+        by_path = [a for a in entry['aliases'] if a.startswith('/dev/serial/by-path/')]
+        serial_n = [a for a in entry['aliases'] if re.fullmatch(r'/dev/serial\d+', a)]
+        if by_id and entry['serial_number']:
+            recommended = by_id[0]
+        elif by_path:
+            recommended = by_path[0]
+        elif by_id:
+            recommended = by_id[0]
+        elif serial_n:
+            recommended = serial_n[0]
+        else:
+            recommended = device
         entry['recommended'] = recommended
 
         matched = [cfg for cfg_key, cfg in configured_keys.items() if cfg_key == key]

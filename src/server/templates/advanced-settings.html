@@ -51,6 +51,10 @@
 
 					if (section == 'GENERAL' && key == 'SERIAL_PORTS') {
 						display_serial_port_ui(value);
+						if (serial_port_relist_pending) {
+							serial_port_relist_pending = false;
+							list_serial_ports();
+						}
 					} else {
 						$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
 					}
@@ -134,13 +138,22 @@
 						.prop('type', 'text')
 						.addClass('set-serial-config')
 						.appendTo(item_el);
+					$('<button type="button" class="serial-port-remove btn-danger">')
+						.html('&#215;')
+						.appendTo(item_el);
 				}
 				item_el.find('input').val(port);
+				item_el.find('.serial-port-remove')
+					.prop('disabled', false)
+					.prop('title', __('Remove') + ' ' + port);
 			}
 			serial_ui.find('li.flagged').remove();
 		};
 
 		$(document).on('change', '.set-serial-config', function (event) {
+			if ($('#serial-port-list-result table').length) {
+				serial_port_relist_pending = true;
+			}
 			var values = [];
 			var newVal = false;
 			$('.set-serial-config').each(function() {
@@ -171,6 +184,8 @@
 			});
 		});
 
+		var serial_port_relist_pending = false;
+
 		function list_serial_ports() {
 			var btn = $('#serial-port-list-btn');
 			var result_el = $('#serial-port-list-result');
@@ -200,6 +215,9 @@
 			if (port.access == 'missing') {
 				return __('Not found');
 			}
+			if (port.access_error) {
+				return __('Unknown') + ' (' + port.access_error + ')';
+			}
 			return __('Unknown');
 		}
 
@@ -208,17 +226,6 @@
 			if (!msg) {
 				result_el.append($('<p>').text(__('Unable to list serial ports')));
 				return;
-			}
-
-			var info = [];
-			if (msg.user) {
-				info.push(__('Server process user') + ': ' + msg.user);
-			}
-			if (msg.groups) {
-				info.push(__('Groups') + ': ' + msg.groups.join(', '));
-			}
-			if (info.length) {
-				result_el.append($('<p class="serial-port-list-info">').text(info.join(' · ')));
 			}
 
 			if (!msg.pyserial) {
@@ -235,14 +242,17 @@
 				return;
 			}
 
+			var show_access = !(msg.platform && msg.platform.indexOf('win') == 0);
 			var table = $('<table class="serial-port-list-table">');
-			$('<tr>')
+			var header = $('<tr>')
 				.append($('<th>').text(__('Port')))
 				.append($('<th>').text(__('Aliases')))
 				.append($('<th>').text(__('Description')))
-				.append($('<th>').text(__('Access')))
-				.append($('<th>'))
 				.appendTo(table);
+			if (show_access) {
+				header.append($('<th>').text(__('Access')));
+			}
+			header.append($('<th>'));
 
 			for (var i in msg.ports) {
 				var port = msg.ports[i];
@@ -257,20 +267,23 @@
 
 				var desc = [];
 				if (port.description) desc.push(port.description);
-				if (port.manufacturer && (!port.description || port.description.indexOf(port.manufacturer) == -1)) {
-					desc.push(port.manufacturer);
-				}
 				if (port.serial_number) desc.push('S/N ' + port.serial_number);
+				if (port.vid && port.pid) desc.push('VID:PID ' + port.vid + ':' + port.pid);
 				var desc_cell = $('<td>').appendTo(row);
 				$('<div>').text(desc.join(', ')).appendTo(desc_cell);
-				if (port.hwid) {
-					$('<div class="desc">').text(port.hwid).appendTo(desc_cell);
+				var details = [];
+				if (port.manufacturer) details.push(port.manufacturer);
+				if (port.hwid) details.push(port.hwid);
+				if (details.length) {
+					desc_cell.addClass('serial-port-details').attr('title', details.join('\n'));
 				}
 
-				$('<td>')
-					.addClass('serial-port-access-' + port.access)
-					.text(serial_port_access_text(port, msg))
-					.appendTo(row);
+				if (show_access) {
+					$('<td>')
+						.addClass('serial-port-access-' + port.access)
+						.text(serial_port_access_text(port, msg))
+						.appendTo(row);
+				}
 
 				var action_cell = $('<td>').appendTo(row);
 				if (port.configured) {
@@ -286,16 +299,23 @@
 
 			$('<div class="table-wrap">').append(table).appendTo(result_el);
 			result_el.append($('<p class="desc">').text(
-				__('"Add" uses the most stable name available (e.g. /dev/serial/by-id/... on Linux), which does not change when devices are re-plugged.')));
+				__('Note') + ': ' + __('"Add" uses the most stable name available. On Linux, a "/dev/serial/by-id/..." name is used for adapters with a serial number and follows the adapter to any USB port; otherwise a "/dev/serial/by-path/..." name is used, which stays the same only while the adapter is plugged into the same USB port.') +
+				(msg.user ? ' ' + __('Server process user') + ': ' + msg.user : '')));
 		}
 
 		$(document).on('click', '#serial-port-list-btn', function () {
 			list_serial_ports();
 		});
 
+		$(document).on('click', '.serial-port-remove', function () {
+			$(this).prop('disabled', true);
+			$(this).closest('li').find('input').val('').trigger('change');
+		});
+
 		$(document).on('click', '.serial-port-add', function () {
+			serial_port_relist_pending = true;
+			$(this).prop('disabled', true);
 			$('#serial-port--new input').val($(this).data('port')).trigger('change');
-			$(this).replaceWith(document.createTextNode(__('Configured')));
 		});
 	});
 
