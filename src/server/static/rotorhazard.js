@@ -2333,8 +2333,16 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			}
 		}
 		if (display_type == 'by_fastest_speed') {
-			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
-			row.append('<td class="source">'+ format_source_text(leaderboard[i].top_speed_source) +'</td>');
+			var el = $('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			var source = leaderboard[i].top_speed_source;
+			var source_text = format_lap_source_text(source);
+			if (source) {
+				el.data('source', source_text);
+				el.attr('title', source_text);
+				el.attr('tabindex', 0);
+			}
+			row.append(el);
+			row.append('<td class="source">'+ source_text +'</td>');
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -2368,7 +2376,15 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			(display_type == 'heat' ||
 			display_type == 'round' ||
 			(display_type == 'current' && display_top_speed))) {
-			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			var el = $('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			var source = leaderboard[i].top_speed_source;
+			if (source && (display_type == 'heat' || display_type == 'round')) {
+				var source_text = format_lap_source_text(source);
+				el.data('source', source_text);
+				el.attr('title', source_text);
+				el.attr('tabindex', 0);
+			}
+			row.append(el);
 		}
 
 		if (show_points && 'primary_points' in meta) {

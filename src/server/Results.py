@@ -452,12 +452,14 @@ def _do_calc_leaderboard(racecontext, **params):
 
     # speeds for each pilot, from the saved split records
     top_speeds = {}
+    top_speed_lap_ids = {}
     speed_sums = {}
     if not USE_CURRENT:
         for lap_split in rhDataObj.get_savedRaceLapSplits_by_savedRaceMeta(raceObj.id):
             if lap_split.split_speed is not None:
                 if lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
                     top_speeds[lap_split.pilot_id] = lap_split.split_speed
+                    top_speed_lap_ids[lap_split.pilot_id] = lap_split.lap_id
                 # non-positive speeds come from a bad reference timestamp
                 if lap_split.split_speed > 0:
                     speed_total, speed_count = speed_sums.get(lap_split.pilot_id, (0.0, 0))
@@ -468,6 +470,10 @@ def _do_calc_leaderboard(racecontext, **params):
             if lap_split.split_speed is not None and \
                     lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
                 top_speeds[lap_split.pilot_id] = lap_split.split_speed
+                top_speed_lap_ids[lap_split.pilot_id] = lap_split.lap_id
+
+    # a speed with lap_id N is measured after crossing N, so it is on the next lap in the lap list
+    speed_lap_offset = 2 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP else 1
 
     do_gevent_sleep()
     # find leader for each lap in race
@@ -588,6 +594,7 @@ def _do_calc_leaderboard(racecontext, **params):
             'round': round_num,
             'heat': current_heat_id,
             'displayname': heat_displayname,
+            'lap': top_speed_lap_ids[result_pilot['pilot_id']] + speed_lap_offset,
         } if result_pilot['top_speed'] is not None else None
 
     do_gevent_sleep()
