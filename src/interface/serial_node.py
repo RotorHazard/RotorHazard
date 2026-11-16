@@ -18,6 +18,25 @@ SERIAL_BAUD_RATES = [921600, 115200]
 SYS_DEV_DIR_PATH = "/dev/"
 DEF_S32BPILL_SERIAL_PORTS = ["ttyAMA0", "serial0"]
 REOPEN_INTERVAL_SECS = 2.0  # time between attempts to reopen a serial port lost due to an I/O error
+REOPEN_S32_DELAY_SECS = 0.25  # delay after reopening an S32_BPill port before communicating with the node
+SERIAL_WRITE_TIMEOUT_SECS = 1.0  # limit for a blocked write while probing for a node (e.g. Bluetooth serial port with no remote device)
+try:
+    import termios
+    SERIAL_PORT_ERRORS = (IOError, termios.error)  # termios.error: tcflush on a vanished device (Linux)
+except ImportError:
+    SERIAL_PORT_ERRORS = (IOError,)
+
+def open_serial_port(ser):
+    '''Opens the serial port on a worker thread so that a slow open (e.g. Bluetooth serial port) does not block the server'''
+    def do_open():
+        try:
+            ser.open()
+            return None
+        except Exception as ex:  # returned instead of raised, as gevent prints exceptions raised in worker threads
+            return ex
+    err = gevent.get_hub().threadpool.apply(do_open)
+    if err is not None:
+        raise err
 
 logger = logging.getLogger(__name__)
 
@@ -45,29 +64,35 @@ class SerialNode(Node):
         '''Returns True if the serial port is usable; if it was lost due to an I/O error then
            tries (at most every REOPEN_INTERVAL_SECS) to reopen it'''
         ser = self.serial
-        if not getattr(ser, 'rh_reopen_pending', False):
-            return True
+        if getattr(ser, 'rh_removed', False):  # port removed from configuration and closed
+            return False
         now = monotonic()
+        if not getattr(ser, 'rh_reopen_pending', False):
+            return now >= getattr(ser, 'rh_ready_time', 0)  # wait after reopen until node has booted
         if now < getattr(ser, 'rh_next_reopen_time', 0):
             return False
         ser.rh_next_reopen_time = now + REOPEN_INTERVAL_SECS
         try:
-            ser.open()
+            open_serial_port(ser)
         except (IOError, ValueError):
             return False
         ser.rh_reopen_pending = False
         ser.rh_reopen_count = getattr(ser, 'rh_reopen_count', 0) + 1  # tells interface to restore node settings
+        ser.rh_ready_time = now + getattr(ser, 'rh_reopen_delay_secs', BOOTLOADER_CHILL_TIME)
         if self.multi_curnode_index_holder:
             self.multi_curnode_index_holder[0] = -1  # current multi-node index on processor is unknown
         self.node_log(interface, "Reopened serial port '{}'".format(ser.port))
-        return True
+        return False
 
     def handle_port_error(self, interface, err):
         '''Closes the serial port after an I/O error (logged once) so that it gets reopened later'''
         ser = self.serial
         if getattr(ser, 'rh_reopen_pending', False):
             return
-        self.node_log(interface, "Lost connection to serial port '{}' ({}); will try to reopen it".format(ser.port, err))
+        if interface:
+            self.node_log(interface, "Lost connection to serial port '{}' ({}); will try to reopen it".format(ser.port, err))
+        else:  # port probed by discover(), which closes it if no node responds
+            logger.debug("Error communicating with serial port '{}': {}".format(ser.port, err))
         try:
             ser.close()
         except Exception:
@@ -131,10 +156,21 @@ class SerialNode(Node):
                                     self.node_log(interface, 'Retry (no data) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                             self.inc_read_error_count(interface)
                             gevent.sleep(0.025)
-                except IOError as err:  # port lost (e.g. USB node unplugged); close it and try to reopen later
-                    self.inc_read_error_count(interface)
-                    self.handle_port_error(interface, err)
-                    break
+                except SERIAL_PORT_ERRORS as err:
+                    if not interface:  # port probed by discover(); give up on it
+                        self.handle_port_error(interface, err)
+                        break
+                    self.node_log(interface, 'Read Error: ' + str(err))
+                    retry_count = retry_count + 1
+                    if check_multi_flag:  # log and count if regular query
+                        if retry_count <= max_retries:
+                            self.node_log(interface, 'Retry (IOError) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        else:
+                            self.node_log(interface, 'Retry (IOError) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        self.inc_read_error_count(interface)
+                        gevent.sleep(0.025)
+                    if retry_count > max_retries:  # error persists (e.g. USB node unplugged); close port and reopen later
+                        self.handle_port_error(interface, err)
             return data if success else None
 
     def write_block(self, interface, command, data, check_multi_flag=True):
@@ -160,11 +196,20 @@ class SerialNode(Node):
                 try:
                     self.serial.write(data_with_checksum)
                     success = True
-                except IOError as err:  # port lost (e.g. USB node unplugged); close it and try to reopen later
-                    if interface:
-                        interface.inc_intf_write_error_count()
-                    self.handle_port_error(interface, err)
-                    break
+                except SERIAL_PORT_ERRORS as err:
+                    if not interface:  # port probed by discover(); give up on it
+                        self.handle_port_error(interface, err)
+                        break
+                    self.node_log(interface, 'Write Error: ' + str(err))
+                    retry_count = retry_count + 1
+                    if retry_count <= MAX_RETRY_COUNT:
+                        self.node_log(interface, 'Retry (IOError) in write_block:  port={0} cmd={1} data={2} retry={3}'.format(self.serial.port, command, data, retry_count))
+                    else:
+                        self.node_log(interface, 'Retry (IOError) limit reached in write_block:  port={0} cmd={1} data={2} retry={3}'.format(self.serial.port, command, data, retry_count))
+                    interface.inc_intf_write_error_count()
+                    gevent.sleep(0.025)
+                    if retry_count > MAX_RETRY_COUNT:  # error persists (e.g. USB node unplugged); close port and reopen later
+                        self.handle_port_error(interface, err)
             return success
 
     def check_set_multi_node_index(self, interface):
@@ -209,6 +254,7 @@ class SerialNode(Node):
                 self.serial.flushInput()
                 self.serial.flushOutput()
                 self.serial.close()
+                self.serial.rh_removed = True  # port now used by bootloader; not reopened
         except Exception as ex:
             self.node_log(interface, 'Error sending JUMP_TO_BOOTLOADER message to serial node {0}: {1}'.format(self.index+1, ex))
 
@@ -232,25 +278,25 @@ class SerialNode(Node):
         except Exception:
             self.multi_node_slot_index = -1
 
-    def read_firmware_version(self):
+    def read_firmware_version(self, log_level=logging.ERROR):
         # read firmware version string
         try:
             data = self.read_block(None, READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2, False)
             self.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
                                           if data != None else None
         except Exception:
-            logger.exception('Error fetching READ_FW_VERSION for serial node')
+            logger.log(log_level, 'Error fetching READ_FW_VERSION for serial node', exc_info=True)
 
-    def read_firmware_proctype(self):
+    def read_firmware_proctype(self, log_level=logging.ERROR):
         # read firmware processor-type string
         try:
             data = self.read_block(None, READ_FW_PROCTYPE, FW_TEXT_BLOCK_SIZE, 2, False)
             self.firmware_proctype_str = bytearray(data).decode("utf-8").rstrip('\0') \
                                          if data != None else None
         except Exception:
-            logger.exception('Error fetching READ_FW_PROCTYPE for serial node')
+            logger.log(log_level, 'Error fetching READ_FW_PROCTYPE for serial node', exc_info=True)
 
-    def read_firmware_timestamp(self):
+    def read_firmware_timestamp(self, log_level=logging.ERROR):
         # read firmware build date/time strings
         try:
             data = self.read_block(None, READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2, False)
@@ -262,12 +308,14 @@ class SerialNode(Node):
             else:
                 self.firmware_timestamp_str = None
         except Exception:
-            logger.exception('Error fetching READ_FW_DATE/TIME for serial node')
+            logger.log(log_level, 'Error fetching READ_FW_DATE/TIME for serial node', exc_info=True)
 
 
 def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwargs):
     '''Opens the given serial ports (or the configured SERIAL_PORTS if none given) and returns the nodes found.'''
     nodes = []
+    # ports given at runtime have their failure reported to the user, so it is not logged as an error
+    fail_log_level = logging.WARNING if ports is not None else logging.ERROR
     config_ser_ports = ports if ports is not None else config.get_item('GENERAL', 'SERIAL_PORTS')
     if ports is None and isS32BPillFlag and len(config_ser_ports) == 0:
         try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
@@ -295,11 +343,16 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwarg
                         attempt_delay_secs *= 2
                         logger.debug("Attempting connection to serial node at {}, {} baud".\
                                      format(comm, baud_rates_list[baud_idx]))
-                        node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25)
+                        node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25, \
+                                                        write_timeout=SERIAL_WRITE_TIMEOUT_SECS)
                         node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
                         node_serial_obj.setRTS(0)
                         node_serial_obj.setPort(comm)
-                        node_serial_obj.open()  # open port (now that DTR is configured for no change)
+                        if ports is not None:  # port added at runtime; open without blocking the server
+                            open_serial_port(node_serial_obj)  # open port (now that DTR is configured for no change)
+                        else:
+                            node_serial_obj.open()  # open port (now that DTR is configured for no change)
+                        node_serial_obj.rh_reopen_delay_secs = REOPEN_S32_DELAY_SECS if s32_port_flag else BOOTLOADER_CHILL_TIME
                         if (not s32_port_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
                             logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
                             gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
@@ -318,20 +371,21 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwarg
                                     data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
                                     multi_count = unpack_8(data) if data != None else None
                                 if multi_count is None or multi_count < 0 or multi_count > 32:
-                                    logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
+                                    logger.log(fail_log_level, 'Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
                                     multi_count = 1
                                 elif multi_count == 0:
                                     logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
                                     multi_count = 0
                         except Exception:
                             multi_count = 1
-                            logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
+                            logger.log(fail_log_level, 'Error fetching READ_MULTINODE_COUNT for serial node', exc_info=True)
                         if (not rev_val) and node_serial_obj:
                             node_serial_obj.close()
                             node_serial_obj = None
                     if (not rev_val):  # if connection attempt failed then retry with alternate baud rate
                         baud_idx += 1
                 if rev_val:
+                    node_serial_obj.write_timeout = None  # write timeout only while probing for a node
                     api_level = rev_val & 0xFF
                     node.api_level = api_level
                     node_version_str = None
@@ -340,15 +394,15 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwarg
                     ftyp_log_str = ''
                     ftim_log_str = ''
                     if api_level >= 34:  # read firmware version and build timestamp strings
-                        node.read_firmware_version()
+                        node.read_firmware_version(fail_log_level)
                         if node.firmware_version_str:
                             node_version_str = node.firmware_version_str
                             fver_log_str = ", fw_version=" + node.firmware_version_str
                             if node.api_level >= 35:
-                                node.read_firmware_proctype()
+                                node.read_firmware_proctype(fail_log_level)
                                 if node.firmware_proctype_str:
                                     ftyp_log_str = ", fw_type=" + node.firmware_proctype_str
-                        node.read_firmware_timestamp()
+                        node.read_firmware_timestamp(fail_log_level)
                         if node.firmware_timestamp_str:
                             node_timestamp_str = node.firmware_timestamp_str
                             ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
@@ -391,7 +445,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwarg
                             slots_str += ' ' + str(node.multi_node_slot_index+1)
                         logger.info("Receiver modules found at slot positions: " + slots_str)
                 else:
-                    logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))
+                    logger.log(fail_log_level, 'Unable to fetch revision code for serial node at "{0}"'.format(comm))
             except IOError as ex:
-                logger.error("Error initializing configured serial node '{}':  {}".format(comm, ex))
+                logger.log(fail_log_level, "Error initializing configured serial node '{}':  {}".format(comm, ex))
     return nodes
