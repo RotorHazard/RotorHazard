@@ -4152,10 +4152,34 @@ def apply_serial_ports_change(old_ports, new_ports):
         return {'restart': True, 'attempted': [], 'failed': []}
     removed_nodes = rh_interface.remove_serial_ports(removed_ports) if removed_ports else []
     new_nodes = rh_interface.add_serial_ports(added_ports) if added_ports else []
+    # nodes on newly opened ports take the seats of nodes whose serial port was lost (e.g. node moved to another USB socket)
+    replaced = []  # (lost port, its nodes, new nodes in their seats)
+    if new_nodes:
+        lost_ports = []
+        for node in RaceContext.interface.nodes:  # (seat order)
+            serial_obj = getattr(node, 'serial', None)
+            if node in rh_interface.nodes and serial_obj is not None and getattr(serial_obj, 'rh_reopen_pending', False) and \
+                    not getattr(serial_obj, 'rh_removed', False) and serial_obj.port not in lost_ports:
+                lost_ports.append(serial_obj.port)
+        new_ports = []
+        for node in new_nodes:
+            if node.serial.port not in new_ports:
+                new_ports.append(node.serial.port)
+        for lost_port, new_port in zip(lost_ports, new_ports):
+            replaced.append((lost_port, [node for node in rh_interface.nodes if \
+                                         getattr(getattr(node, 'serial', None), 'port', None) == lost_port],
+                             [node for node in new_nodes if node.serial.port == new_port]))
+        if replaced:
+            rh_interface.remove_serial_ports([lost_port for lost_port, _, _ in replaced])
     if removed_nodes or new_nodes:
         with RaceContext.rhdata.get_db_session_handle():
             RaceContext.interface.remove_nodes(removed_nodes)
-            RaceContext.interface.add_nodes(rh_interface, new_nodes)
+            for lost_port, old_nodes, seat_nodes in replaced:
+                RaceContext.interface.replace_nodes(old_nodes, seat_nodes)
+                logger.info("Node(s) on serial port '{}' take the seat(s) of node(s) on lost serial port '{}'".format( \
+                            seat_nodes[0].serial.port, lost_port))
+            RaceContext.interface.add_nodes(rh_interface, [node for node in new_nodes if \
+                            not any(node is seat_node for _, _, seat_nodes in replaced for seat_node in seat_nodes)])
             RaceContext.interface.add_callbacks()
             RaceContext.interface.reindex_nodes()
             RaceContext.race.num_nodes = len(RaceContext.interface.nodes)
