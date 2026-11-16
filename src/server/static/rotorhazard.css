@@ -650,7 +650,7 @@ dialog > button {
 }
 
 .serial-port-status-connected {
-	color: hsl(120, 55%, 50%);
+	color: hsl(120, 60%, 30%);
 }
 
 .serial-port-status-not_responding,

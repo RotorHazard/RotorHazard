@@ -3016,15 +3016,36 @@ def on_set_config(data):
     if data['section'] == 'GENERAL' and data['key'] == 'SECONDARIES' and isinstance(data['value'], list):
         restore_secondary_passwords(data['value'], RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'))
     old_serial_ports = list(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or [])
+    if data['section'] == 'GENERAL' and data['key'] == 'SERIAL_PORTS' and \
+            RaceContext.race.race_status != RaceStatus.READY and \
+            set(data['value'] or []) != set(old_serial_ports):
+        logger.info("Serial ports change rejected because a race is in progress or not yet saved")
+        return {'rejected': 'race'}  # (returned via ack callback)
     RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
+    serial_ports_result = None
     if data['section'] == 'GENERAL' and data['key'] == 'SERIAL_PORTS':
         try:
             with SERIAL_PORTS_LOCK:
-                restart_flag = apply_serial_ports_change(old_serial_ports, data['value'])
+                serial_ports_result = apply_serial_ports_change(old_serial_ports, data['value'])
         except Exception:
             logger.exception("Error applying serial-ports change")
-            restart_flag = True
-        if restart_flag:
+            # an added port that was not opened is handled as a failure; one that was opened is kept and needs a restart
+            added_ports = [port for port in data['value'] if port not in old_serial_ports]
+            rh_interface = RaceContext.interface.get_rh_interface()
+            try:
+                open_ports = rh_interface.get_serial_port_names() if rh_interface else set()
+            except Exception:
+                open_ports = set()
+            opened_ports = [port for port in added_ports if port in open_ports]
+            removed_flag = any(port not in data['value'] for port in old_serial_ports)
+            serial_ports_result = {'restart': len(opened_ports) > 0 or len(added_ports) == 0 or removed_flag,
+                                   'attempted': added_ports,
+                                   'failed': [port for port in added_ports if port not in open_ports],
+                                   'restart_ports': opened_ports, 'error': True}
+        if serial_ports_result['failed']:  # an added port that yielded no node is not kept in the configuration
+            data['value'] = [port for port in data['value'] if port not in serial_ports_result['failed']]
+            RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
+        if serial_ports_result['restart']:
             RaceContext.serverstate.set_restart_required()
     if data['section'] == 'GENERAL' and data['key'] == 'ADMIN_SOCKET_AUTH':
         AdminAuth.set_admin_socket_auth_enabled(data['value'])
@@ -3044,6 +3065,10 @@ def on_set_config(data):
         'key': data['key'],
         'value': event_value,
         })
+    if serial_ports_result is not None:  # (returned via ack callback)
+        return {'attempted': serial_ports_result['attempted'], 'failed': serial_ports_result['failed'],
+                'restart_ports': serial_ports_result.get('restart_ports', []),
+                'error': serial_ports_result.get('error', False)}
 
 @SOCKET_IO.on('list_serial_ports')
 @requires_socketio_auth
@@ -3063,8 +3088,9 @@ def on_list_serial_ports(*args):
 def on_get_serial_port_status(*args):
     '''Returns (via ack callback) the connection state of each configured serial port:
        'connected', 'not_responding' or 'not_connected', plus the seat numbers of its nodes.'''
+    import util.SerialPortInfo as SerialPortInfo
     rh_interface = RaceContext.interface.get_rh_interface()
-    open_status = rh_interface.get_serial_port_status() \
+    open_status = rh_interface.get_serial_port_status(port_present_fn=SerialPortInfo.port_present) \
                   if rh_interface and hasattr(rh_interface, 'get_serial_port_status') else {}
     result = {}
     for port in RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or []:
@@ -4057,6 +4083,11 @@ def initialize_rh_interface():
     RaceContext.interface.node_crossing_callback = node_crossing_callback
     RaceContext.interface.add_callbacks()
     RaceContext.interface.reindex_nodes()
+    # ports that exist but yielded no node at startup are not tried again by the periodic check
+    try:
+        check_serial_ports_appeared.seen_present = present_unopened_serial_ports() or set()
+    except Exception:
+        logger.exception("Error checking for unopened serial ports")
     return True
 
 import gevent.lock
@@ -4069,13 +4100,10 @@ def check_serial_ports_appeared():
     if RaceContext.race.race_status != RaceStatus.READY or not SERIAL_PORTS_LOCK.acquire(blocking=False):
         return
     try:
-        import util.SerialPortInfo as SerialPortInfo
-        rh_interface = RaceContext.interface.get_rh_interface()
-        if not rh_interface or not hasattr(rh_interface, 'get_serial_port_names'):
+        present = present_unopened_serial_ports()
+        if present is None:
             return
         configured = list(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or [])
-        open_ports = rh_interface.get_serial_port_names()
-        present = set(port for port in configured if port not in open_ports and SerialPortInfo.port_present(port))
         appeared = [port for port in configured if port in present and \
                     port not in check_serial_ports_appeared.seen_present]
         check_serial_ports_appeared.seen_present = present
@@ -4087,21 +4115,41 @@ def check_serial_ports_appeared():
 
 check_serial_ports_appeared.seen_present = set()
 
+def present_unopened_serial_ports():
+    '''Returns the configured serial ports that exist but are not open (None if there is no RH interface)'''
+    import util.SerialPortInfo as SerialPortInfo
+    rh_interface = RaceContext.interface.get_rh_interface()
+    if not rh_interface or not hasattr(rh_interface, 'get_serial_port_names'):
+        return None
+    open_ports = rh_interface.get_serial_port_names()
+    return set(port for port in (RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') or []) \
+               if port not in open_ports and SerialPortInfo.port_present(port))
+
 def apply_serial_ports_change(old_ports, new_ports):
-    '''Opens added and closes removed serial ports without a server restart; returns True if restart is still needed'''
+    '''Opens added and closes removed serial ports without a server restart; returns a dict with
+       'restart' (True if restart is still needed), 'attempted' (added ports that were tried)
+       and 'failed' (attempted ports that yielded no node)'''
+    import util.SerialPortInfo as SerialPortInfo
     old_ports = list(old_ports or [])
     new_ports = list(new_ports or [])
     rh_interface = RaceContext.interface.get_rh_interface()
     if not rh_interface or not hasattr(rh_interface, 'add_serial_ports'):
-        return old_ports != new_ports
+        return {'restart': old_ports != new_ports, 'attempted': [], 'failed': []}
     open_ports = rh_interface.get_serial_port_names()
     removed_ports = [port for port in old_ports if port not in new_ports and port in open_ports]
     added_ports = [port for port in new_ports if port not in old_ports and port not in open_ports]
+    # an added port naming the same device as an open port (e.g. "/dev/serial0" for "/dev/ttyAMA0") is not opened
+    open_keys = set(SerialPortInfo._norm_key(port) for port in open_ports if port not in removed_ports)
+    dup_ports = [port for port in added_ports if SerialPortInfo._norm_key(port) in open_keys]
+    if dup_ports:
+        logger.warning("Serial port(s) {} not opened, as the same device is already in use".format(dup_ports))
+        added_ports = [port for port in added_ports if port not in dup_ports]
+        check_serial_ports_appeared.seen_present.update(dup_ports)
     if not removed_ports and not added_ports:
-        return False
+        return {'restart': False, 'attempted': dup_ports, 'failed': dup_ports}
     if RaceContext.race.race_status != RaceStatus.READY:
         logger.info("Race in progress or unsaved; serial port changes will be applied after restart")
-        return True
+        return {'restart': True, 'attempted': [], 'failed': []}
     removed_nodes = rh_interface.remove_serial_ports(removed_ports) if removed_ports else []
     new_nodes = rh_interface.add_serial_ports(added_ports) if added_ports else []
     if removed_nodes or new_nodes:
@@ -4126,8 +4174,10 @@ def apply_serial_ports_change(old_ports, new_ports):
         logger.info("Serial ports changed (removed: {}, added: {}); {} node(s) removed, {} added, number of nodes now {}".format( \
                     removed_ports, added_ports, len(removed_nodes), len(new_nodes), RaceContext.race.num_nodes))
         RaceContext.rhui.emit_refresh_page()
-    # if an added port yielded no node, keep restart as fallback
-    return any(port not in rh_interface.get_serial_port_names() for port in added_ports)
+    # an added port that yielded no node is not tried again by the periodic check until it disappears and reappears
+    failed_ports = [port for port in added_ports if port not in rh_interface.get_serial_port_names()]
+    check_serial_ports_appeared.seen_present.update(failed_ports)
+    return {'restart': False, 'attempted': added_ports + dup_ports, 'failed': failed_ports + dup_ports}
 
 # Create and save server/node information
 def buildServerInfo():
