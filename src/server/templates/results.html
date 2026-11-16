@@ -433,12 +433,22 @@
 			}
 		});
 
-		$(document).on('click', '.leaderboard td', function(){
-			el = $(this);
-			source = el.data('source');
+		function show_result_source(el) {
+			var source = el.data('source');
 			if (source) {
-				pilot = el.parent().children('.pilot').html()
+				var pilot = el.parent().children('.pilot').html();
 				push_message(__('Source for') + " " + pilot + ": " + source);
+			}
+		}
+
+		$(document).on('click', '.leaderboard td', function(){
+			show_result_source($(this));
+		})
+
+		$(document).on('keydown', '.leaderboard td[tabindex]', function(event){
+			if (event.key == 'Enter' || event.key == ' ') {
+				event.preventDefault();
+				show_result_source($(this));
 			}
 		})
 

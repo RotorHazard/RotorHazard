@@ -2309,11 +2309,13 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="fast">'+ lap +'</td>');
 
-			var source_text = format_lap_source_text(leaderboard[i].fastest_lap_source);
+			var source = leaderboard[i].fastest_lap_source;
+			var source_text = format_lap_source_text(source);
 
-			if (display_type == 'heat' || display_type == 'round' || display_type == 'by_fastest_lap') {
+			if (source && (display_type == 'heat' || display_type == 'round' || display_type == 'by_fastest_lap')) {
 				el.data('source', source_text);
 				el.attr('title', source_text);
+				el.attr('tabindex', 0);
 			}
 
 			if ('min_lap' in rotorhazard
@@ -2347,11 +2349,13 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="consecutive">'+ lap +'</td>');
 
-			var source_text = format_lap_source_text(leaderboard[i].consecutives_source);
+			var source = leaderboard[i].consecutives_source;
+			var source_text = format_lap_source_text(source);
 
-			if (display_type == 'heat' || display_type == 'round' || display_type == 'by_consecutives') {
+			if (source && (display_type == 'heat' || display_type == 'round' || display_type == 'by_consecutives')) {
 				el.data('source', source_text);
 				el.attr('title', source_text);
+				el.attr('tabindex', 0);
 			}
 
 			row.append(el);

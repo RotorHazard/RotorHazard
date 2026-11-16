@@ -22,10 +22,6 @@ APP.app_context().push()
 
 NONE_NONE_PAIR = [None, None]
 
-# bump when cached leaderboard data gains or changes fields; cached results are rebuilt on startup
-# 2: lap numbers in fastest_lap_source ('lap') and consecutives_source ('lap_start'/'lap_end')
-RESULTS_FORMAT_VER = 2
-
 in_calc_leaderboard_fn_flag = False
 
 class RaceClassRankManager():
