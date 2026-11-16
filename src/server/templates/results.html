@@ -179,16 +179,16 @@
 		$(document).on('click', '.collapsing .panel-header', function() { fit_round_headers_soon(450); });
 
 		socket.on('result_data', function (msg) {
-			function lap_speed_text(lap) {
-				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+			function lap_speed_text(speed) {
+				if (speed === null || typeof(speed) === 'undefined')
 					return '';
-				return ' (' + lap.speed.toFixed(2) + ')';
+				return ' (' + speed.toFixed(2) + ')';
 			}
 
-			function lap_speed_span(lap) {
-				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+			function lap_speed_span(speed) {
+				if (speed === null || typeof(speed) === 'undefined')
 					return '';
-				return '<span class="from_start">(' + lap.speed.toFixed(2) + ')</span>';
+				return '<span class="from_start">(' + speed.toFixed(2) + ')</span>';
 			}
 
 			function order_boards(primary) {
@@ -347,6 +347,8 @@
 											} else {
 												var lap_index = 0;
 											}
+											// a lap's speed is measured after its crossing, so it is shown on the next lap
+											var prev_speed = null;
 											for (var lap_i in node.laps) {
 												var lap = node.laps[lap_i];
 												if (!lap.deleted) {
@@ -356,12 +358,17 @@
 														} else {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(lap) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(prev_speed) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(lap) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(prev_speed) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													}
+													prev_speed = lap.speed;
 													lap_index++;
 												}
+											}
+											// speed measured on an unfinished lap after the last crossing
+											if (prev_speed !== null && typeof(prev_speed) !== 'undefined') {
+												tbody.append('<tr class="lap_speed_trailing"><td></td><td>' + lap_speed_span(prev_speed) + '</td></tr>')
 											}
 
 											table.append(tbody);
