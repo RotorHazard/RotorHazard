@@ -1463,25 +1463,19 @@ main.page-home {
 	margin-top: 0;
 }
 
-/* results page: icon link to the marshal page beside a leaderboard value */
-.marshal-icon-link {
-	display: inline-block;
-	margin-left: 0.375em;
+/* results page: cell text linking to the marshal page, styled as plain text where there is a mouse pointer */
+.marshal-link,
+.marshal-link:hover {
 	color: inherit;
-	opacity: 0.6;
-	vertical-align: -0.125em;
-	line-height: 1;
+	text-decoration: none;
 }
 
-.marshal-icon-link:hover,
-.marshal-icon-link:focus {
-	opacity: 1;
-}
-
-.marshal-icon-link svg {
-	width: 1em;
-	height: 1em;
-	display: block;
+@media (pointer: coarse), (hover: none) {
+	.marshal-link,
+	.marshal-link:hover {
+		text-decoration: underline dotted;
+		text-underline-offset: 0.15em;
+	}
 }
 
 .race-results h4 {

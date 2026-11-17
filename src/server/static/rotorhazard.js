@@ -2313,10 +2313,8 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			var source = leaderboard[i].fastest_lap_source;
 			var source_text = format_lap_source_text(source);
 
-			if (source && (display_type == 'heat' || display_type == 'round' || display_type == 'by_fastest_lap')) {
-				el.data('source', source_text);
+			if (source && (display_type == 'heat' || display_type == 'round')) {
 				el.attr('title', source_text);
-				el.attr('tabindex', 0);
 			}
 
 			if ('min_lap' in rotorhazard
@@ -2335,15 +2333,8 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		}
 		if (display_type == 'by_fastest_speed') {
 			var el = $('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
-			var source = leaderboard[i].top_speed_source;
-			var source_text = format_lap_source_text(source);
-			if (source) {
-				el.data('source', source_text);
-				el.attr('title', source_text);
-				el.attr('tabindex', 0);
-			}
 			row.append(el);
-			row.append('<td class="source">'+ source_text +'</td>');
+			row.append('<td class="source">'+ format_lap_source_text(leaderboard[i].top_speed_source) +'</td>');
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -2361,10 +2352,8 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			var source = leaderboard[i].consecutives_source;
 			var source_text = format_lap_source_text(source);
 
-			if (source && (display_type == 'heat' || display_type == 'round' || display_type == 'by_consecutives')) {
-				el.data('source', source_text);
+			if (source && (display_type == 'heat' || display_type == 'round')) {
 				el.attr('title', source_text);
-				el.attr('tabindex', 0);
 			}
 
 			row.append(el);
@@ -2381,9 +2370,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			var source = leaderboard[i].top_speed_source;
 			if (source && (display_type == 'heat' || display_type == 'round')) {
 				var source_text = format_lap_source_text(source);
-				el.data('source', source_text);
 				el.attr('title', source_text);
-				el.attr('tabindex', 0);
 			}
 			row.append(el);
 		}
