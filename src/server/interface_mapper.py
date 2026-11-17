@@ -51,6 +51,52 @@ class InterfaceMapper:
                 )
             )
 
+    def add_nodes(self, interface, nodes):
+        '''Registers nodes that were added at runtime to an already-mapped interface; they are inserted after
+           the interface's other nodes (before the nodes of later interfaces, e.g. mock nodes), as after a restart'''
+        if_positions = [ifmeta.interface for ifmeta in self._interface_map]
+        if_pos = next(pos for pos, intf in enumerate(if_positions) if intf is interface)
+        if_type = self._interface_map[if_pos].type
+        insert_idx = len([node_map for node_map in self._node_map \
+                          if next(pos for pos, intf in enumerate(if_positions) if intf is node_map.interface) <= if_pos])
+        for node in nodes:
+            node.provider = interface
+            node.provider_type = if_type
+            self._node_map.insert(insert_idx,
+                NodeMap(
+                    interface=interface,
+                    type=if_type,
+                    index=interface.nodes.index(node),
+                    object=node
+                )
+            )
+            insert_idx += 1
+
+    def replace_nodes(self, old_nodes, new_nodes):
+        '''Puts nodes that were added at runtime into the seats of nodes that were removed from the same interface
+           (starting at the first removed node's seat)'''
+        pos = next(idx for idx, node_map in enumerate(self._node_map) if any(node_map.object is node for node in old_nodes))
+        interface = self._node_map[pos].interface
+        if_type = self._node_map[pos].type
+        self._node_map = [node_map for node_map in self._node_map if not any(node_map.object is node for node in old_nodes)]
+        for offset, node in enumerate(new_nodes):
+            node.provider = interface
+            node.provider_type = if_type
+            self._node_map.insert(pos + offset, NodeMap(interface=interface, type=if_type, index=0, object=node))
+        self._update_local_indexes()
+
+    def remove_nodes(self, nodes):
+        '''Unregisters nodes that were removed at runtime from their interface (later seats move up)'''
+        self._node_map = [node_map for node_map in self._node_map if not any(node_map.object is node for node in nodes)]
+        self._update_local_indexes()
+
+    def _update_local_indexes(self):
+        '''Updates the local indexes into the interfaces' node lists (skips nodes already removed from their
+           interface, which are unregistered by a following call)'''
+        for node_map in self._node_map:
+            if any(node is node_map.object for node in node_map.interface.nodes):
+                node_map.index = node_map.interface.nodes.index(node_map.object)
+
     def add_callbacks(self):
         for ifmeta in self._interface_map:
             ifmeta.interface.pass_record_callback = self.pass_record_callback
@@ -292,12 +338,16 @@ class InterfaceMapper:
     #
 
     def get_heartbeat_json(self):
+        # each interface returns per-node lists in its own node order; assemble them in seat order
+        iface_data = [(iface.interface, iface.interface.get_heartbeat_json()) for iface in self._interface_map]
         json = {}
-        for iface in self._interface_map:
-            data = iface.interface.get_heartbeat_json()
+        for _, data in iface_data:
             for key, val in data.items():
-                if key in json:
-                    json[key].extend(data[key])
-                else:
-                    json[key] = val
+                if key not in json:
+                    json[key] = [] if isinstance(val, list) else val
+        for node_map in self._node_map:
+            data = next((d for intf, d in iface_data if intf is node_map.interface), {})
+            for key, val in data.items():
+                if isinstance(val, list):
+                    json[key].append(val[node_map.index] if node_map.index < len(val) else None)
         return json

@@ -16,6 +16,30 @@
 	];
 
 	$(document).ready(function () {
+		// after a page refresh caused by this client's serial-port change, show the Serial Ports section
+		var serial_port_scroll_pending = false;
+		if (window.location.hash == '#serial-port-setup') {
+			$('#serial-port-setup').closest('.panel').addClass('open').children('.panel-content').show();
+			serial_port_scroll_pending = true;
+			history.replaceState(null, '', window.location.pathname + window.location.search);
+		}
+
+		// keep the Hardware panel open across a page refresh requested by the server (e.g. serial port opened)
+		var hardware_panel = $('#serial-port-setup').closest('.panel');
+		try {
+			if (sessionStorage.getItem('rh_adv_hardware_open')) {
+				sessionStorage.removeItem('rh_adv_hardware_open');
+				hardware_panel.addClass('open').children('.panel-content').show();
+			}
+		} catch (e) {}
+		socket.on('refresh_page', function () {
+			try {
+				if (hardware_panel.hasClass('open')) {
+					sessionStorage.setItem('rh_adv_hardware_open', '1');
+				}
+			} catch (e) {}
+		});
+
 		socket.on('language', function (msg) {
 			rotorhazard.interface_language = msg.language;
 		});
@@ -82,7 +106,10 @@
 			socket.emit('set_config', data);
 		});
 
+		var serial_ports_current = [];
+
 		function display_serial_port_ui(ports) {
+			serial_ports_current = (ports || []).slice();
 			if ($('#serial-port-ui').length) {
 				var serial_ui = $('#serial-port-ui');
 			} else {
@@ -146,6 +173,10 @@
 					$('<button type="button" class="serial-port-remove btn-danger">')
 						.html('&#215;')
 						.appendTo(item_el);
+					$('<div class="serial-port-status">')
+						.prop('id', `serial-port--${i}-status`)
+						.appendTo(item_el);
+					item_el.find('input').attr('aria-describedby', `serial-port--${i}-status`);
 				}
 				item_el.find('input').val(port);
 				item_el.find('.serial-port-remove')
@@ -154,6 +185,12 @@
 					.attr('aria-label', __('Remove') + ' ' + port);
 			}
 			serial_ui.find('li.flagged').remove();
+			update_serial_port_status();
+
+			if (serial_port_scroll_pending) {
+				serial_port_scroll_pending = false;
+				document.getElementById('serial-port-setup').scrollIntoView();
+			}
 
 			if (serial_port_focus && serial_port_focus.type == 'remove') {
 				var idx = serial_port_focus.index;
@@ -166,9 +203,6 @@
 		};
 
 		$(document).on('change', '.set-serial-config', function (event) {
-			if ($('#serial-port-list-result table').length) {
-				serial_port_relist_pending = true;
-			}
 			var values = [];
 			var newVal = false;
 			$('.set-serial-config').each(function() {
@@ -182,13 +216,102 @@
 				values.push(newVal);
 			}
 
+			// removing a port whose nodes are connected needs confirmation
+			var removed_connected = serial_ports_current.filter(function (port) {
+				var info = serial_port_status_last ? serial_port_status_last[port] : null;
+				return values.indexOf(port) == -1 && info &&
+					(info.state == 'connected' || info.state == 'not_responding');
+			});
+			if (removed_connected.length) {
+				confirm_serial_port_removal(removed_connected, function () {
+					save_serial_ports(values);
+				});
+			} else {
+				save_serial_ports(values);
+			}
+		});
+
+		function save_serial_ports(values) {
+			if ($('#serial-port-list-result table').length) {
+				serial_port_relist_pending = true;
+			}
+			// the server refreshes the page if nodes are added or removed; mark the URL so the section is shown again
+			history.replaceState(null, '', window.location.pathname + window.location.search + '#serial-port-setup');
 			var data = {
 				section: 'GENERAL',
 				key: 'SERIAL_PORTS',
 				value: values
 			};
-			socket.emit('set_config', data);
+			var added = values.filter(function (port) { return serial_ports_current.indexOf(port) == -1; });
+			if (added.length) {
+				serial_port_connecting_msg = show_serial_port_popup(
+					__('Connecting to serial port {0}...').replace('{0}', added.join(', ')));
+			}
+			socket.emit('set_config', data, function (result) {
+				if (result && result.rejected == 'race') {
+					close_serial_port_popup();
+					show_serial_port_popup(__('Serial ports cannot be added or removed while a race is running or not yet saved. Save or discard the race first, then try again.'));
+				} else if (added.length) {
+					close_serial_port_popup();
+					var messages = [];
+					if (result && result.failed && result.failed.length) {
+						messages.push(__('Unable to connect to a node on serial port {0}; the port was not added.').replace('{0}', result.failed.join(', ')));
+					}
+					if (result && result.restart_ports && result.restart_ports.length) {
+						messages.push(__('Serial port {0} was added, but the server must be restarted to finish setting it up.').replace('{0}', result.restart_ports.join(', ')));
+					}
+					if (messages.length) {
+						show_serial_port_popup(messages.join(' '));
+					}
+				}
+				if ($('#serial-port-list-result table').length) {
+					serial_port_relist_pending = true;  // list again now that the outcome is saved
+				}
+				load_serial_ports_config();
+			});
+			load_serial_ports_config();
+		}
 
+		// asks before removing ports with connected nodes; on cancel the saved port list is shown again
+		function confirm_serial_port_removal(ports, on_confirm) {
+			var nodes = [];
+			ports.forEach(function (port) {
+				nodes = nodes.concat(serial_port_status_last[port].nodes || []);
+			});
+			var text = __('Remove serial port {0}?').replace('{0}', ports.join(', '));
+			if (nodes.length) {
+				text += ' ' + __('Its nodes ({0}) will be removed, and any nodes after them will move up to the freed seats.')
+					.replace('{0}', __('Node') + ' ' + nodes.join(', '));
+			}
+			var confirmed = false;
+			var popup_el = $('<div class="priority-message-interrupt popup">');
+			popup_el.append($('<h2>').text(__('Remove Serial Port')));
+			var content_el = $('<div class="popup-content">').appendTo(popup_el);
+			content_el.append($('<p>').text(text));
+			var buttons_el = $('<p>').appendTo(content_el);
+			$('<button type="button" class="btn-danger">').text(__('Remove')).on('click', function () {
+				confirmed = true;
+				$.magnificPopup.close();
+				on_confirm();
+			}).appendTo(buttons_el);
+			buttons_el.append(' ');
+			$('<button type="button" class="cancel">').text(__('Cancel')).appendTo(buttons_el);
+			$.magnificPopup.open({
+				items: {
+					src: popup_el,
+					type: 'inline',
+				},
+				callbacks: {
+					afterClose: function () {
+						if (!confirmed) {
+							load_serial_ports_config();
+						}
+					}
+				}
+			});
+		}
+
+		function load_serial_ports_config() {
 			socket.emit('load_data', {
 				'load_types': [{
 					'type': 'config',
@@ -197,20 +320,101 @@
 					}
 				}]
 			});
-		});
+		}
+
+		// popups shown while connecting to an added serial port and for the result, via the shared alert queue
+		var serial_port_connecting_msg = null;
+
+		function show_serial_port_popup(text) {
+			var msg = $('<div>').text(text).html();
+			push_message(msg, true);
+			return msg;
+		}
+
+		function close_serial_port_popup() {
+			// removes the connecting popup: closes it if shown, drops it if still queued, nothing if already closed
+			var msg = serial_port_connecting_msg;
+			serial_port_connecting_msg = null;
+			var idx = (msg === null) ? -1 : interrupt_message_queue.indexOf(msg);
+			if (idx == 0) {
+				if ($.magnificPopup.instance.isOpen) {
+					$.magnificPopup.close();
+				} else {
+					interrupt_message_queue.shift();
+					if (interrupt_message_queue.length) {
+						get_interrupt_message();
+					}
+				}
+			} else if (idx > 0) {
+				interrupt_message_queue.splice(idx, 1);
+			}
+		}
 
 		var serial_port_relist_pending = false;
 		var serial_port_focus = null;
 
-		function list_serial_ports() {
+		// show whether the node(s) on each configured serial port are connected and responding
+		var serial_port_status_last = null;  // latest status reply, used to confirm removal of connected ports
+
+		function update_serial_port_status() {
+			socket.emit('get_serial_port_status', {}, function (msg) {
+				var prev = serial_port_status_last;
+				serial_port_status_last = msg;
+				// refresh a shown port list when the state of a configured port changes
+				if (prev && msg && $('#serial-port-list-result table').length && !$('#serial-port-list-btn').prop('disabled') &&
+						Object.keys(msg).some(function (port) { return prev[port] && prev[port].state != msg[port].state; })) {
+					list_serial_ports(true);
+				}
+				$('#serial-port-ui li').not('#serial-port--new').each(function () {
+					var port = $(this).find('input').val();
+					var info = msg ? msg[port] : null;
+					var state = info ? info.state : 'unknown';
+					var text;
+					if (state == 'connected' || state == 'not_responding') {
+						text = (state == 'connected') ? __('Connected') : __('Not responding');
+						text += ': ' + (info.nodes.length ?
+							__('Node') + ' ' + info.nodes.join(', ') : __('no receiver modules'));
+					} else if (state == 'not_connected') {
+						text = __('Not connected');
+					} else {
+						text = '';
+					}
+					var status_el = $(this).find('.serial-port-status');
+					if (status_el.text() != text) {
+						status_el.text(text);
+					}
+					status_el.attr('class', 'serial-port-status serial-port-status-' + state);
+				});
+			});
+		}
+		setInterval(function () {
+			if (!document.hidden && $('#serial-port-ui').length) {
+				update_serial_port_status();
+			}
+		}, 2000);
+
+		function list_serial_ports(quiet) {
 			var btn = $('#serial-port-list-btn');
 			var result_el = $('#serial-port-list-result');
-			btn.prop('disabled', true);
-			result_el.empty().append($('<p>').text(__('Loading...')));
-			$('#serial-port-list-status').text(__('Loading...'));
+			var focus_label = null;
+			if (quiet) {  // keep the current list shown until the new one arrives
+				var focused = $(document.activeElement);
+				if (focused.closest('#serial-port-list-result').length) {
+					focus_label = focused.attr('aria-label');
+				}
+			} else {
+				btn.prop('disabled', true);
+				result_el.empty().append($('<p>').text(__('Loading...')));
+				$('#serial-port-list-status').text(__('Loading...'));
+			}
 			socket.emit('list_serial_ports', {}, function (msg) {
 				btn.prop('disabled', false);
 				display_serial_port_list(msg);
+				if (focus_label) {  // restore focus to the same control in the new list
+					result_el.find('[aria-label]').filter(function () {
+						return $(this).attr('aria-label') == focus_label;
+					}).first().trigger('focus');
+				}
 				if (serial_port_focus && serial_port_focus.type == 'add') {
 					serial_port_focus = null;
 					btn.trigger('focus');

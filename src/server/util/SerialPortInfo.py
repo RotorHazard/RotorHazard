@@ -127,6 +127,17 @@ def _comports():
     return list(list_ports.comports())
 
 
+def port_present(port):
+    '''Returns True if the given serial port currently exists (without opening it).'''
+    if not IS_WINDOWS:
+        return bool(port) and os.path.exists(str(port).strip())
+    try:
+        port_infos = _comports()
+    except Exception:
+        return False
+    return bool(port_infos) and _norm_key(port) in (_norm_key(p.device) for p in port_infos)
+
+
 def list_serial_ports(configured_ports=None):
     '''
     Returns a dict describing the serial ports available to this process:

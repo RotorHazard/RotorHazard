@@ -2145,6 +2145,21 @@ function format_source_text(source) {
 	return source.displayname;
 }
 
+function format_lap_source_text(source) {
+	// source text plus the lap(s) of that race the value comes from
+	var text = format_source_text(source);
+	if (!source)
+		return text;
+	if (source.lap_start && source.lap_end) {
+		if (source.lap_start == source.lap_end)
+			return text + ' / ' + __('Lap') + ' ' + source.lap_start;
+		return text + ' / ' + __('Laps') + ' ' + source.lap_start + '-' + source.lap_end;
+	}
+	if (source.lap)
+		return text + ' / ' + __('Lap') + ' ' + source.lap;
+	return text;
+}
+
 function sort_by_top_speed(leaderboard) {
 	// ranked copies for the "Fastest Speeds" board, pilots without a speed omitted
 	var rows = [];
@@ -2248,6 +2263,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 	for (var i in leaderboard) {
 		var row = $('<tr>');
+		row.data('entry', leaderboard[i]);  // lets a page enhance the cells, e.g. with links
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
@@ -2294,19 +2310,10 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="fast">'+ lap +'</td>');
 
-			if (leaderboard[i].fastest_lap_source) {
-				var source = leaderboard[i].fastest_lap_source;
-				if (source.round) {
-					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-				} else {
-					var source_text = source.displayname;
-				}
-			} else {
-				var source_text = 'None';
-			}
+			var source = leaderboard[i].fastest_lap_source;
+			var source_text = format_lap_source_text(source);
 
-			if (display_type == 'heat') {
-				el.data('source', source_text);
+			if (source && (display_type == 'heat' || display_type == 'round')) {
 				el.attr('title', source_text);
 			}
 
@@ -2325,8 +2332,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			}
 		}
 		if (display_type == 'by_fastest_speed') {
-			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
-			row.append('<td class="source">'+ format_source_text(leaderboard[i].top_speed_source) +'</td>');
+			var el = $('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			row.append(el);
+			row.append('<td class="source">'+ format_lap_source_text(leaderboard[i].top_speed_source) +'</td>');
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -2341,19 +2349,10 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="consecutive">'+ lap +'</td>');
 
-			if (leaderboard[i].consecutives_source) {
-				var source = leaderboard[i].consecutives_source;
-				if (source.round) {
-					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-				} else {
-					var source_text = source.displayname;
-				}
-			} else {
-				var source_text = 'None';
-			}
+			var source = leaderboard[i].consecutives_source;
+			var source_text = format_lap_source_text(source);
 
-			if (display_type == 'heat') {
-				el.data('source', source_text);
+			if (source && (display_type == 'heat' || display_type == 'round')) {
 				el.attr('title', source_text);
 			}
 
@@ -2367,7 +2366,13 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			(display_type == 'heat' ||
 			display_type == 'round' ||
 			(display_type == 'current' && display_top_speed))) {
-			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			var el = $('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			var source = leaderboard[i].top_speed_source;
+			if (source && (display_type == 'heat' || display_type == 'round')) {
+				var source_text = format_lap_source_text(source);
+				el.attr('title', source_text);
+			}
+			row.append(el);
 		}
 
 		if (show_points && 'primary_points' in meta) {

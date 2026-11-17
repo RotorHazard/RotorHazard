@@ -452,12 +452,14 @@ def _do_calc_leaderboard(racecontext, **params):
 
     # speeds for each pilot, from the saved split records
     top_speeds = {}
+    top_speed_lap_ids = {}
     speed_sums = {}
     if not USE_CURRENT:
         for lap_split in rhDataObj.get_savedRaceLapSplits_by_savedRaceMeta(raceObj.id):
             if lap_split.split_speed is not None:
                 if lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
                     top_speeds[lap_split.pilot_id] = lap_split.split_speed
+                    top_speed_lap_ids[lap_split.pilot_id] = lap_split.lap_id
                 # non-positive speeds come from a bad reference timestamp
                 if lap_split.split_speed > 0:
                     speed_total, speed_count = speed_sums.get(lap_split.pilot_id, (0.0, 0))
@@ -468,6 +470,10 @@ def _do_calc_leaderboard(racecontext, **params):
             if lap_split.split_speed is not None and \
                     lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
                 top_speeds[lap_split.pilot_id] = lap_split.split_speed
+                top_speed_lap_ids[lap_split.pilot_id] = lap_split.lap_id
+
+    # a speed with lap_id N is measured after crossing N, so it is on the next lap in the lap list
+    speed_lap_offset = 2 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP else 1
 
     do_gevent_sleep()
     # find leader for each lap in race
@@ -503,14 +509,17 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['last_lap'] = result_pilot['pilot_laps'][-1].lap_time
             # Get the average lap time for each pilot
             result_pilot['average_lap'] = round(result_pilot['total_time_laps'] / result_pilot['laps'], 3)
-            # Get the fastest lap time for each pilot
-            result_pilot['fastest_lap'] = sorted(result_pilot['pilot_laps'], key=lambda val: val.lap_time)[0].lap_time
+            # Get the fastest lap time for each pilot (and its lap number, as shown in the lap list)
+            fastest_lap_idx = min(range(len(result_pilot['pilot_laps'])),
+                                  key=lambda idx: result_pilot['pilot_laps'][idx].lap_time)
+            result_pilot['fastest_lap'] = result_pilot['pilot_laps'][fastest_lap_idx].lap_time
             # Set lap source info
             source = {
                 'round': round_num,
                 'heat': current_heat_id,
                 'displayname': heat_displayname,
             }
+            fastest_lap_source = dict(source, lap=fastest_lap_idx + 1)
 
             do_gevent_sleep(0)
 
@@ -559,18 +568,24 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutives_base'] = all_consecutives[0]['laps']
             result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
+            # lap range (as shown in the lap list) the consecutives come from
+            cons_start = all_consecutives[0]['lap_index'] or 1
+            cons_end = cons_start + all_consecutives[0]['laps'] - 1
+            consecutives_source = dict(source, lap_start=cons_start, lap_end=cons_end)
+
         else:
             result_pilot['last_lap'] = None
             result_pilot['average_lap'] = 0
             result_pilot['fastest_lap'] = 0
-            source = None
+            fastest_lap_source = None
+            consecutives_source = None
             result_pilot['time_behind'] = None
             result_pilot['consecutives'] = None
             result_pilot['consecutives_base'] = 0
             result_pilot['consecutive_lap_start'] = None
 
-        result_pilot['fastest_lap_source'] = source
-        result_pilot['consecutives_source'] = source
+        result_pilot['fastest_lap_source'] = fastest_lap_source
+        result_pilot['consecutives_source'] = consecutives_source
 
         result_pilot['top_speed'] = top_speeds.get(result_pilot['pilot_id'])
         result_pilot['speed_total'], result_pilot['speed_count'] = \
@@ -579,6 +594,7 @@ def _do_calc_leaderboard(racecontext, **params):
             'round': round_num,
             'heat': current_heat_id,
             'displayname': heat_displayname,
+            'lap': top_speed_lap_ids[result_pilot['pilot_id']] + speed_lap_offset,
         } if result_pilot['top_speed'] is not None else None
 
     do_gevent_sleep()

@@ -178,17 +178,154 @@
 		// a header is unmeasurable until its panel finishes opening
 		$(document).on('click', '.collapsing .panel-header', function() { fit_round_headers_soon(450); });
 
+		// open panels and scroll position are kept in the history entry, and restored when returning
+		//  with the browser's Back (or Forward) button, e.g. from a marshal page link
+		var pending_view_restore = null;
+		try {
+			history.scrollRestoration = 'manual';  // the content is built after load, so scrolling is restored here
+			var nav_entry = performance.getEntriesByType('navigation')[0];
+			if (nav_entry && nav_entry.type == 'back_forward' && history.state && history.state.results_view) {
+				pending_view_restore = history.state.results_view;
+				Object.assign(rotorhazard.panelstates, pending_view_restore.panels);
+			}
+		} catch (ex) {
+		}
+
+		function save_view_state() {
+			try {
+				var state = Object.assign({}, history.state, {
+					results_view: {panels: rotorhazard.panelstates, scroll: window.scrollY},
+				});
+				history.replaceState(state, '');
+			} catch (ex) {
+			}
+		}
+
+		$(document).on('click', '.collapsing .panel-header', function() { setTimeout(save_view_state, 0); });
+		$(document).on('click', '.marshal-link', save_view_state);
+		$(window).on('pagehide', save_view_state);
+
+		function restore_view_state() {
+			var view = pending_view_restore;
+			if (!view) {
+				return;
+			}
+			pending_view_restore = null;
+			$('.collapsing > .panel-content').stop(true, true);  // skip the opening animations
+			fit_round_headers();
+			window.scrollTo(0, view.scroll || 0);
+		}
+
 		socket.on('result_data', function (msg) {
-			function lap_speed_text(lap) {
-				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+			function lap_speed_text(speed) {
+				if (speed === null || typeof(speed) === 'undefined')
 					return '';
-				return ' (' + lap.speed.toFixed(2) + ')';
+				return ' (' + speed.toFixed(2) + ')';
 			}
 
-			function lap_speed_span(lap) {
-				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+			function lap_speed_span(speed) {
+				if (speed === null || typeof(speed) === 'undefined')
 					return '';
-				return '<span class="from_start">(' + lap.speed.toFixed(2) + ')</span>';
+				return '<span class="from_start">(' + speed.toFixed(2) + ')</span>';
+			}
+
+			// link to a race on the marshal page; lap is the race's crossing index (non-deleted, from 0)
+			function marshal_url(heat_id, round_id, pilot_id, lap, count) {
+				var params = new URLSearchParams({heat: heat_id, round: round_id, pilot: pilot_id});
+				if (lap !== null && typeof(lap) !== 'undefined') {
+					params.set('lap', lap);
+					if (count && count > 1) {
+						params.set('count', count);
+					}
+				}
+				return '/marshal?' + params.toString();
+			}
+
+			// make the given cell content a link to the marshal page; the marshal page is admin-only,
+			//  so only admins (like its nav entry) get the links
+			function link_to_marshal(content, url) {
+				if (rotorhazard.admin && content.length) {
+					content.wrapAll($('<a class="marshal-link">').attr('href', url));
+				}
+			}
+
+			// non-deleted crossings of a pilot in a race, with the number of leading crossings that are not laps
+			function find_race_crossings(heat_id, round_id, pilot_id) {
+				var heat = msg.heats[heat_id];
+				if (!heat) {
+					return null;
+				}
+				var race = heat.rounds.find(function(r) { return r.id == round_id; });
+				if (!race) {
+					return null;
+				}
+				var node = race.nodes.find(function(n) { return n.pilot_id == pilot_id; });
+				if (!node) {
+					return null;
+				}
+				var meta = race.leaderboard && race.leaderboard.meta ? race.leaderboard.meta : {};
+				return {
+					crossings: node.laps.filter(function(lap) { return !lap.deleted; }),
+					offset: meta.start_behavior == 1 ? 0 : 1,  // first crossing is a lap with 'first lap' start behavior
+				};
+			}
+
+			// marshal page URL for the laps (as numbered in the lap list) of a leaderboard source, or null;
+			//  a lap after the last crossing (a speed on an unfinished lap) links to the race only
+			function source_marshal_url(source, pilot_id, lap_start, lap_end) {
+				if (!source || !source.heat || !source.round || !lap_start) {
+					return null;
+				}
+				var race = find_race_crossings(source.heat, source.round, pilot_id);
+				if (!race) {
+					return null;
+				}
+				var start = race.offset + lap_start - 1;
+				if (start >= race.crossings.length) {
+					return marshal_url(source.heat, source.round, pilot_id);
+				}
+				return marshal_url(source.heat, source.round, pilot_id, start, lap_end - lap_start + 1);
+			}
+
+			// turn a leaderboard's pilot, fastest, consecutive and speed cells into marshal page links;
+			//  with link_source_rows, a row with a source column has its pilot and source cells
+			//  link to the same laps as its value
+			function link_leaderboard(lb_el, race_heat_id, race_round_id, link_source_rows=false) {
+				if (!rotorhazard.admin) {
+					return lb_el;
+				}
+				lb_el.find('tbody tr').each(function() {
+					var row = $(this);
+					var entry = row.data('entry');
+					if (!entry || !entry.pilot_id) {
+						return;
+					}
+
+					if (race_heat_id !== undefined) {
+						link_to_marshal(row.children('td.pilot').contents(), marshal_url(race_heat_id, race_round_id, entry.pilot_id));
+					}
+
+					var fast = entry.fastest_lap_source;
+					var cons = entry.consecutives_source;
+					var speed = entry.top_speed_source;
+					var cells = [
+						['td.fast', fast ? source_marshal_url(fast, entry.pilot_id, fast.lap, fast.lap) : null],
+						['td.consecutive', cons ? source_marshal_url(cons, entry.pilot_id, cons.lap_start, cons.lap_end) : null],
+						['td.speed', speed ? source_marshal_url(speed, entry.pilot_id, speed.lap, speed.lap) : null],
+					];
+					cells.forEach(function(cell) {
+						var td = row.children(cell[0]);
+						if (!cell[1] || !td.length) {
+							return;
+						}
+						link_to_marshal(td.contents(), cell[1]);
+						if (link_source_rows && row.children('td.source').length) {
+							link_to_marshal(row.children('td.pilot').contents(), cell[1]);
+							link_to_marshal(row.children('td.source').contents(), cell[1]);
+						}
+					});
+				});
+				return lb_el;
 			}
 
 			function order_boards(primary) {
@@ -273,10 +410,10 @@
 									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', current_class.leaderboard.meta, true));
 								} else if (boards[i] == 'by_fastest_lap') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true));
+									class_leaderboard_content.append(link_leaderboard(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true), undefined, undefined, true));
 								} else if (boards[i] == 'by_consecutives') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Consecutive Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true));
+									class_leaderboard_content.append(link_leaderboard(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true), undefined, undefined, true));
 								}
 							}
 
@@ -311,7 +448,7 @@
 									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
 									var heat_summary_panel_content = $('<div class="panel-content">');
 									var heat_leaderboard = $('<div class="leaderboard">');
-									heat_leaderboard.append(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true));
+									heat_leaderboard.append(link_leaderboard(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true)));
 									heat_summary_panel_content.append(heat_leaderboard);
 									heat_summary_panel.append(heat_summary_panel_content);
 									panel_content.append(heat_summary_panel);
@@ -327,7 +464,7 @@
 									var round_content = $('<div class="panel-content">');
 									// race leaderboards
 									var race_leaderboard = $('<div class="leaderboard">');
-									race_leaderboard.append(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', round.leaderboard.meta));
+									race_leaderboard.append(link_leaderboard(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', round.leaderboard.meta), heat.heat_id, round.id));
 
 									var race_results = $('<div class="race-results">');
 
@@ -338,6 +475,7 @@
 											var node_div = $('<div class="node">');
 
 											node_div.append('<h5>' + node.callsign + '</h5>')
+											var crossing_index = 0;
 
 											var table = $('<table class="laps">');
 											var tbody = $('<tbody>');
@@ -347,6 +485,8 @@
 											} else {
 												var lap_index = 0;
 											}
+											// a lap's speed is measured after its crossing, so it is shown on the next lap
+											var prev_speed = null;
 											for (var lap_i in node.laps) {
 												var lap = node.laps[lap_i];
 												if (!lap.deleted) {
@@ -356,12 +496,22 @@
 														} else {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(lap) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														var lap_row = $('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(prev_speed) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>');
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(lap) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														var lap_row = $('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(prev_speed) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>');
 													}
+													if (node.pilot_id) {
+														link_to_marshal(lap_row.children('td').last().contents().last(), marshal_url(heat.heat_id, round.id, node.pilot_id, crossing_index));  // the lap time
+													}
+													crossing_index++;
+													prev_speed = lap.speed;
+													tbody.append(lap_row);
 													lap_index++;
 												}
+											}
+											// speed measured on an unfinished lap after the last crossing
+											if (prev_speed !== null && typeof(prev_speed) !== 'undefined') {
+												tbody.append('<tr class="lap_speed_trailing"><td></td><td>' + lap_speed_span(prev_speed) + '</td></tr>')
 											}
 
 											table.append(tbody);
@@ -398,14 +548,14 @@
 				event_leaderboard.append('<h3>' + __('Race Totals') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true, true));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta), undefined, undefined, true));
 				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta), undefined, undefined, true));
 				if (msg.event_leaderboard.meta.speed_data) {
 					var speed_board = sort_by_top_speed(msg.event_leaderboard.by_race_time);
 					if (speed_board.length) {
 						event_leaderboard.append('<h3>' + __('Fastest Speeds') + '</h3>');
-						event_leaderboard.append(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta));
+						event_leaderboard.append(link_leaderboard(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta), undefined, undefined, true));
 					}
 				}
 				panel_content.append(event_leaderboard);
@@ -428,19 +578,11 @@
 				}
 
 				fit_round_headers_soon(450);
+				restore_view_state();
 			} else {
 				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
 			}
 		});
-
-		$(document).on('click', '.leaderboard td', function(){
-			el = $(this);
-			source = el.data('source');
-			if (source) {
-				pilot = el.parent().children('.pilot').html()
-				push_message(__('Source for') + " " + pilot + ": " + source);
-			}
-		})
 
 		$(document).on("click", '.clean-cache', function (event) {
 			socket.emit('clean_cache');

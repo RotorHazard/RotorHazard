@@ -146,34 +146,7 @@ class RHInterface(BaseHardwareInterface):
         self.data_loggers = {}
         if len(self.nodes) > 0:
             for node in self.nodes:
-                node.frequency = self.get_value_16(node, READ_FREQUENCY)
-                if not node.frequency:
-                    raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-                node.init()
-                if node.api_level >= 10:
-                    node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
-                    if node.api_level >= 13:
-                        node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
-                    node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
-                    node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                    if node.multi_node_index < 0:  # (multi-nodes will always have default values)
-                        logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
-                                     node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
-    
-                    if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                        self.data_loggers[node.index] = open("data_{0}.csv".format(node.index+1), 'w')
-                        logger.info("Data logging enabled for node {0}".format(node.index+1))
-
-                else:
-                    logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
-                if node.api_level >= 32:
-                    flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
-                    if flags_val:
-                        node.rhfeature_flags = flags_val
-                        # if first node that supports in-app fw update then save port name
-                        if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
-                                (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
-                            self.set_fwupd_serial_obj(node.serial)
+                self._init_node(node)
         else:
             node = self.info_node_obj  # handle S32_BPill board with no receiver modules attached
             if node and node.api_level >= 32:
@@ -185,9 +158,144 @@ class RHInterface(BaseHardwareInterface):
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
 
+    def _init_node(self, node):
+        node.frequency = self.get_value_16(node, READ_FREQUENCY)
+        if not node.frequency:
+            raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
+        node.init()
+        if node.api_level >= 10:
+            node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
+            if node.api_level >= 13:
+                node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+            node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
+            node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
+            if node.multi_node_index < 0:  # (multi-nodes will always have default values)
+                logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
+                             node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+
+            if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                self.data_loggers[node.index] = open("data_{0}.csv".format(node.index+1), 'w')
+                logger.info("Data logging enabled for node {0}".format(node.index+1))
+
+        else:
+            logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
+        if node.api_level >= 32:
+            flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
+            if flags_val:
+                node.rhfeature_flags = flags_val
+                # if first node that supports in-app fw update then save port name
+                if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
+                        (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
+                    self.set_fwupd_serial_obj(node.serial)
+
     def discover_nodes(self, *args, **kwargs):
         kwargs['set_info_node_obj_fn'] = self.set_info_node_obj
+        self._isS32BPillFlag = kwargs.get('isS32BPillFlag', False)
         self.nodes.discover(includeOffset=True, *args, **kwargs)
+
+    def get_serial_port_names(self):
+        '''Returns the names of the serial ports currently used by nodes.'''
+        nodes = list(self.nodes) + ([self.info_node_obj] if self.info_node_obj else [])
+        return set(node.serial.port for node in nodes if getattr(node, 'serial', None))
+
+    def _check_restore_node_settings(self, node):
+        '''After a lost serial port was reopened (e.g. USB node re-plugged and thus reset),
+           sends the node its frequency and enter/exit-at levels again once it responds'''
+        reopen_count = getattr(getattr(node, 'serial', None), 'rh_reopen_count', 0)
+        if reopen_count == getattr(node, 'rh_restored_count', 0):
+            return
+        node.rh_lap_check_pending = True  # check on next lap read whether node restarted
+        if node.read_block(self, READ_REVISION_CODE, 2, 0, False) is None:
+            return  # node not ready yet (still booting); try again on next update
+        if node not in self.nodes:  # node removed with its serial port meanwhile
+            return
+        node_index = self.nodes.index(node)
+        frequency, enter_at_level, exit_at_level = node.frequency, node.enter_at_level, node.exit_at_level
+        if not self.set_frequency(node_index, frequency):
+            node.frequency = frequency  # keep wanted value for next attempt
+        else:
+            self.set_enter_at_level(node_index, enter_at_level)
+            self.set_exit_at_level(node_index, exit_at_level)
+            node.rh_restored_count = reopen_count
+            logger.info("Restored settings for node {} after reconnect: Freq={}, EnterAt={}, ExitAt={}".format( \
+                        node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+
+    def get_serial_port_status(self, max_age_secs=3.0, port_present_fn=None):
+        '''Returns {port: {'nodes': [seat numbers], 'responding': True/False/None}} for the open serial ports;
+           'responding' is None if no node on the port is being polled (e.g. all disabled). If 'port_present_fn'
+           is given, a port with no polled node that no longer exists is handled as lost, and reopened once it
+           exists again (no I/O to such a port detects its loss)'''
+        if port_present_fn:
+            import serial_node  # (local import to avoid circular import)
+            port_nodes = {}
+            for node in list(self.nodes):
+                if getattr(node, 'serial', None) is not None and not getattr(node.serial, 'rh_removed', False):
+                    port_nodes.setdefault(node.serial.port, []).append(node)
+            for port, nodes in port_nodes.items():
+                if not any(node.frequency for node in nodes):
+                    present = port_present_fn(port)
+                    with serial_node.node_io_rlock_obj:
+                        if getattr(nodes[0].serial, 'rh_reopen_pending', False):
+                            if present:
+                                nodes[0].port_available(self)  # reopens the port
+                        elif not present:
+                            nodes[0].handle_port_error(self, 'serial port not found')
+        status = {}
+        now = monotonic()
+        nodes = list(self.nodes)
+        if self.info_node_obj and self.info_node_obj not in nodes:
+            nodes.append(self.info_node_obj)
+        for node in nodes:
+            serial_obj = getattr(node, 'serial', None)
+            if serial_obj is None:
+                continue
+            entry = status.setdefault(serial_obj.port, {'nodes': [], 'responding': None})
+            if node in self.nodes:
+                entry['nodes'].append(node.index + 1)
+                if getattr(serial_obj, 'rh_reopen_pending', False):  # port lost and not yet reopened
+                    entry['responding'] = False
+                elif node.frequency and self.update_thread is not None:  # node is polled by update loop
+                    last_ok = getattr(node, 'last_read_ok_time', None)
+                    node_ok = last_ok is not None and now - last_ok < max_age_secs
+                    entry['responding'] = bool(entry['responding']) or node_ok
+        return status
+
+    def remove_serial_ports(self, ports):
+        '''Closes the given serial ports at runtime and returns the list of nodes removed with them.'''
+        import serial_node  # (local import to avoid circular import)
+        def on_ports(node):
+            return node is not None and getattr(node, 'serial', None) is not None and node.serial.port in ports
+        removed_nodes = [node for node in self.nodes if on_ports(node)]
+        serial_objs = set(node.serial for node in removed_nodes)
+        if on_ports(self.info_node_obj):
+            serial_objs.add(self.info_node_obj.serial)
+            self.info_node_obj = None
+        if self.fwupd_serial_obj in serial_objs:
+            self.fwupd_serial_obj = None
+        with serial_node.node_io_rlock_obj:  # don't change nodes or close a port while a transfer is in progress
+            for serial_obj in serial_objs:
+                serial_obj.rh_removed = True  # no further I/O on this port (not reopened)
+            self.nodes.data = [node for node in self.nodes if not on_ports(node)]
+            for serial_obj in serial_objs:
+                try:
+                    serial_obj.close()
+                except Exception as ex:
+                    logger.warning("Error closing serial port '{}': {}".format(serial_obj.port, ex))
+        return removed_nodes
+
+    def add_serial_ports(self, ports):
+        '''Opens the given serial ports at runtime and returns the list of new nodes found on them.'''
+        import serial_node  # (local import to avoid circular import)
+        new_nodes = []
+        for node in serial_node.discover(len(self.nodes), None, self._isS32BPillFlag, ports=ports, \
+                                         set_info_node_obj_fn=self.set_info_node_obj):
+            try:
+                self._init_node(node)
+                new_nodes.append(node)
+            except Exception as ex:
+                logger.error("Unable to initialize serial node at port '{}': {}".format(node.serial.port, ex))
+        self.nodes.extend(new_nodes)
+        return new_nodes
 
 
     #
@@ -224,7 +332,10 @@ class RHInterface(BaseHardwareInterface):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
-        for node in self.nodes:
+        for node in list(self.nodes):  # (copy, as serial ports may be added or removed during the loop)
+            if node not in self.nodes:  # node removed with its serial port during this loop
+                continue
+            self._check_restore_node_settings(node)
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 32:
@@ -254,6 +365,10 @@ class RHInterface(BaseHardwareInterface):
 
                 if data != None and len(data) > 0:
                     lap_id = data[0]
+                    if getattr(node, 'rh_lap_check_pending', False):  # first lap read after serial port was reopened
+                        node.rh_lap_check_pending = False
+                        if node.node_lap_id != -1 and lap_id < node.node_lap_id:  # lap count went back, so node restarted
+                            node.node_lap_id = -1  # sync to new lap count instead of recording a pass
 
                     if node.api_level >= 18:
                         offset_rssi = 3
@@ -528,9 +643,17 @@ class RHInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
+    def _port_lost(self, node):
+        '''Returns True if the node's serial port was lost and is waiting to be reopened'''
+        return getattr(getattr(node, 'serial', None), 'rh_reopen_pending', False)
+
     def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
+
+        if self._port_lost(node):  # value is sent to the node when its serial port is reopened
+            node.frequency = frequency
+            return True
 
         success = False
         retry_count = 0
@@ -574,7 +697,9 @@ class RHInterface(BaseHardwareInterface):
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag and node.is_valid_rssi(level):
-            if self.transmit_enter_at_level(node, level):
+            if self._port_lost(node):  # value is sent to the node when its serial port is reopened
+                node.enter_at_level = level
+            elif self.transmit_enter_at_level(node, level):
                 node.enter_at_level = level
 
     def transmit_exit_at_level(self, node, level):
@@ -586,7 +711,9 @@ class RHInterface(BaseHardwareInterface):
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag and node.is_valid_rssi(level):
-            if self.transmit_exit_at_level(node, level):
+            if self._port_lost(node):  # value is sent to the node when its serial port is reopened
+                node.exit_at_level = level
+            elif self.transmit_exit_at_level(node, level):
                 node.exit_at_level = level
 
     def force_end_crossing(self, node_index):
