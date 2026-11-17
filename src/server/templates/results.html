@@ -178,6 +178,44 @@
 		// a header is unmeasurable until its panel finishes opening
 		$(document).on('click', '.collapsing .panel-header', function() { fit_round_headers_soon(450); });
 
+		// open panels and scroll position are kept in the history entry, and restored when returning
+		//  with the browser's Back (or Forward) button, e.g. from a marshal page link
+		var pending_view_restore = null;
+		try {
+			history.scrollRestoration = 'manual';  // the content is built after load, so scrolling is restored here
+			var nav_entry = performance.getEntriesByType('navigation')[0];
+			if (nav_entry && nav_entry.type == 'back_forward' && history.state && history.state.results_view) {
+				pending_view_restore = history.state.results_view;
+				Object.assign(rotorhazard.panelstates, pending_view_restore.panels);
+			}
+		} catch (ex) {
+		}
+
+		function save_view_state() {
+			try {
+				var state = Object.assign({}, history.state, {
+					results_view: {panels: rotorhazard.panelstates, scroll: window.scrollY},
+				});
+				history.replaceState(state, '');
+			} catch (ex) {
+			}
+		}
+
+		$(document).on('click', '.collapsing .panel-header', function() { setTimeout(save_view_state, 0); });
+		$(document).on('click', '.marshal-link', save_view_state);
+		$(window).on('pagehide', save_view_state);
+
+		function restore_view_state() {
+			var view = pending_view_restore;
+			if (!view) {
+				return;
+			}
+			pending_view_restore = null;
+			$('.collapsing > .panel-content').stop(true, true);  // skip the opening animations
+			fit_round_headers();
+			window.scrollTo(0, view.scroll || 0);
+		}
+
 		socket.on('result_data', function (msg) {
 			function lap_speed_text(speed) {
 				if (speed === null || typeof(speed) === 'undefined')
@@ -540,6 +578,7 @@
 				}
 
 				fit_round_headers_soon(450);
+				restore_view_state();
 			} else {
 				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
 			}
