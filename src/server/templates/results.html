@@ -216,6 +216,88 @@
 			window.scrollTo(0, view.scroll || 0);
 		}
 
+		function set_panel_open(panel_el, open) {
+			panel_el.toggleClass('open', open);
+			panel_el.children('.panel-content').stop(true, true).toggle(open);
+			if (panel_el.attr('id')) {
+				rotorhazard.panelstates[panel_el.attr('id')] = open;
+			}
+		}
+
+		// show a race of this page: open its panels, scroll to it and highlight the source laps;
+		//  this adds a history entry, so the Back button returns to the previous view
+		function show_race(race) {
+			var round_el = $('#results .panel[data-heat-id="' + race.heat + '"] .round[data-round="' + race.round + '"]');
+			if (!round_el.length) {
+				return;
+			}
+			var panels = round_el.parents('.panel.collapsing').addBack().get().reverse();  // outermost first
+			panels.forEach(function(el) {  // keep their current state in the view being left
+				if ($(el).attr('id')) {
+					rotorhazard.panelstates[$(el).attr('id')] = $(el).hasClass('open');
+				}
+			});
+			save_view_state();
+
+			panels.forEach(function(el) { set_panel_open($(el), true); });
+			fit_round_headers();
+			var node_el = round_el.find('.node[data-pilot-id="' + race.pilot + '"]');
+			// keep the round header and the pilot's laps clear of the page's sticky header
+			var margin = ($('body > header').outerHeight() || 0) + 8 + 'px';
+			round_el.add(node_el).css('scroll-margin-top', margin);
+			round_el[0].scrollIntoView({block: 'start'});
+			if (node_el.length) {
+				node_el[0].scrollIntoView({block: 'nearest'});
+				var rows = $();
+				for (var lap = race.lap_start; lap && lap <= race.lap_end; lap++) {
+					rows = rows.add(node_el.find('tr.lap_' + lap));
+				}
+				if (!rows.length) {
+					rows = node_el.find('tr.lap_speed_trailing');  // a speed on an unfinished lap
+				}
+				// an element kept hidden while its panel is closed replays its animation when shown, so
+				//  the class is dropped once the highlight ends
+				$('#results .source-highlight').removeClass('source-highlight');
+				void node_el[0].offsetWidth;  // restarts the highlight animation
+				rows.addClass('source-highlight');
+				rows.children('td').last().one('animationend animationcancel', function() {
+					rows.removeClass('source-highlight');
+				});
+			}
+			var header_btn = round_el.find('> .panel-header button')[0];
+			if (header_btn) {
+				header_btn.focus({preventScroll: true});
+			}
+
+			try {
+				history.pushState(history.state, '');
+			} catch (ex) {
+			}
+			save_view_state();
+		}
+
+		$(document).on('click', '.race-link', function(event) {
+			event.preventDefault();
+			show_race($(this).data('race'));
+		});
+
+		// Back or Forward between views of this page
+		$(window).on('popstate', function(event) {
+			var state = event.originalEvent.state;
+			var view = state && state.results_view;
+			if (!view) {
+				return;
+			}
+			for (var id in view.panels) {
+				var panel_el = $('#' + id);
+				if (panel_el.length) {
+					set_panel_open(panel_el, view.panels[id]);
+				}
+			}
+			fit_round_headers();
+			window.scrollTo(0, view.scroll || 0);
+		});
+
 		socket.on('result_data', function (msg) {
 			function lap_speed_text(speed) {
 				if (speed === null || typeof(speed) === 'undefined')
@@ -241,11 +323,11 @@
 				return '/marshal?' + params.toString();
 			}
 
-			// make the given cell content a link to the marshal page; the marshal page is admin-only,
+			// make the given content a link to the marshal page; the marshal page is admin-only,
 			//  so only admins (like its nav entry) get the links
-			function link_to_marshal(content, url) {
+			function link_to_marshal(content, url, link_class='cell-link marshal-link') {
 				if (rotorhazard.admin && content.length) {
-					content.wrapAll($('<a class="marshal-link">').attr('href', url));
+					content.wrapAll($('<a>').attr('class', link_class).attr('href', url));
 				}
 			}
 
@@ -287,13 +369,21 @@
 				return marshal_url(source.heat, source.round, pilot_id, start, lap_end - lap_start + 1);
 			}
 
-			// turn a leaderboard's pilot, fastest, consecutive and speed cells into marshal page links;
-			//  with link_source_rows, a row with a source column has its pilot and source cells
-			//  link to the same laps as its value
-			function link_leaderboard(lb_el, race_heat_id, race_round_id, link_source_rows=false) {
-				if (!rotorhazard.admin) {
-					return lb_el;
+			// make the given cell content a link that shows a source race further down this page
+			function link_to_race(content, source, pilot_id, lap_start, lap_end) {
+				if (content.length && source.heat && source.round) {
+					content.wrapAll($('<a class="cell-link race-link" href="#">').data('race', {
+						heat: source.heat, round: source.round, pilot: pilot_id, lap_start: lap_start, lap_end: lap_end,
+					}));
 				}
+			}
+
+			// turn a leaderboard's pilot, fastest, consecutive and speed cells into links, to the marshal
+			//  page for admins and to the race on this page for others; race_heat_id and race_round_id
+			//  are the race the leaderboard belongs to (if any); with source_rows (boards with a source
+			//  column), the source cell shows the race on this page and the pilot cell links like the value;
+			//  with in_page, all links show the race on this page, for admins too
+			function link_leaderboard(lb_el, race_heat_id, race_round_id, source_rows=false, in_page=false) {
 				lb_el.find('tbody tr').each(function() {
 					var row = $(this);
 					var entry = row.data('entry');
@@ -309,19 +399,31 @@
 					var cons = entry.consecutives_source;
 					var speed = entry.top_speed_source;
 					var cells = [
-						['td.fast', fast ? source_marshal_url(fast, entry.pilot_id, fast.lap, fast.lap) : null],
-						['td.consecutive', cons ? source_marshal_url(cons, entry.pilot_id, cons.lap_start, cons.lap_end) : null],
-						['td.speed', speed ? source_marshal_url(speed, entry.pilot_id, speed.lap, speed.lap) : null],
+						['td.fast', fast, fast && fast.lap, fast && fast.lap],
+						['td.consecutive', cons, cons && cons.lap_start, cons && cons.lap_end],
+						['td.speed', speed, speed && speed.lap, speed && speed.lap],
 					];
 					cells.forEach(function(cell) {
 						var td = row.children(cell[0]);
-						if (!cell[1] || !td.length) {
+						var source = cell[1];
+						if (!source || !td.length) {
 							return;
 						}
-						link_to_marshal(td.contents(), cell[1]);
-						if (link_source_rows && row.children('td.source').length) {
-							link_to_marshal(row.children('td.pilot').contents(), cell[1]);
-							link_to_marshal(row.children('td.source').contents(), cell[1]);
+						// admins get marshal page links (unless in_page); others get links to the race on this page,
+						//  except for a value from the race the leaderboard belongs to
+						var link_cell;
+						if (rotorhazard.admin && !in_page) {
+							var url = source_marshal_url(source, entry.pilot_id, cell[2], cell[3]);
+							link_cell = function(content) { if (url) link_to_marshal(content, url); };
+						} else if (source.heat != race_heat_id || source.round != race_round_id) {
+							link_cell = function(content) { link_to_race(content, source, entry.pilot_id, cell[2], cell[3]); };
+						} else {
+							link_cell = function(content) {};
+						}
+						link_cell(td.contents());
+						if (source_rows) {
+							link_cell(row.children('td.pilot').contents());
+							link_to_race(row.children('td.source').contents(), source, entry.pilot_id, cell[2], cell[3]);
 						}
 					});
 				});
@@ -433,7 +535,7 @@
 							var heat = msg.heats[msg.heats_by_class[race_class][class_heat]]
 
 							if (heat) {
-								var panel = $('<div id="class_' + class_id + '_heat_' + class_heat + '" class="panel collapsing">');
+								var panel = $('<div id="class_' + class_id + '_heat_' + class_heat + '" class="panel collapsing">').attr('data-heat-id', heat.heat_id);
 
 								var panel_header = $('<div class="panel-header">');
 
@@ -448,7 +550,7 @@
 									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
 									var heat_summary_panel_content = $('<div class="panel-content">');
 									var heat_leaderboard = $('<div class="leaderboard">');
-									heat_leaderboard.append(link_leaderboard(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true)));
+									heat_leaderboard.append(link_leaderboard(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta, true), undefined, undefined, false, true));
 									heat_summary_panel_content.append(heat_leaderboard);
 									heat_summary_panel.append(heat_summary_panel_content);
 									panel_content.append(heat_summary_panel);
@@ -457,7 +559,7 @@
 								// rounds
 								for (var round_i in heat.rounds) {
 									var round = heat.rounds[round_i];
-									var round_div = $('<div id="class_' + class_id + '_heat_' + class_heat + '_round_' + round.id + '" class="round panel collapsing open">');
+									var round_div = $('<div id="class_' + class_id + '_heat_' + class_heat + '_round_' + round.id + '" class="round panel collapsing open">').attr('data-round', round.id);
 
 									round_div.append('<div class="panel-header"><h4><button class="no-style">' + __('Round') + ' ' + round.id + ' (' + round.start_time_formatted + ')' + (round.format_name ? '<span class="race-format"> - ' + round.format_name + '</span>' : '') + '</button></h4></div>')
 
@@ -472,9 +574,13 @@
 									for (var node_i in round.nodes) {
 										var node = round.nodes[node_i];
 										if (node.callsign !== null) {
-											var node_div = $('<div class="node">');
+											var node_div = $('<div class="node">').attr('data-pilot-id', node.pilot_id);
 
-											node_div.append('<h5>' + node.callsign + '</h5>')
+											var node_header = $('<h5>' + node.callsign + '</h5>');
+											if (node.pilot_id) {
+												link_to_marshal(node_header.contents(), marshal_url(heat.heat_id, round.id, node.pilot_id), 'header-link marshal-link');
+											}
+											node_div.append(node_header);
 											var crossing_index = 0;
 
 											var table = $('<table class="laps">');
@@ -548,14 +654,14 @@
 				event_leaderboard.append('<h3>' + __('Race Totals') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true, true));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
-				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta), undefined, undefined, true));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta), undefined, undefined, true, true));
 				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
-				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta), undefined, undefined, true));
+				event_leaderboard.append(link_leaderboard(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta), undefined, undefined, true, true));
 				if (msg.event_leaderboard.meta.speed_data) {
 					var speed_board = sort_by_top_speed(msg.event_leaderboard.by_race_time);
 					if (speed_board.length) {
 						event_leaderboard.append('<h3>' + __('Fastest Speeds') + '</h3>');
-						event_leaderboard.append(link_leaderboard(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta), undefined, undefined, true));
+						event_leaderboard.append(link_leaderboard(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta), undefined, undefined, true, true));
 					}
 				}
 				panel_content.append(event_leaderboard);
