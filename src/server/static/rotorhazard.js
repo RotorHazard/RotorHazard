@@ -2145,6 +2145,21 @@ function format_source_text(source) {
 	return source.displayname;
 }
 
+function format_lap_source_text(source) {
+	// source text plus the lap(s) of that race the value comes from
+	var text = format_source_text(source);
+	if (!source)
+		return text;
+	if (source.lap_start && source.lap_end) {
+		if (source.lap_start == source.lap_end)
+			return text + ' / ' + __('Lap') + ' ' + source.lap_start;
+		return text + ' / ' + __('Laps') + ' ' + source.lap_start + '-' + source.lap_end;
+	}
+	if (source.lap)
+		return text + ' / ' + __('Lap') + ' ' + source.lap;
+	return text;
+}
+
 function sort_by_top_speed(leaderboard) {
 	// ranked copies for the "Fastest Speeds" board, pilots without a speed omitted
 	var rows = [];
@@ -2294,18 +2309,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="fast">'+ lap +'</td>');
 
-			if (leaderboard[i].fastest_lap_source) {
-				var source = leaderboard[i].fastest_lap_source;
-				if (source.round) {
-					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-				} else {
-					var source_text = source.displayname;
-				}
-			} else {
-				var source_text = 'None';
-			}
+			var source_text = format_lap_source_text(leaderboard[i].fastest_lap_source);
 
-			if (display_type == 'heat') {
+			if (display_type == 'heat' || display_type == 'round' || display_type == 'by_fastest_lap') {
 				el.data('source', source_text);
 				el.attr('title', source_text);
 			}
@@ -2341,18 +2347,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			var el = $('<td class="consecutive">'+ lap +'</td>');
 
-			if (leaderboard[i].consecutives_source) {
-				var source = leaderboard[i].consecutives_source;
-				if (source.round) {
-					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-				} else {
-					var source_text = source.displayname;
-				}
-			} else {
-				var source_text = 'None';
-			}
+			var source_text = format_lap_source_text(leaderboard[i].consecutives_source);
 
-			if (display_type == 'heat') {
+			if (display_type == 'heat' || display_type == 'round' || display_type == 'by_consecutives') {
 				el.data('source', source_text);
 				el.attr('title', source_text);
 			}
