@@ -51,6 +51,27 @@ class InterfaceMapper:
                 )
             )
 
+    def add_nodes(self, interface, nodes):
+        '''Registers nodes that were added at runtime to an already-mapped interface (appended as last seats)'''
+        if_type = next(ifmeta.type for ifmeta in self._interface_map if ifmeta.interface is interface)
+        for node in nodes:
+            node.provider = interface
+            node.provider_type = if_type
+            self._node_map.append(
+                NodeMap(
+                    interface=interface,
+                    type=if_type,
+                    index=interface.nodes.index(node),
+                    object=node
+                )
+            )
+
+    def remove_nodes(self, nodes):
+        '''Unregisters nodes that were removed at runtime from their interface (later seats move up)'''
+        self._node_map = [node_map for node_map in self._node_map if not any(node_map.object is node for node in nodes)]
+        for node_map in self._node_map:  # update local indexes into the interfaces' node lists
+            node_map.index = node_map.interface.nodes.index(node_map.object)
+
     def add_callbacks(self):
         for ifmeta in self._interface_map:
             ifmeta.interface.pass_record_callback = self.pass_record_callback

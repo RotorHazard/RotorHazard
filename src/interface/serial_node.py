@@ -17,6 +17,7 @@ BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mo
 SERIAL_BAUD_RATES = [921600, 115200]
 SYS_DEV_DIR_PATH = "/dev/"
 DEF_S32BPILL_SERIAL_PORTS = ["ttyAMA0", "serial0"]
+REOPEN_INTERVAL_SECS = 2.0  # time between attempts to reopen a serial port lost due to an I/O error
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,51 @@ class SerialNode(Node):
         Node.__init__(self)
         self.index = index
         self.serial = node_serial_obj
-        
+        self.last_read_ok_time = None  # monotonic time of last successful read
+
     def node_log(self, interface, message):
         if interface:
             interface.log(message)
         else:
             logger.info(message)
+
+    #
+    # Serial port loss / reconnect (e.g. USB node unplugged and plugged in again)
+    #
+
+    def port_available(self, interface):
+        '''Returns True if the serial port is usable; if it was lost due to an I/O error then
+           tries (at most every REOPEN_INTERVAL_SECS) to reopen it'''
+        ser = self.serial
+        if not getattr(ser, 'rh_reopen_pending', False):
+            return True
+        now = monotonic()
+        if now < getattr(ser, 'rh_next_reopen_time', 0):
+            return False
+        ser.rh_next_reopen_time = now + REOPEN_INTERVAL_SECS
+        try:
+            ser.open()
+        except (IOError, ValueError):
+            return False
+        ser.rh_reopen_pending = False
+        ser.rh_reopen_count = getattr(ser, 'rh_reopen_count', 0) + 1  # tells interface to restore node settings
+        if self.multi_curnode_index_holder:
+            self.multi_curnode_index_holder[0] = -1  # current multi-node index on processor is unknown
+        self.node_log(interface, "Reopened serial port '{}'".format(ser.port))
+        return True
+
+    def handle_port_error(self, interface, err):
+        '''Closes the serial port after an I/O error (logged once) so that it gets reopened later'''
+        ser = self.serial
+        if getattr(ser, 'rh_reopen_pending', False):
+            return
+        self.node_log(interface, "Lost connection to serial port '{}' ({}); will try to reopen it".format(ser.port, err))
+        try:
+            ser.close()
+        except Exception:
+            pass
+        ser.rh_reopen_pending = True
+        ser.rh_next_reopen_time = monotonic() + REOPEN_INTERVAL_SECS
 
     #
     # Serial Common Functions
@@ -49,6 +89,8 @@ class SerialNode(Node):
             retry_count = 0
             data = None
             while success is False and retry_count <= max_retries:
+                if not self.port_available(interface):
+                    break
                 if check_multi_flag:
                     if self.multi_node_index >= 0:
                         if not self.check_set_multi_node_index(interface):
@@ -63,6 +105,7 @@ class SerialNode(Node):
                         if len(data) == size + 1:
                             success = True
                             data = data[:-1]
+                            self.last_read_ok_time = self.io_response
                         else:
                             retry_count = retry_count + 1
                             if check_multi_flag:  # log and count if regular query
@@ -88,16 +131,10 @@ class SerialNode(Node):
                                     self.node_log(interface, 'Retry (no data) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                             self.inc_read_error_count(interface)
                             gevent.sleep(0.025)
-                except IOError as err:
-                    self.node_log(interface, 'Read Error: ' + str(err))
-                    retry_count = retry_count + 1
-                    if check_multi_flag:  # log and count if regular query
-                        if retry_count <= max_retries:
-                            self.node_log(interface, 'Retry (IOError) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
-                        else:
-                            self.node_log(interface, 'Retry (IOError) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
-                        self.inc_read_error_count(interface)
-                        gevent.sleep(0.025)
+                except IOError as err:  # port lost (e.g. USB node unplugged); close it and try to reopen later
+                    self.inc_read_error_count(interface)
+                    self.handle_port_error(interface, err)
+                    break
             return data if success else None
 
     def write_block(self, interface, command, data, check_multi_flag=True):
@@ -114,6 +151,8 @@ class SerialNode(Node):
             data_with_checksum.extend(data)
             data_with_checksum.append(calculate_checksum(data_with_checksum[1:]))
             while success is False and retry_count <= MAX_RETRY_COUNT:
+                if not self.port_available(interface):
+                    break
                 if check_multi_flag:
                     if self.multi_node_index >= 0:
                         if not self.check_set_multi_node_index(interface):
@@ -121,22 +160,19 @@ class SerialNode(Node):
                 try:
                     self.serial.write(data_with_checksum)
                     success = True
-                except IOError as err:
-                    self.node_log(interface, 'Write Error: ' + str(err))
-                    retry_count = retry_count + 1
-                    if retry_count <= MAX_RETRY_COUNT:
-                        self.node_log(interface, 'Retry (IOError) in write_block:  port={0} cmd={1} data={2} retry={3}'.format(self.serial.port, command, data, retry_count))
-                    else:
-                        self.node_log(interface, 'Retry (IOError) limit reached in write_block:  port={0} cmd={1} data={2} retry={3}'.format(self.serial.port, command, data, retry_count))
+                except IOError as err:  # port lost (e.g. USB node unplugged); close it and try to reopen later
                     if interface:
                         interface.inc_intf_write_error_count()
-                    gevent.sleep(0.025)
+                    self.handle_port_error(interface, err)
+                    break
             return success
 
     def check_set_multi_node_index(self, interface):
         # check if need to set different node index on multi-node processor and set if needed
         if self.multi_node_index == self.multi_curnode_index_holder[0]:
             return True
+        if not self.port_available(interface):
+            return False
         success = False
         chk_retry_count = 0
         out_value = None
@@ -147,6 +183,8 @@ class SerialNode(Node):
             if out_value == self.multi_node_index:
                 success = True
             else:
+                if getattr(self.serial, 'rh_reopen_pending', False):
+                    break  # port was lost (already logged)
                 chk_retry_count = chk_retry_count + 1
                 self.inc_read_error_count(interface)
                 if chk_retry_count <= MAX_RETRY_COUNT*5:
@@ -227,10 +265,11 @@ class SerialNode(Node):
             logger.exception('Error fetching READ_FW_DATE/TIME for serial node')
 
 
-def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
+def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwargs):
+    '''Opens the given serial ports (or the configured SERIAL_PORTS if none given) and returns the nodes found.'''
     nodes = []
-    config_ser_ports = config.get_item('GENERAL', 'SERIAL_PORTS')
-    if isS32BPillFlag and len(config_ser_ports) == 0:
+    config_ser_ports = ports if ports is not None else config.get_item('GENERAL', 'SERIAL_PORTS')
+    if ports is None and isS32BPillFlag and len(config_ser_ports) == 0:
         try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
             def_port = SYS_DEV_DIR_PATH + (DEF_S32BPILL_SERIAL_PORTS[0] \
                                 if DEF_S32BPILL_SERIAL_PORTS[0] in os.listdir(SYS_DEV_DIR_PATH) \

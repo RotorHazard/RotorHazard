@@ -628,6 +628,36 @@ dialog > button {
 	color: hsl(0, 70%, 50%);
 }
 
+.serial-port-status {
+	font-size: 0.875em;
+	margin-top: 0.25rem;
+}
+
+.serial-port-status:empty {
+	display: none;
+}
+
+@media (min-width: 40em) {
+	#serial-port-ui > li {
+		flex-wrap: wrap;
+	}
+
+	/* status on its own line below the port input */
+	#serial-port-ui .serial-port-status {
+		flex-basis: 100%;
+		padding-left: calc(100% - 20em / 0.875);  /* align with input (label width + margins, at reduced font size) */
+	}
+}
+
+.serial-port-status-connected {
+	color: hsl(120, 55%, 50%);
+}
+
+.serial-port-status-not_responding,
+.serial-port-status-not_connected {
+	color: hsl(0, 70%, 50%);
+}
+
 .screen-reader-text {
 	clip: rect(1px, 1px, 1px, 1px);
 	position: absolute;

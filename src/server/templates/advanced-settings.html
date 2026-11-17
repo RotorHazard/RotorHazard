@@ -146,6 +146,10 @@
 					$('<button type="button" class="serial-port-remove btn-danger">')
 						.html('&#215;')
 						.appendTo(item_el);
+					$('<div class="serial-port-status">')
+						.prop('id', `serial-port--${i}-status`)
+						.appendTo(item_el);
+					item_el.find('input').attr('aria-describedby', `serial-port--${i}-status`);
 				}
 				item_el.find('input').val(port);
 				item_el.find('.serial-port-remove')
@@ -154,6 +158,7 @@
 					.attr('aria-label', __('Remove') + ' ' + port);
 			}
 			serial_ui.find('li.flagged').remove();
+			update_serial_port_status();
 
 			if (serial_port_focus && serial_port_focus.type == 'remove') {
 				var idx = serial_port_focus.index;
@@ -201,6 +206,37 @@
 
 		var serial_port_relist_pending = false;
 		var serial_port_focus = null;
+
+		// show whether the node(s) on each configured serial port are connected and responding
+		function update_serial_port_status() {
+			socket.emit('get_serial_port_status', {}, function (msg) {
+				$('#serial-port-ui li').not('#serial-port--new').each(function () {
+					var port = $(this).find('input').val();
+					var info = msg ? msg[port] : null;
+					var state = info ? info.state : 'unknown';
+					var text;
+					if (state == 'connected' || state == 'not_responding') {
+						text = (state == 'connected') ? __('Connected') : __('Not responding');
+						text += ': ' + (info.nodes.length ?
+							__('Node') + ' ' + info.nodes.join(', ') : __('no receiver modules'));
+					} else if (state == 'not_connected') {
+						text = __('Not connected');
+					} else {
+						text = '';
+					}
+					var status_el = $(this).find('.serial-port-status');
+					if (status_el.text() != text) {
+						status_el.text(text);
+					}
+					status_el.attr('class', 'serial-port-status serial-port-status-' + state);
+				});
+			});
+		}
+		setInterval(function () {
+			if (!document.hidden && $('#serial-port-ui').length) {
+				update_serial_port_status();
+			}
+		}, 2000);
 
 		function list_serial_ports() {
 			var btn = $('#serial-port-list-btn');
