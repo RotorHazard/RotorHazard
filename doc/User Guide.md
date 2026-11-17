@@ -46,7 +46,7 @@ This public page displays the current class setup (if applicable), and a summary
 
 ### Results
 
-This public page will display results and calculated statistics of all previously saved races, organized into collapsible panels. Aggregate results are displayed for each heat with multiple rounds, each class, and the entire event.
+This public page will display results and calculated statistics of all previously saved races, organized into collapsible panels. Aggregate results are displayed for each heat with multiple rounds, each class, and the entire event. For admins, many of the items are clickable, leading to the Marshal page that corresponds to the item.
 
 
 ### Current
