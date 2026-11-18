@@ -934,11 +934,14 @@ def on_cluster_event_trigger(data):
     if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
             RaceContext.race.results = None
-            RaceContext.race.external_flag = True
+            # use the primary's seat colors, and this timer's own seat colors for any seats beyond them
+            RaceContext.race.external_flag = False
+            RaceContext.race.updateSeatColors(mode_override=0)
             if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
-                RaceContext.race.seat_colors = evtArgs['race_node_colors']
-            else:
-                RaceContext.race.updateSeatColors(mode_override=0)
+                own_colors = RaceContext.race.seat_colors
+                primary_colors = evtArgs['race_node_colors'][:len(own_colors)]
+                RaceContext.race.seat_colors = primary_colors + own_colors[len(primary_colors):]
+            RaceContext.race.external_flag = True
 
             start_race_args = {
                 'secondary_format': True,
@@ -3018,7 +3021,7 @@ def on_simulate_lap(data):
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
     Events.trigger(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
-        'color': RaceContext.race.seat_colors[node_index]
+        'color': RaceContext.race.get_seat_color(node_index)
         })
     RaceContext.interface.intf_simulate_lap(node_index, 0)
 
@@ -3858,14 +3861,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
-                    'color': RaceContext.race.seat_colors[node.index]
+                    'color': RaceContext.race.get_seat_color(node.index)
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     Events.trigger(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
-                        'color': RaceContext.race.seat_colors[node.index]
+                        'color': RaceContext.race.get_seat_color(node.index)
                         })
                 else:
                     node.show_crossing_flag = True

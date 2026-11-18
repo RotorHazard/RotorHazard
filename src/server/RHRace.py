@@ -1057,7 +1057,7 @@ class RHRace():
                                     'node_index': node.index,
                                     'peak_rssi': node.pass_peak_rssi,
                                     'frequency': node.frequency,
-                                    'color': self.seat_colors[node.index],
+                                    'color': self.get_seat_color(node.index),
                                     'lap': lap_data,
                                     'results': self.get_results(),
                                     'gap_info': Results.get_gap_info(self._racecontext, node.index),
@@ -1184,7 +1184,7 @@ class RHRace():
                 self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
                     'pilot_id': done_pilot_id,
                     'node_index': done_node_obj.index,
-                    'color': self.seat_colors[done_node_obj.index],
+                    'color': self.get_seat_color(done_node_obj.index),
                     'results': self.get_results(),
                 })
                 self.set_node_finished_effect_flag(done_node_obj.index)  # indicate pilot-finished event was triggered
@@ -1200,7 +1200,7 @@ class RHRace():
                         self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
                             'pilot_id': chk_node.current_pilot_id,
                             'node_index': chk_node.index,
-                            'color': self.seat_colors[chk_node.index],
+                            'color': self.get_seat_color(chk_node.index),
                             'results': self.get_results(),
                         })
                         self.set_node_finished_effect_flag(chk_node.index)  # indicate pilot-finished event was triggered
@@ -1738,7 +1738,7 @@ class RHRace():
                             'win_status': win_status_dict,
                             'message': self.status_message,
                             'node_index': win_data.get('node', -1),
-                            'color': self.seat_colors[win_data['node']] \
+                            'color': self.get_seat_color(win_data['node']) \
                                                     if 'node' in win_data else None,
                             })
 
@@ -2097,6 +2097,13 @@ class RHRace():
     @seat_colors.setter
     def seat_colors(self, value):
         self._seat_colors = value
+
+    def get_seat_color(self, seat_index):
+        ''' Color of the given seat, or white if there is none for it (e.g. on a mirror secondary
+            timer with more seats than its primary) '''
+        if seat_index is not None and 0 <= seat_index < len(self._seat_colors):
+            return self._seat_colors[seat_index]
+        return RHUtils.hexToColor('#ffffff')
 
     def updateSeatColors(self, mode_override=False):
         if self.external_flag:
