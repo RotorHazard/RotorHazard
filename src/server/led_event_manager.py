@@ -121,11 +121,7 @@ class LEDEventManager:
                     if line['node'] == seat_index:
                         return RHUtils.hexToColor(self._racecontext.rhdata.get_pilot(line['pilot_id']).color)
 
-        seat_colors = self._racecontext.race.seat_colors 
-        if seat_index < len(seat_colors):
-            return seat_colors[seat_index]
-
-        return RHUtils.hexToColor('#ffffff')
+        return self._racecontext.race.get_seat_color(seat_index)
 
     # Activates the given effect
     @catchLogExceptionsWrapper

@@ -1637,7 +1637,7 @@ class RHUI():
                 'callsign': None,
                 'heatNodeColor': None,
                 'pilotColor': None,
-                'activeColor': self._racecontext.race.seat_colors[idx]
+                'activeColor': self._racecontext.race.get_seat_color(idx)
             }
 
         heat_format = None
