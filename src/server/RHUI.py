@@ -675,6 +675,7 @@ class RHUI():
 
         emit_payload = {
                 'race_status': self._racecontext.race.race_status,
+                'win_status': self._racecontext.race.win_status,
                 'race_format_id': self._racecontext.race.format.id if hasattr(self._racecontext.race.format, 'id') else None,
                 'race_heat_id': heat_id,
                 'race_class_id': class_id,
