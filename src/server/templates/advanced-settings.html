@@ -96,6 +96,8 @@
 				}
 			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
 				value = Number(value);
+			} else if ($(this).data('type') == 'int_or_str' && /^\d+$/.test(value)) {
+				value = Number(value);
 			}
 
 			var data = {
@@ -874,13 +876,17 @@
 				<div class="label-block">
 					<label for="set-mock-node-behavior">{{ __('Mock Node Signal') }}</label>
 				</div>
-				<select id="set-mock-node-behavior" class="set-config" data-section="GENERAL" data-key="MOCK_NODE_SIGNAL" data-type="int">
-					<option value="0" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==0}}>{{ __('None') }}</option>
-					<option value="1" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==1}}>{{ __('Replay') }} mock_data_[n].csv</option>
-					<option value="2" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==2}}>{{ __('Simulated') }}</option>
-					<option value="3" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==3}}>{{ __('Simulated - Pass Peak Only') }}</option>
-					<option value="4" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==4}}>{{ __('Simulated - Pass Peak Only (+RSSI)') }}</option>
+				<select id="set-mock-node-behavior" class="set-config" data-section="GENERAL" data-key="MOCK_NODE_SIGNAL" data-type="int_or_str">
+					{% for signal in mockSignals %}
+					<option value="{{ signal.name }}" {{'selected' if (getConfig('GENERAL', 'MOCK_NODE_SIGNAL') or 0)|string == signal.name}}>{{ __(signal.label) }}{{ ' ' + signal.provider.label_detail if signal.provider.label_detail }}</option>
+					{% endfor %}
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-mock-update-interval">{{ __('Mock Node Update Interval (seconds)') }}</label>
+				</div>
+				<input type="number" id="set-mock-update-interval" class="set-config" data-section="GENERAL" data-key="MOCK_UPDATE_INTERVAL" value="{{ getConfig('GENERAL', 'MOCK_UPDATE_INTERVAL') }}" min="0.05" max="5" step="0.05">
 			</li>
 		</ol>
 	</div>

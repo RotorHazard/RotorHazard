@@ -1552,7 +1552,7 @@ These methods are accessed via `RHAPI.interface`
 
 #### interface.seats
 _Read only_
-Hardware interface information. Returns `list[Node]`.
+Hardware interface information. Returns `list[Node]`. Each seat's `provider_type` is the `InterfaceType` of the interface it belongs to (see `interface.seat_provider_type`), and `provider` is that interface object.
 
 #### interface.seat_enter_at_set(seat_index, level)
 Set the EnterAt level of a seat on the live node, as the Settings page does: the level is stored in the current profile and broadcast to all clients. No return value.
@@ -1567,6 +1567,42 @@ Set the ExitAt level of a seat on the live node, as the Settings page does: the 
 #### interface.seat_crossing_end(seat_index)
 End a crossing in progress on a seat, as the server does at race start and stop, so the node reports the pass. Has no effect on nodes whose firmware does not support it. No return value.
 - `seat_index` (int): seat whose crossing to end
+
+#### interface.seat_provider_type(seat_index)
+The kind of interface a seat belongs to. Returns `InterfaceType` (`from interface_mapper import InterfaceType`): `InterfaceType.MOCK` (0) for a mock (simulated) seat, `InterfaceType.RH` (1) for a seat on RotorHazard node hardware, or `InterfaceType.RHAPI` (2) for a seat on an interface a plugin added with `interface.add`.
+- `seat_index` (int): seat to check
+
+#### interface.is_mock_only()
+Whether every seat is a mock seat, so no timing hardware is in use. Returns `False` when there are no seats. Returns `boolean`.
+
+#### interface.register_mock_signal(name, label, provider)
+Register a signal source for mock (simulated) seats. It is listed under "Mock Node Signal" on the Advanced Settings page, and when chosen there (the `GENERAL` / `MOCK_NODE_SIGNAL` setting holds its `name`), the mock interface reads every mock seat's signal from it. Returns `True` if registered, or `False` if the name is already taken or is a number (numbers are the built-in signals: `0` None, `1` Replay `mock_data_[n].csv`, `2` Simulated, `3` Simulated - Pass Peak Only, `4` Simulated - Pass Peak Only (+RSSI)).
+- `name` (string): internal identifier, stored in the setting
+- `label` (string): name shown on the Advanced Settings page; it is passed through translation
+- `provider` (MockSignalProvider): the signal source; subclass `MockSignalProvider` from `MockSignal` (`from MockSignal import MockSignalProvider, SignalSample`) and override:
+  - `read(node, now)`: return a `SignalSample` for the seat (`node` is the seat object, as in `interface.seats`; `now` is the monotonic read time), a list of them in time order, or `None` for no reading this update. Called for each mock seat with a frequency on every update of the mock interface: every 0.5 s by default, set by the `GENERAL` / `MOCK_UPDATE_INTERVAL` setting ("Mock Node Update Interval" on the Advanced Settings page), or by the `RH_UPDATE_INTERVAL` environment variable, which overrides it. To replay readings more often than that, return the ones due since the last update as a list, each with its `read_time`; their crossings and passes are handled one reading at a time.
+  - `start()` and `stop()` _(optional)_: called when the provider becomes, or stops being, the active signal.
+  - `on_race_status(status)` _(optional)_: called with each `RaceStatus` change while the provider is active.
+  - `marshal_type` _(optional)_: class or instance attribute giving the `MarshalType` of the seats it drives (default `MarshalType.FULL_RSSI`).
+  - `label_detail` _(optional)_: text shown after the label.
+
+All provider methods run in the mock interface's update greenlet, so they must not block (no blocking I/O or long computation; use `gevent` to do slow work elsewhere). An exception from `read` is logged once and treated as no reading. If the setting names a signal that is not registered (for example when its plugin is not loaded), the seats get no signal until it is registered.
+
+`SignalSample` holds one reading as a node reports it:
+- `lap_id` (int): count of passes completed; a change records a pass
+- `rssi` (int): current RSSI
+- `cross_flag` (boolean): whether a crossing is in progress
+- `ms_val` _(optional)_ (int): milliseconds between the pass and this reading
+- `node_peak_rssi`, `pass_peak_rssi`, `pass_nadir_rssi`, `node_nadir_rssi`, `loop_time` _(optional)_ (int): node statistics
+- `peak_rssi`, `peak_first_time`, `peak_last_time`, `nadir_rssi`, `nadir_first_time`, `nadir_last_time` _(optional)_ (int): peak and nadir since the previous reading, recorded as RSSI history; times are milliseconds before this reading
+- `history_flag` _(optional)_ (boolean): `False` records no RSSI history, as pass-peak-only hardware does (default `True`)
+- `read_time` _(optional)_ (float): monotonic time of the reading, for one taken earlier than the update it is returned in; pass and history times are taken from it (default: the update's read time)
+
+The built-in "Replay" signal reads `mock_data_[n].csv` (n is the seat number) from the data directory, in the format the hardware interface logs node data. When a file's first column (the read time) rises steadily, readings are replayed at their recorded spacing; otherwise one line is used per update, as before. Malformed lines are skipped and counted in the log.
+
+#### interface.mock_signals
+_Read only_
+Registered mock signal sources. Returns `list[dict]` with `name` and `label`.
 
 
 

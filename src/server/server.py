@@ -612,10 +612,12 @@ def render_settings():
 @requires_auth
 def render_advanced_settings():
     '''Route to settings page.'''
+    import MockSignal
     return render_template('advanced-settings.html',
                            serverInfo=RaceContext.serverstate.template_info_dict,
                            getOption=RaceContext.rhdata.get_option,
                            getConfig=RaceContext.serverconfig.get_item,
+                           mockSignals=MockSignal.get_signals(),
                            __=__,
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
