@@ -332,6 +332,109 @@ var rhui = {
 
 		return value;
 	},
+	_markdownConverter: null,
+	markdownToHtml: function(text) {
+		if (!this._markdownConverter) {
+			this._markdownConverter = new showdown.Converter({
+				ghCodeBlocks: true,
+				ghCompatibleHeaderId: true,
+				literalMidWordUnderscores: true,
+				simpleLineBreaks: true,
+				headerLevelStart: 3
+			});
+		}
+		return this._markdownConverter.makeHtml(text);
+	},
+	buildPanels: function(msg, page) {
+		// builds the plugin panels of a 'ui' message for this page
+		if (msg.page != page) {
+			return;
+		}
+		if (msg.replace_panels !== false) {
+			$('#custom-ui').empty();
+		}
+
+		for (var i in msg.panels) {
+			var panel = msg.panels[i];
+
+			if (msg.replace_panels === false) {
+				var panel_el = $('#ui-custom-' + panel.panel.name);
+				var panel_content_el = panel_el.children('.panel-content');
+				panel_content_el.empty();
+			} else {
+				var panel_el = $('<div class="panel collapsing active">');
+				panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+				var panel_header_el = $('<div class="panel-header">');
+				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+				var panel_content_el = $('<div class="panel-content">');
+				panel_el.append(panel_header_el);
+
+				// panel open/close
+				if (panel.panel.open) {
+					panel_el.addClass('open');
+					panel_content_el.show();
+				} else {
+					panel_el.removeClass('open');
+					panel_content_el.hide();
+				}
+			}
+
+			// add markdown content
+			for (var md_idx in panel.markdowns) {
+				var md_element = $('<div class="ui-md-el">').html(this.markdownToHtml(panel.markdowns[md_idx].desc));
+				panel_content_el.append(md_element);
+			}
+
+			var form_el = $('<ol class="form">');
+
+			for (var f_idx in panel.settings) {
+				var settings = { ...panel.settings[f_idx] };
+
+				settings.wrapperEl = 'li';
+				settings.fieldClass = 'set_ui_option';
+				settings.id = 'genericOption_' + settings.name;
+				settings.data = {
+					field: settings.name,
+					section: settings.section
+				}
+
+				form_el.append(this.buildField(settings));
+			}
+
+			for (var f_idx in panel.fn_binds) {
+				var settings = { ...panel.fn_binds[f_idx] };
+
+				settings.wrapperEl = 'li';
+				settings.fieldClass = 'set_ui_binding_value';
+				settings.data = {
+					field: settings.name,
+				}
+
+				form_el.append(this.buildField(settings));
+			}
+
+			panel_content_el.append(form_el);
+			panel_content_el.append(this.buildQuickbuttons(panel.quickbuttons));
+
+			panel_el.append(panel_content_el);
+
+			$('#custom-ui').append(panel_el);
+		}
+
+		// load panel state
+		for (var panel_id in rotorhazard.panelstates) {
+			var panel_obj = $('#' + panel_id);
+			var panelstate = rotorhazard.panelstates[panel_id];
+
+			if (panelstate) {
+				panel_obj.addClass('open');
+				panel_obj.children('.panel-content').stop().slideDown();
+			} else {
+				panel_obj.removeClass('open');
+				panel_obj.children('.panel-content').stop().slideUp();
+			}
+		}
+	},
 	buildQuickbuttons: function(btn_list) {
 		var btn_list_el = $('<div class="control-set">');
 		for (var idx in btn_list) {
@@ -358,5 +461,34 @@ $(document).ready(function () {
 			namespace: 'quickbutton'
 		};
 		socket.emit('dispatch_event', data);
+	});
+
+	$(document).on('change', '.set_ui_option', function (event) {
+		var field = $(this).data('field');
+		var section = $(this).data('section');
+		var value = rhui.getFieldVal(this);
+
+		if (section) {
+			var data = {
+				section: section,
+				key: field,
+				value: value
+			};
+			socket.emit('set_config', data);
+		} else {
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
+		}
+	});
+
+	$(document).on('change', '.set_ui_binding_value', function (event) {
+		var data = {
+			name: $(this).data('field'),
+			value: rhui.getFieldVal(this)
+		};
+		socket.emit('set_ui_binding_value', data);
 	});
 });
