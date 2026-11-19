@@ -485,6 +485,7 @@ Fields are defined in the following format:
     - `UIFieldType.EMAIL`
     - `UIFieldType.TEL`
     - `UIFieldType.URL`
+    - `UIFieldType.STATUS`
 - `value` _optional_ (any): Default value for field
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `private` _optional_ (boolean): Prevent automatically generated UI
@@ -499,6 +500,10 @@ If `field_type` is `TEXT`
 If `field_type` is `BASIC_INT`
 
 - `placeholder` _optional_ (string): Text displayed when no value is present
+
+If `field_type` is `STATUS`
+
+- The field shows its `value` as read-only text, such as a status line. Its value is never stored (`persistent_section` is ignored); change it with `RHAPI.ui.update_field`, which keeps the latest value in memory so a panel rebuild or page reload shows it.
 
 If `field_type` is `CHECKBOX`
 
