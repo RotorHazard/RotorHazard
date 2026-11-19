@@ -79,8 +79,8 @@ class UserInterfaceAPI():
         return self._racecontext.rhui.register_ui_panel(name, label, page, order, open)
 
     # Quick button
-    def register_quickbutton(self, panel, name, label, function, args=None):
-        return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
+    def register_quickbutton(self, panel, name, label, function, args=None, requires_auth=False, client_context=False):
+        return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args, requires_auth, client_context)
 
     # Markdown
     def register_markdown(self, panel, name, desc):
@@ -119,11 +119,14 @@ class UserInterfaceAPI():
         self._racecontext.rhui.emit_clear_priority_messages()
 
     # Socket
-    def socket_listen(self, message, handler, requires_auth=False):
-        self._racecontext.rhui.socket_listen(message, handler, requires_auth)
+    def socket_listen(self, message, handler, requires_auth=False, client_context=False):
+        self._racecontext.rhui.socket_listen(message, handler, requires_auth, client_context)
 
     def socket_send(self, message, data):
         self._racecontext.rhui.socket_send(message, data)
+
+    def socket_send_to(self, sid, message, data):
+        self._racecontext.rhui.socket_send_to(sid, message, data)
 
     def socket_broadcast(self, message, data):
         self._racecontext.rhui.socket_broadcast(message, data)
@@ -221,8 +224,10 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
-    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
-        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order)
+    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0,
+                                  client_context=False):
+        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order,
+                                                          client_context)
 
 #
 # Database Access
