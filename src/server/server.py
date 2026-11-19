@@ -3215,7 +3215,10 @@ def on_set_config_section(data):
 def on_set_ui_binding_value(data):
     for var in RaceContext.rhui.ui_fn_bindings:
         if data['name'] == var.name:
-            var.setter_fn(data['value'], var.args)
+            if var.client_context:
+                var.setter_fn(data['value'], var.args, client=RaceContext.rhui.client_context())
+            else:
+                var.setter_fn(data['value'], var.args)
             break
 
 @SOCKET_IO.on('set_consecutives_count')
