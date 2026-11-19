@@ -249,14 +249,19 @@ class PluginInstallationManager:
         if not manifest_path.exists():
             return
 
-        with open(manifest_path, "r", encoding="utf-8") as file:
-            data = json.load(file)
+        # a manifest that cannot be read or lacks a required field leaves the plugin unlisted
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
 
-            if "domain" not in data:
-                data["domain"] = plugin_path.stem
+                if "domain" not in data:
+                    data["domain"] = plugin_path.stem
 
-            manifest = parse_dict_to_dataclass(Manifest, data)
-            plugin_data = LocalData(manifest, reload_required)
+                manifest = parse_dict_to_dataclass(Manifest, data)
+                plugin_data = LocalData(manifest, reload_required)
+        except (OSError, ValueError, TypeError) as ex:
+            logger.warning(f"Unable to read manifest of plugin '{plugin_path.stem}': {ex}")
+            return
 
         self._local_plugin_data.update({plugin_data.domain: plugin_data})
 
