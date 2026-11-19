@@ -2,20 +2,22 @@
 
 import os
 import logging
-import random
 
 import gevent # For threads and timing
 from time import monotonic # to capture read timing
 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, MarshalType
+import MockSignal
 from RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
                         FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR, \
                         FW_PROCTYPE_PREFIXSTR
 
 logger = logging.getLogger(__name__)
 
-UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.5')) # Main update loop delay
+UPDATE_SLEEP_ENV = os.environ.get('RH_UPDATE_INTERVAL')  # main update loop delay; overrides the 'MOCK_UPDATE_INTERVAL' setting
+DEFAULT_UPDATE_SLEEP = 0.5
+MIN_UPDATE_SLEEP = 0.01
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
@@ -33,16 +35,12 @@ class MockInterface(BaseHardwareInterface):
 
         self.config = kwargs['config'] # provides access to RH config
         self.nodes = [] # Array to hold each node object
-        self.data = []
-        self.mocknodedata = {}
+        self.signal_name = None  # name of the active signal provider
+        self.signal_provider = None
+        self.signal_fallback = False  # whether the setting names an unregistered signal
+        self.signal_error_logged = False
         # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
         for index in range(int(kwargs['num_nodes'])):
-            self.mocknodedata[index] = {
-                'lap_number': 0,
-                'is_crossing': False,
-                'pass_peak_rssi': 0,
-                'pass_nadir_rssi': 100,
-            }
             node = Node() # New node instance
             node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
@@ -50,12 +48,6 @@ class MockInterface(BaseHardwareInterface):
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
-            try:
-                f = open("mock_data_{0}.csv".format(index+1))
-                logger.info("Loaded mock_data_{0}.csv".format(index+1))
-            except IOError:
-                f = None
-            self.data.append(f)
 
 
     #
@@ -72,12 +64,51 @@ class MockInterface(BaseHardwareInterface):
             self.log('Stopping background thread')
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
+        if self.signal_provider:
+            self.signal_provider.stop()
+            self.signal_provider = None
+            self.signal_name = None
+
+    def get_signal_provider(self):
+        '''The provider named by the 'MOCK_NODE_SIGNAL' setting, switching to it if it changed.'''
+        name = str(self.config.get_item('GENERAL', 'MOCK_NODE_SIGNAL') or 0)
+        entry = MockSignal.get_signal(name)
+        # an unregistered name (e.g. its plugin not loaded) gives no signal, until it is registered
+        if name != self.signal_name or (entry and self.signal_fallback):
+            if not entry:
+                logger.warning("Mock signal '{}' not registered; using none".format(name))
+                entry = MockSignal.get_signal('0')
+            if self.signal_provider:
+                self.signal_provider.stop()
+            self.signal_name = name
+            self.signal_fallback = entry.name != name
+            self.signal_provider = entry.provider
+            self.signal_error_logged = False
+            logger.info("Mock node signal: {}".format(entry.label))
+            self.signal_provider.start()
+        return self.signal_provider
+
+    def set_race_status(self, race_status):
+        super().set_race_status(race_status)
+        if self.signal_provider:
+            try:
+                self.signal_provider.on_race_status(race_status)
+            except Exception:
+                logger.exception("Error in mock signal '{}' race status handler".format(self.signal_name))
+
+    def get_update_interval(self):
+        '''Seconds between updates, from 'RH_UPDATE_INTERVAL' if set, else the 'MOCK_UPDATE_INTERVAL' setting.'''
+        try:
+            interval = float(UPDATE_SLEEP_ENV or self.config.get_item('GENERAL', 'MOCK_UPDATE_INTERVAL') or DEFAULT_UPDATE_SLEEP)
+        except (TypeError, ValueError):
+            interval = DEFAULT_UPDATE_SLEEP
+        return max(interval, MIN_UPDATE_SLEEP)
 
     def update_loop(self):
         try:
             while True:
                 self.update()
-                gevent.sleep(UPDATE_SLEEP)
+                gevent.sleep(self.get_update_interval())
         except KeyboardInterrupt:
             logger.info("Update thread terminated by keyboard interrupt")
 
@@ -86,121 +117,32 @@ class MockInterface(BaseHardwareInterface):
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
 
-        # 3 and 4 simulate pass-peak-only hardware; only 4 also records RSSI history
-        signal_mode = self.config.get_item('GENERAL', 'MOCK_NODE_SIGNAL')
-        self.marshal_type = MarshalType.PASS_PEAK_ONLY if signal_mode in (3, 4) else MarshalType.FULL_RSSI
+        provider = self.get_signal_provider()
+        self.marshal_type = getattr(provider, 'marshal_type', MarshalType.FULL_RSSI)
 
         for index, node in enumerate(self.nodes):
             if node.frequency:
                 readtime = monotonic()
 
-                match signal_mode:
-                    case 2 | 3 | 4:
-                        if self.mocknodedata[index]['is_crossing']:
-                            new_rssi = random.randrange(60,150)
-                            pass_peak_rssi = max(self.mocknodedata[index]['pass_peak_rssi'], new_rssi)
-                            node_data = {
-                                'lap_id': self.mocknodedata[index]['lap_number'],
-                                'ms_val': 0,
-                                'rssi_val': new_rssi,
-                                'node.node_peak_rssi': 100,
-                                'node.pass_peak_rssi': pass_peak_rssi,
-                                'node.loop_time': 1,
-                                'cross_flag': 1,
-                                'node.pass_nadir_rssi': self.mocknodedata[index]['pass_nadir_rssi'],
-                                'node.node_nadir_rssi': 20,
-                                'pn_history.peakRssi': new_rssi,
-                                'pn_history.peakFirstTime': 0,
-                                'pn_history.peakLastTime': 0,
-                                'pn_history.nadirRssi': new_rssi,
-                                'pn_history.nadirFirstTime': 0,
-                                'pn_history.nadirLastTime': 0
-                            }
-                            if random.random() < 0.5:
-                                self.mocknodedata[index]['is_crossing'] = False
-                                self.mocknodedata[index]['pass_nadir_rssi'] = 100
-                        else:
-                            new_rssi = random.randrange(20,40)
-                            pass_nadir_rssi = min(self.mocknodedata[index]['pass_nadir_rssi'], new_rssi)
-                            node_data = {
-                                'lap_id': self.mocknodedata[index]['lap_number'],
-                                'ms_val': 0,
-                                'rssi_val': new_rssi,
-                                'node.node_peak_rssi': 100,
-                                'node.pass_peak_rssi': self.mocknodedata[index]['pass_peak_rssi'],
-                                'node.loop_time': 1,
-                                'cross_flag': 0,
-                                'node.pass_nadir_rssi': pass_nadir_rssi,
-                                'node.node_nadir_rssi': 20,
-                                'pn_history.peakRssi': new_rssi,
-                                'pn_history.peakFirstTime': 0,
-                                'pn_history.peakLastTime': 0,
-                                'pn_history.nadirRssi': new_rssi,
-                                'pn_history.nadirFirstTime': 0,
-                                'pn_history.nadirLastTime': 0
-                            }
-                            if random.random() < 0.05:
-                                self.mocknodedata[index]['lap_number'] += 1
-                                self.mocknodedata[index]['is_crossing'] = True
-                                self.mocknodedata[index]['pass_peak_rssi'] = 0
+                try:
+                    result = provider.read(node, readtime)
+                except Exception:
+                    result = None
+                    if not self.signal_error_logged:
+                        self.signal_error_logged = True
+                        logger.exception("Error reading mock signal '{}' for node {}".format(self.signal_name, index+1))
 
-                        if node_data:
-                            lap_id = node_data['lap_id']
-                            ms_val = node_data['ms_val']
-                            rssi_val = node_data['rssi_val']
-                            node.node_peak_rssi = node_data['node.node_peak_rssi']
-                            node.pass_peak_rssi = node_data['node.pass_peak_rssi']
-                            node.loop_time = node_data['node.loop_time']
-                            cross_flag = node_data['cross_flag']
-                            node.pass_nadir_rssi = node_data['node.pass_nadir_rssi']
-                            node.node_nadir_rssi = node_data['node.node_nadir_rssi']
-                            pn_history = PeakNadirHistory(node.index)
-                            pn_history.peakRssi = node_data['pn_history.peakRssi']
-                            pn_history.peakFirstTime = node_data['pn_history.peakFirstTime']
-                            pn_history.peakLastTime = node_data['pn_history.peakLastTime']
-                            pn_history.nadirRssi = node_data['pn_history.nadirRssi']
-                            pn_history.nadirFirstTime = node_data['pn_history.nadirFirstTime']
-                            pn_history.nadirLastTime = node_data['pn_history.nadirLastTime']
-                            if signal_mode == 3:
-                                pn_history = None
-                            if node.is_valid_rssi(rssi_val):
-                                node.current_rssi = rssi_val
-                                self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
-                            else:
-                                self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
-
-                    case 1:
-                        node_data = self.data[index]
-                        if node_data:
-                            data_line = node_data.readline()
-                            if data_line == '':
-                                node_data.seek(0)
-                                data_line = node_data.readline()
-                            data_columns = data_line.split(',')
-                            lap_id = int(data_columns[1])
-                            ms_val = int(data_columns[2])
-                            rssi_val = int(data_columns[3])
-                            node.node_peak_rssi = int(data_columns[4])
-                            node.pass_peak_rssi = int(data_columns[5])
-                            node.loop_time = int(data_columns[6])
-                            cross_flag = True if data_columns[7]=='T' else False
-                            node.pass_nadir_rssi = int(data_columns[8])
-                            node.node_nadir_rssi = int(data_columns[9])
-                            pn_history = PeakNadirHistory(node.index)
-                            pn_history.peakRssi = int(data_columns[10])
-                            pn_history.peakFirstTime = int(data_columns[11])
-                            pn_history.peakLastTime = int(data_columns[12])
-                            pn_history.nadirRssi = int(data_columns[13])
-                            pn_history.nadirFirstTime = int(data_columns[14])
-                            pn_history.nadirLastTime = int(data_columns[15])
-                            if node.is_valid_rssi(rssi_val):
-                                node.current_rssi = rssi_val
-                                self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
-                            else:
-                                self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
-
-                    case _:
-                        pass
+                samples = result if isinstance(result, (list, tuple)) else ([result] if result else [])
+                for sample in samples:
+                    if len(samples) > 1:
+                        # each reading's crossing and pass is handled before the next
+                        node_cross_list = []
+                        node_upd_list = []
+                        self.apply_sample(node, sample, readtime, node_cross_list, node_upd_list)
+                        self.process_crossings(node_cross_list)
+                        self.process_updates(node_upd_list)
+                    else:
+                        self.apply_sample(node, sample, readtime, cross_list, upd_list)
 
                 # check if node is set to temporary lower EnterAt/ExitAt values
                 if node.start_thresh_lower_flag:
@@ -226,6 +168,30 @@ class MockInterface(BaseHardwareInterface):
             startThreshLowerNode.start_thresh_lower_flag = False
             startThreshLowerNode.start_thresh_lower_time = 0
 
+
+    def apply_sample(self, node, sample, readtime, cross_list, upd_list):
+        '''Takes one reading into the node, as the hardware interface does with a node's report.'''
+        node.node_peak_rssi = sample.node_peak_rssi
+        node.pass_peak_rssi = sample.pass_peak_rssi
+        node.loop_time = sample.loop_time
+        node.pass_nadir_rssi = sample.pass_nadir_rssi
+        node.node_nadir_rssi = sample.node_nadir_rssi
+        if sample.history_flag:
+            pn_history = PeakNadirHistory(node.index)
+            pn_history.peakRssi = sample.peak_rssi
+            pn_history.peakFirstTime = sample.peak_first_time
+            pn_history.peakLastTime = sample.peak_last_time
+            pn_history.nadirRssi = sample.nadir_rssi
+            pn_history.nadirFirstTime = sample.nadir_first_time
+            pn_history.nadirLastTime = sample.nadir_last_time
+        else:
+            pn_history = None
+        if node.is_valid_rssi(sample.rssi):
+            node.current_rssi = sample.rssi
+            self.process_lap_stats(node, sample.read_time if sample.read_time is not None else readtime,
+                                   sample.lap_id, sample.ms_val, sample.cross_flag, pn_history, cross_list, upd_list)
+        else:
+            self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(sample.rssi, node.index+1))
 
     #
     # External functions for setting data

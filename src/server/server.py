@@ -581,6 +581,16 @@ def render_marshal():
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.context_processor
+def inject_plugin_assets():
+    '''Scripts and stylesheets plugins registered for the requested page, named by the first part of its path.'''
+    from flask import has_request_context
+    if not has_request_context() or not RaceContext.rhui:
+        return {'pluginScripts': [], 'pluginStylesheets': []}
+    page = request.path.strip('/').split('/')[0] or 'home'
+    return {'pluginScripts': RaceContext.rhui.get_page_assets(page, 'script'),
+            'pluginStylesheets': RaceContext.rhui.get_page_assets(page, 'stylesheet')}
+
+@APP.context_processor
 def inject_frequency_table():
     '''Band/channel frequency table for the page layouts, which hand it to rotorhazard.js.'''
     # a list of pairs, since 'tojson' sorts object keys and the order decides shared frequencies
@@ -612,10 +622,12 @@ def render_settings():
 @requires_auth
 def render_advanced_settings():
     '''Route to settings page.'''
+    import MockSignal
     return render_template('advanced-settings.html',
                            serverInfo=RaceContext.serverstate.template_info_dict,
                            getOption=RaceContext.rhdata.get_option,
                            getConfig=RaceContext.serverconfig.get_item,
+                           mockSignals=MockSignal.get_signals(),
                            __=__,
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
@@ -1811,17 +1823,7 @@ def on_list_backups(*args):
 
 def list_backup_files():
     '''Returns sorted list of database files in db_bkp, or None if the directory does not exist'''
-    if not os.path.exists(DB_BKP_DIR_NAME):
-        return None
-
-    files = []
-    for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
-        files.extend(filenames)
-        break
-
-    files.sort(key=str.casefold)
-
-    return list(filter(lambda x: x.endswith(".db"), files))
+    return RaceContext.rhdata.list_backup_files()
 
 def restore_database_file(db_file_name):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
@@ -3213,7 +3215,10 @@ def on_set_config_section(data):
 def on_set_ui_binding_value(data):
     for var in RaceContext.rhui.ui_fn_bindings:
         if data['name'] == var.name:
-            var.setter_fn(data['value'], var.args)
+            if var.client_context:
+                var.setter_fn(data['value'], var.args, client=RaceContext.rhui.client_context())
+            else:
+                var.setter_fn(data['value'], var.args)
             break
 
 @SOCKET_IO.on('set_consecutives_count')

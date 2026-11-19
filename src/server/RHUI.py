@@ -6,7 +6,9 @@ from time import monotonic_ns
 from typing import List, Any  # @UnusedImport
 from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
-from flask import request
+from flask import request, session
+import functools
+import ipaddress
 from flask_socketio import emit
 from eventmanager import Evt
 import json
@@ -45,6 +47,7 @@ class UIFieldType(Enum):
     EMAIL = "email"
     TEL = "tel"
     URL = "url"
+    STATUS = "status"
 
 @dataclass
 class UIFieldSelectOption():
@@ -104,6 +107,7 @@ class UIFunctionBinding():
     args: dict
     panel: str = None
     order: int = 0
+    client_context: bool = False
 
 @dataclass
 class QuickButton():
@@ -112,6 +116,16 @@ class QuickButton():
     label: str
     fn: callable
     args: dict
+    requires_auth: bool = False
+    client_context: bool = False
+
+@dataclass
+class ClientContext():
+    '''The client a callback was invoked for.'''
+    sid: str        # SocketIO session id, for replying with 'socket_send_to'
+    address: str    # remote address, as the server sees it (a proxy's, if there is one)
+    local: bool     # whether connected from this computer (loopback address)
+    admin: bool     # whether logged in with the admin credentials
 
 @dataclass
 class Markdown():
@@ -137,10 +151,12 @@ class RHUI():
         self._savedrace_attributes = []
         self._raceformat_attributes = []
         self._ui_panels = []
+        self._page_assets = []  # scripts and stylesheets plugins add to pages
         self._general_settings = []
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._status_values = {}  # current values of status fields, by name; never stored
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -239,7 +255,9 @@ class RHUI():
             logger.error(f"UIField '{field.name}' ignored; may not start with '__'")
             return self._general_settings
 
-        if field.persistent_section:
+        if field.field_type is UIFieldType.STATUS:
+            field_internal_id = field.name  # shown only, so never stored
+        elif field.persistent_section:
             field_internal_id = f'__{field.persistent_section}_{field.name}'
             if not self._racecontext.serverconfig.item_exists(field.persistent_section, field.name):
                 self._racecontext.serverconfig.set_item(field.persistent_section, field.name, field.value)
@@ -261,6 +279,8 @@ class RHUI():
     def init_setting_defaults(self):
         for setting in self._general_settings:
             field = setting.field
+            if field.field_type is UIFieldType.STATUS:
+                continue
             if not self._racecontext.rhdata.option_exists(field.name):
                 self._racecontext.rhdata.set_option(field.name, field.value)
 
@@ -269,9 +289,11 @@ class RHUI():
         return self._general_settings
 
     # UI Variables
-    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0,
+                            client_context=False):
         field_internal_id = field.name
-        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order))
+        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order,
+                                                      client_context))
         return self._ui_fn_bindings
 
     @property
@@ -279,14 +301,14 @@ class RHUI():
         return self._ui_fn_bindings
 
     # Quickbuttons
-    def register_quickbutton(self, panel, name, label, fn, args=None):
+    def register_quickbutton(self, panel, name, label, fn, args=None, requires_auth=False, client_context=False):
         for idx, button in enumerate(self._quickbuttons):
             if button.name == name:
-                self._quickbuttons[idx] = QuickButton(panel, name, label, fn, args)
+                self._quickbuttons[idx] = QuickButton(panel, name, label, fn, args, requires_auth, client_context)
                 logger.debug(F'Redefining quickbutton "{name}"')
                 break
         else:
-            self._quickbuttons.append(QuickButton(panel, name, label, fn, args))
+            self._quickbuttons.append(QuickButton(panel, name, label, fn, args, requires_auth, client_context))
         return self._quickbuttons
 
     def get_panel_settings(self, name):
@@ -315,8 +337,31 @@ class RHUI():
         if 'namespace' in args and args['namespace'] == 'quickbutton':
             for btn in self._quickbuttons:
                 if btn.name == args['id']:
-                    btn.fn(btn.args)
+                    def press(btn=btn):
+                        if btn.client_context:
+                            btn.fn(btn.args, client=self.client_context())
+                        else:
+                            btn.fn(btn.args)
+                    if btn.requires_auth:
+                        press = AdminAuth.make_socketio_auth_guard(self._racecontext)(press)
+                    press()
                     return
+
+    def client_context(self):
+        '''ClientContext of the SocketIO client whose event is being handled, or None outside of one.'''
+        try:
+            sid = request.sid
+            address = request.remote_addr
+            auth = request.authorization
+            cached_admin = session.get('socketio_admin_auth')
+        except (RuntimeError, AttributeError):
+            return None
+        try:
+            local = ipaddress.ip_address(address).is_loopback
+        except ValueError:
+            local = False
+        admin = bool(cached_admin) or AdminAuth.check_auth(self._racecontext, auth)
+        return ClientContext(sid, address, local, admin)
 
     # Markdown
     def register_markdown(self, panel, name, desc):
@@ -328,6 +373,69 @@ class RHUI():
         else:
             self._markdowns.append(Markdown(panel, name, desc))
         return self._markdowns
+
+    # Live updates of single panel items
+    def _find_panel_field(self, panel, name):
+        '''('option', GeneralSetting) or ('binding', UIFunctionBinding) for a field on a panel, or (None, None).'''
+        for setting in self._general_settings:
+            if setting.panel == panel and setting.field.name == name:
+                return 'option', setting
+        for binding in self._ui_fn_bindings:
+            if binding.panel == panel and binding.field.name == name:
+                return 'binding', binding
+        return None, None
+
+    def _emit_panel_item(self, event, panel, payload):
+        '''Sends one panel item's change to all clients; pages other than the panel's ignore it.'''
+        page = next((ui_panel.page for ui_panel in self._ui_panels if ui_panel.name == panel), None)
+        payload.update({'page': page, 'panel': panel})
+        self._socket.emit(event, payload)
+
+    def update_field(self, panel, name, value):
+        '''Sets a panel field's value, stored as a user's change would be (status and bound fields are only
+           shown), and sends just that value to clients.'''
+        kind, entry = self._find_panel_field(panel, name)
+        if not entry:
+            logger.warning("Unable to update field '{}'; not found on panel '{}'".format(name, panel))
+            return False
+        field = entry.field
+        if kind == 'option':
+            if field.field_type is UIFieldType.STATUS:
+                self._status_values[name] = value
+            elif field.persistent_section:
+                self._racecontext.serverconfig.set_item(field.persistent_section, name, value)
+                self._events.trigger(Evt.CONFIG_SET, {
+                    'section': field.persistent_section,
+                    'key': name,
+                    'value': value,
+                    })
+            else:
+                self._racecontext.rhdata.set_option(name, value)
+                self._events.trigger(Evt.OPTION_SET, {
+                    'option': name,
+                    'value': value,
+                    })
+        self._emit_panel_item('ui_field_update', panel, {'name': name, 'value': value})
+        return True
+
+    def update_field_options(self, panel, name, options):
+        '''Replaces a panel select field's options and sends them to clients.'''
+        kind, entry = self._find_panel_field(panel, name)
+        if not entry or entry.field.field_type is not UIFieldType.SELECT:
+            logger.warning("Unable to update options of '{}'; no select field of that name on panel '{}'".format(name, panel))
+            return False
+        entry.field.options = list(options)
+        self._emit_panel_item('ui_field_update', panel, {
+            'name': name,
+            'options': [asdict(option) for option in entry.field.options],
+            })
+        return True
+
+    def update_markdown(self, panel, name, desc):
+        '''Replaces a panel markdown block's text and sends it to clients.'''
+        self.register_markdown(panel, name, desc)
+        self._emit_panel_item('ui_markdown_update', panel, {'name': name, 'desc': desc})
+        return True
 
     def get_panel_markdowns(self, name):
         payload = []
@@ -345,19 +453,41 @@ class RHUI():
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
 
+    # Page scripts and stylesheets
+    def register_page_asset(self, page, url, asset_type):
+        asset = {'page': page, 'url': url, 'type': asset_type}
+        if asset not in self._page_assets:
+            self._page_assets.append(asset)
+
+    def get_page_assets(self, page, asset_type):
+        '''URLs of the scripts or stylesheets registered for a page, in registration order.'''
+        return [asset['url'] for asset in self._page_assets
+                if asset['type'] == asset_type and asset['page'] in (page, '*')]
+
     # Socket generics
-    def socket_listen(self, message, handler, requires_auth=False):
+    def socket_listen(self, message, handler, requires_auth=False, client_context=False):
         '''Registers a SocketIO event handler.
         :param requires_auth: If True, the handler is guarded by the same
         admin-authentication check used for the server's own
         destructive/config-mutating SocketIO handlers.
+        :param client_context: If True, the handler is also passed the
+        requesting client's ClientContext as the 'client' keyword argument.
         '''
+        if client_context:
+            plugin_handler = handler
+
+            @functools.wraps(plugin_handler)
+            def handler(*args):
+                return plugin_handler(*args, client=self.client_context())
         if requires_auth:
             handler = AdminAuth.make_socketio_auth_guard(self._racecontext)(handler)
         self._socket.on_event(message, handler)
 
     def socket_send(self, message, data):
         emit(message, data)
+
+    def socket_send_to(self, sid, message, data):
+        self._socket.emit(message, data, to=sid)
 
     def socket_broadcast(self, message, data):
         self._socket.emit(message, data)
@@ -384,13 +514,18 @@ class RHUI():
         if 'replace_panels' in params:
             emit_payload['replace_panels'] = params['replace_panels']
 
-        for panel in self.ui_panels:
+        for panel in sorted(self.ui_panels, key=lambda ui_panel: ui_panel.order):  # by order, then as registered
             if panel.page == page:
                 panel_settings = self.get_panel_settings(panel.name)
 
                 settings = []
                 for setting in panel_settings['settings']:
                     field = setting.field.frontend_repr()
+
+                    if setting.field.field_type is UIFieldType.STATUS:
+                        field['value'] = self._status_values.get(setting.field.name, setting.field.value)
+                        settings.append(field)
+                        continue
 
                     if setting.field.persistent_section:
                         db_val = self._racecontext.serverconfig.get_item(setting.field.persistent_section, setting.field.name)
