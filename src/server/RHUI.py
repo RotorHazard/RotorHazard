@@ -45,6 +45,7 @@ class UIFieldType(Enum):
     EMAIL = "email"
     TEL = "tel"
     URL = "url"
+    STATUS = "status"
 
 @dataclass
 class UIFieldSelectOption():
@@ -142,6 +143,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._status_values = {}  # current values of status fields, by name; never stored
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -240,7 +242,9 @@ class RHUI():
             logger.error(f"UIField '{field.name}' ignored; may not start with '__'")
             return self._general_settings
 
-        if field.persistent_section:
+        if field.field_type is UIFieldType.STATUS:
+            field_internal_id = field.name  # shown only, so never stored
+        elif field.persistent_section:
             field_internal_id = f'__{field.persistent_section}_{field.name}'
             if not self._racecontext.serverconfig.item_exists(field.persistent_section, field.name):
                 self._racecontext.serverconfig.set_item(field.persistent_section, field.name, field.value)
@@ -262,6 +266,8 @@ class RHUI():
     def init_setting_defaults(self):
         for setting in self._general_settings:
             field = setting.field
+            if field.field_type is UIFieldType.STATUS:
+                continue
             if not self._racecontext.rhdata.option_exists(field.name):
                 self._racecontext.rhdata.set_option(field.name, field.value)
 
@@ -329,6 +335,69 @@ class RHUI():
         else:
             self._markdowns.append(Markdown(panel, name, desc))
         return self._markdowns
+
+    # Live updates of single panel items
+    def _find_panel_field(self, panel, name):
+        '''('option', GeneralSetting) or ('binding', UIFunctionBinding) for a field on a panel, or (None, None).'''
+        for setting in self._general_settings:
+            if setting.panel == panel and setting.field.name == name:
+                return 'option', setting
+        for binding in self._ui_fn_bindings:
+            if binding.panel == panel and binding.field.name == name:
+                return 'binding', binding
+        return None, None
+
+    def _emit_panel_item(self, event, panel, payload):
+        '''Sends one panel item's change to all clients; pages other than the panel's ignore it.'''
+        page = next((ui_panel.page for ui_panel in self._ui_panels if ui_panel.name == panel), None)
+        payload.update({'page': page, 'panel': panel})
+        self._socket.emit(event, payload)
+
+    def update_field(self, panel, name, value):
+        '''Sets a panel field's value, stored as a user's change would be (status and bound fields are only
+           shown), and sends just that value to clients.'''
+        kind, entry = self._find_panel_field(panel, name)
+        if not entry:
+            logger.warning("Unable to update field '{}'; not found on panel '{}'".format(name, panel))
+            return False
+        field = entry.field
+        if kind == 'option':
+            if field.field_type is UIFieldType.STATUS:
+                self._status_values[name] = value
+            elif field.persistent_section:
+                self._racecontext.serverconfig.set_item(field.persistent_section, name, value)
+                self._events.trigger(Evt.CONFIG_SET, {
+                    'section': field.persistent_section,
+                    'key': name,
+                    'value': value,
+                    })
+            else:
+                self._racecontext.rhdata.set_option(name, value)
+                self._events.trigger(Evt.OPTION_SET, {
+                    'option': name,
+                    'value': value,
+                    })
+        self._emit_panel_item('ui_field_update', panel, {'name': name, 'value': value})
+        return True
+
+    def update_field_options(self, panel, name, options):
+        '''Replaces a panel select field's options and sends them to clients.'''
+        kind, entry = self._find_panel_field(panel, name)
+        if not entry or entry.field.field_type is not UIFieldType.SELECT:
+            logger.warning("Unable to update options of '{}'; no select field of that name on panel '{}'".format(name, panel))
+            return False
+        entry.field.options = list(options)
+        self._emit_panel_item('ui_field_update', panel, {
+            'name': name,
+            'options': [asdict(option) for option in entry.field.options],
+            })
+        return True
+
+    def update_markdown(self, panel, name, desc):
+        '''Replaces a panel markdown block's text and sends it to clients.'''
+        self.register_markdown(panel, name, desc)
+        self._emit_panel_item('ui_markdown_update', panel, {'name': name, 'desc': desc})
+        return True
 
     def get_panel_markdowns(self, name):
         payload = []
@@ -403,6 +472,11 @@ class RHUI():
                 settings = []
                 for setting in panel_settings['settings']:
                     field = setting.field.frontend_repr()
+
+                    if setting.field.field_type is UIFieldType.STATUS:
+                        field['value'] = self._status_values.get(setting.field.name, setting.field.value)
+                        settings.append(field)
+                        continue
 
                     if setting.field.persistent_section:
                         db_val = self._racecontext.serverconfig.get_item(setting.field.persistent_section, setting.field.name)
