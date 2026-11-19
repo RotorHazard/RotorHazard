@@ -9,6 +9,12 @@ import frequencies
 from eventmanager import Evt
 from RHUtils import catchLogExceptionsWrapper
 from filtermanager import Flt
+import gevent
+import Results
+from time import monotonic
+from Database import LapSource
+from RHRace import RaceStatus
+from FlaskAppObj import APP
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +75,7 @@ AUTO_CAL = {
     'LANDING_SHORT_RATIO': 0.6, # in a race with no time limit, trailing laps shorter than this many medians,
     'LANDING_LONG_RATIO': 2.5,  #  or longer than this many, are the landing after the race
     'DURATION_WEIGHT': 1.0,     # per second of crossing time over all counted crossings
+    'LIVE_SETTLE_S': 3,         # in a running race, crossings ending this close to the end of the history are left to the node
 }
 
 class NoSuggestion:
@@ -79,6 +86,9 @@ class NoSuggestion:
     WEAK_SIGNAL = 'weak_signal'        # the trace is too flat to hold gate passes
     NO_GATE_PASSES = 'no_gate_passes'  # no steady band, so no gate passes stand out
     NO_CLEAN_EXIT = 'no_clean_exit'    # no ExitAt gives a usable set of laps
+    NOT_RACING = 'not_racing'          # the current race is neither running nor stopped
+    NOTHING_TO_UNDO = 'nothing_to_undo'  # no auto adjustment to undo
+    NO_MISSED_LAP = 'no_missed_lap'    # a running race's seat has a lap for every suggested pass
 
 def _pass_peak_only(marshal_type):
     from BaseHardwareInterface import MarshalType  # the interface path is added after this module loads
@@ -848,9 +858,47 @@ def _suggest_from(values, times, start_time, unlimited_time, race_time_sec, min_
     return {'enter_at': enter, 'exit_at': exit_at, 'laps': laps, 'passes': passes,
             'lap_count': len([lap for lap in laps if not lap['deleted']]), 'band': [band['low'], band['high']]}, None
 
+def _count_active(laps):
+    return sum(1 for lap in laps if not _lap_value(lap, 'deleted'))
+
+def _lap_value(lap, name):
+    # laps are dicts, or Crossing and SavedRaceLap objects
+    return lap[name] if isinstance(lap, dict) and name in lap else getattr(lap, name, None)
+
+def _lap_snapshot(laps):
+    '''Copies of the laps, as replace_laps() and resave_pilotrun() take them.'''
+    return [{name: _lap_value(lap, name) for name in
+             ('lap_time_stamp', 'lap_time', 'lap_time_formatted', 'peak_rssi', 'source', 'deleted')} for lap in laps]
+
+def _with_lap_times(laps):
+    '''Laps sorted by time stamp, with lap times as the Marshal page gives them.'''
+    laps = sorted(laps, key=lambda lap: lap['lap_time_stamp'])
+    last_stamp = None
+    for lap in laps:
+        if lap['deleted']:
+            lap['lap_time'] = 0
+        else:
+            lap['lap_time'] = lap['lap_time_stamp'] - last_stamp if last_stamp is not None else lap['lap_time_stamp']
+            last_stamp = lap['lap_time_stamp']
+    return laps
+
+def _replacement_laps(suggested_laps, current_laps):
+    '''The suggestion's recalculated laps plus the current manual and API laps, as the Marshal page's recalculation gives.'''
+    laps = [{'lap_time_stamp': lap['lap_time_stamp'], 'peak_rssi': lap.get('peak_rssi'),
+             'source': LapSource.RECALC, 'deleted': lap['deleted']} for lap in suggested_laps]
+    laps += [{'lap_time_stamp': _lap_value(lap, 'lap_time_stamp'), 'peak_rssi': _lap_value(lap, 'peak_rssi'),
+              'source': _lap_value(lap, 'source'), 'deleted': bool(_lap_value(lap, 'deleted'))}
+             for lap in current_laps if _lap_value(lap, 'source') in (LapSource.MANUAL, LapSource.API)]
+    return _with_lap_times(laps)
+
+def _adjust_result(enter_at, exit_at, mode, laps, previous_laps):
+    return {'enter_at': enter_at, 'exit_at': exit_at, 'mode': mode, 'lap_count': _count_active(laps),
+            'laps_added': _count_active(laps) - _count_active(previous_laps), 'recovered_laps': []}
+
 class Calibration:
     def __init__(self, racecontext):
         self._racecontext = racecontext
+        self._undo = {}  # levels and laps from before the last auto adjustment, by ('seat', index) or ('run', id)
 
     @catchLogExceptionsWrapper
     def set_enter_at_level(self, seat_index, enter_at_level_input, emit_levels=True):
@@ -1131,3 +1179,234 @@ class Calibration:
         else:
             logger.info('No calibration suggestion for {}: {}'.format(label, reason))
         return result, reason
+
+    def auto_adjust_pilotrun(self, pilotrace_id):
+        '''Applies the suggested EnterAt/ExitAt and recalculated laps to a saved pilot run, keeping its manual
+           and API laps: (result, None) or (None, NoSuggestion reason).'''
+        suggestion, reason = self.suggest_for_pilotrun(pilotrace_id)
+        if not suggestion:
+            return None, reason
+        rhdata = self._racecontext.rhdata
+        pilotrace = rhdata.get_savedPilotRace(pilotrace_id)
+        current_laps = rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace_id)
+        undo = {'enter_at': pilotrace.enter_at, 'exit_at': pilotrace.exit_at, 'laps': _lap_snapshot(current_laps)}
+        laps = _replacement_laps(suggestion['laps'], current_laps)
+        enter_at, exit_at = suggestion['enter_at'], suggestion['exit_at']
+        node_index = self._run_node_index(pilotrace)
+        if node_index is not None:
+            node = self._racecontext.interface.nodes[node_index]
+            undo.update({'node_index': node_index, 'node_enter_at': node.enter_at_level,
+                         'node_exit_at': node.exit_at_level})
+        if not self._resave_pilotrun(pilotrace_id, enter_at, exit_at, laps,
+                                     'EnterAt/ExitAt adjusted for {0} Round {1} / {2}: EnterAt {3}, ExitAt {4}',
+                                     enter_at, exit_at):
+            return None, NoSuggestion.NOT_FOUND
+        if node_index is not None:
+            self._set_levels_after_crossing(node_index, enter_at, exit_at)
+            logger.info('Auto adjusted node {}: EnterAt {}, ExitAt {} (from saved run {})'.format(
+                node_index + 1, enter_at, exit_at, pilotrace_id))
+        self._undo[('run', pilotrace_id)] = undo
+        return _adjust_result(enter_at, exit_at, 'replace', laps, undo['laps']), None
+
+    def undo_auto_adjust_pilotrun(self, pilotrace_id):
+        '''Restores a saved pilot run to before its last auto adjustment: (result, None) or (None, NoSuggestion reason).'''
+        undo = self._undo.pop(('run', pilotrace_id), None)
+        if not undo:
+            return None, NoSuggestion.NOTHING_TO_UNDO
+        previous_laps = self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace_id)
+        previous_count = _count_active(previous_laps)
+        node_index = undo.get('node_index')
+        if node_index is not None and node_index >= self._racecontext.race.num_nodes:
+            logger.warning('Undo of auto adjust of saved run {}: node {} out of range; node levels not restored'.format(
+                pilotrace_id, node_index + 1))
+            node_index = None
+        if node_index is not None:
+            node_levels = (undo['node_enter_at'], undo['node_exit_at'])
+        else:
+            node_levels = (undo['enter_at'], undo['exit_at'])
+        if not self._resave_pilotrun(pilotrace_id, undo['enter_at'], undo['exit_at'], undo['laps'],
+                                     'EnterAt/ExitAt restored for {0} Round {1} / {2}: EnterAt {3}, ExitAt {4}',
+                                     *node_levels):
+            return None, NoSuggestion.NOT_FOUND
+        if node_index is not None:
+            self._set_levels_after_crossing(node_index, *node_levels)
+            logger.info('Undid auto adjustment of node {}: EnterAt {}, ExitAt {} (from saved run {})'.format(
+                node_index + 1, node_levels[0], node_levels[1], pilotrace_id))
+        return {'enter_at': undo['enter_at'], 'exit_at': undo['exit_at'], 'mode': 'replace',
+                'lap_count': _count_active(undo['laps']), 'laps_added': _count_active(undo['laps']) - previous_count,
+                'recovered_laps': []}, None
+
+    def auto_adjust_seat(self, seat_index):
+        '''Applies the suggested EnterAt/ExitAt to a seat of the current race, saved to the profile. In a running race
+           only the passes the seat has no lap for are added, and with none to add nothing is changed; in a stopped
+           race the laps are replaced by the recalculated laps plus the manual and API laps. Returns (result, None)
+           or (None, NoSuggestion reason).'''
+        race = self._racecontext.race
+        if race.race_status not in (RaceStatus.RACING, RaceStatus.DONE):
+            return None, NoSuggestion.NOT_RACING
+        suggestion, reason = self.suggest_for_seat(seat_index)
+        if not suggestion:
+            return None, reason
+        node = self._racecontext.interface.nodes[seat_index]
+        current_laps = race.node_laps.get(seat_index) or []
+        undo = {'start_time': race.start_time_monotonic, 'enter_at': node.enter_at_level, 'exit_at': node.exit_at_level}
+        enter_at, exit_at = suggestion['enter_at'], suggestion['exit_at']
+        if race.race_status == RaceStatus.RACING:
+            previous_count = _count_active(current_laps)
+            undo['stamps'] = self._recover_laps(seat_index, suggestion['laps'], node.history_times)
+            if not undo['stamps']:
+                logger.info('Auto adjust of node {}: no missed lap to recover; levels unchanged'.format(seat_index + 1))
+                return None, NoSuggestion.NO_MISSED_LAP
+            self._set_levels_after_crossing(seat_index, enter_at, exit_at)
+            result = {'enter_at': enter_at, 'exit_at': exit_at, 'mode': 'recover',
+                      'lap_count': _count_active(race.node_laps.get(seat_index) or []),
+                      'laps_added': _count_active(race.node_laps.get(seat_index) or []) - previous_count,
+                      'recovered_laps': self._recovered_laps(seat_index, undo['stamps'])}
+        else:
+            undo['laps'] = _lap_snapshot(current_laps)
+            laps = _replacement_laps(suggestion['laps'], current_laps)
+            self._set_levels(seat_index, enter_at, exit_at)
+            race.replace_laps({'seat': seat_index, 'laps': laps})
+            result = _adjust_result(enter_at, exit_at, 'replace', laps, undo['laps'])
+        self._undo[('seat', seat_index)] = undo
+        logger.info('Auto adjusted node {}: EnterAt {}, ExitAt {}, {} laps added ({})'.format(
+            seat_index + 1, enter_at, exit_at, result['laps_added'], result['mode']))
+        return result, None
+
+    def undo_auto_adjust_seat(self, seat_index):
+        '''Restores a seat of the current race to before its last auto adjustment, keeping laps recorded since:
+           (result, None) or (None, NoSuggestion reason).'''
+        race = self._racecontext.race
+        undo = self._undo.get(('seat', seat_index))
+        if not undo or undo['start_time'] != race.start_time_monotonic or \
+                race.race_status not in (RaceStatus.RACING, RaceStatus.DONE):
+            return None, NoSuggestion.NOTHING_TO_UNDO
+        del self._undo[('seat', seat_index)]
+        laps = race.node_laps.get(seat_index) or []
+        previous_count = _count_active(laps)
+        if 'stamps' in undo:
+            mode = 'recover'
+            indexes = [idx for idx, lap in enumerate(laps) if lap.source == LapSource.RECALC and not lap.deleted
+                       and lap.lap_time_stamp in undo['stamps']]
+            for count, idx in enumerate(indexes, 1):
+                race.delete_lap(seat_index, idx, update_race_state=(count == len(indexes)))
+            self._set_levels_after_crossing(seat_index, undo['enter_at'], undo['exit_at'])
+        else:
+            mode = 'replace'
+            self._set_levels(seat_index, undo['enter_at'], undo['exit_at'])
+            race.replace_laps({'seat': seat_index, 'laps': undo['laps']})
+        laps = race.node_laps.get(seat_index) or []
+        logger.info('Undid auto adjustment of node {}: EnterAt {}, ExitAt {}'.format(
+            seat_index + 1, undo['enter_at'], undo['exit_at']))
+        return {'enter_at': undo['enter_at'], 'exit_at': undo['exit_at'], 'mode': mode,
+                'lap_count': _count_active(laps), 'laps_added': _count_active(laps) - previous_count,
+                'recovered_laps': []}, None
+
+    def _recover_laps(self, seat_index, suggested_laps, history_times):
+        '''Inserts the suggested passes the seat has no lap for; returns their time stamps.'''
+        race = self._racecontext.race
+        min_lap_ms = self._racecontext.rhdata.get_optionInt('MinLapSec') * 1000
+        min_lap_behavior = self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior')
+        settled_end = history_times[-1] - AUTO_CAL['LIVE_SETTLE_S'] if history_times else -math.inf
+        match_ms = AUTO_CAL['HOLESHOT_MATCH_S'] * 1000
+        laps = race.node_laps.get(seat_index) or []
+        missed = []
+        for lap in suggested_laps:
+            stamp = lap['lap_time_stamp']
+            if lap['deleted'] or lap.get('open') or lap['crossingEnd'] > settled_end:
+                continue
+            # a lap near it, deleted or not, is the same pass
+            if any(abs(other.lap_time_stamp - stamp) <= match_ms for other in laps):
+                continue
+            if min_lap_behavior and any(abs(other.lap_time_stamp - stamp) < min_lap_ms
+                                        for other in laps if not other.deleted):
+                continue
+            if min_lap_behavior and any(abs(other['lap_time_stamp'] - stamp) < min_lap_ms for other in missed):
+                continue
+            missed.append(lap)
+        for count, lap in enumerate(missed, 1):
+            race.insert_lap(seat_index, lap['lap_time_stamp'], LapSource.RECALC, peak_rssi=lap.get('peak_rssi'),
+                            update_race_state=(count == len(missed)))
+        return [lap['lap_time_stamp'] for lap in missed]
+
+    def _recovered_laps(self, seat_index, stamps):
+        '''The inserted laps still present, in time stamp order, numbered as the Run page shows them.'''
+        race = self._racecontext.race
+        laps = sorted((lap for lap in race.node_laps.get(seat_index) or []
+                       if lap.lap_time_stamp in stamps and not lap.deleted), key=lambda lap: lap.lap_time_stamp)
+        # a late lap shows as -1 on the Run page
+        return [{'lap_number': -1 if lap.late_lap else race.get_displayed_lap_number(lap.lap_number),
+                 'lap_time': lap.lap_time, 'lap_time_formatted': lap.lap_time_formatted,
+                 'lap_time_stamp': lap.lap_time_stamp} for lap in laps]
+
+    def _set_levels(self, seat_index, enter_at, exit_at):
+        # ExitAt first when lowering, so ExitAt stays below EnterAt
+        if enter_at < self._racecontext.interface.nodes[seat_index].exit_at_level:
+            self.set_exit_at_level(seat_index, exit_at, emit_levels=False)
+            self.set_enter_at_level(seat_index, enter_at, emit_levels=False)
+        else:
+            self.set_enter_at_level(seat_index, enter_at, emit_levels=False)
+            self.set_exit_at_level(seat_index, exit_at, emit_levels=False)
+        self._racecontext.rhui.emit_enter_and_exit_at_levels()
+
+    def _set_levels_after_crossing(self, seat_index, enter_at, exit_at):
+        '''Sets the levels now, or when the node's current crossing ends.'''
+        node = self._racecontext.interface.nodes[seat_index]
+        if not node.crossing_flag:
+            self._set_levels(seat_index, enter_at, exit_at)
+            return
+
+        @catchLogExceptionsWrapper
+        def set_when_crossing_ends():
+            deadline = monotonic() + AUTO_CAL['MAX_CROSSING_S']
+            while node.crossing_flag and monotonic() < deadline:
+                gevent.sleep(0.1)
+            with APP.app_context():
+                with self._racecontext.rhdata.get_db_session_handle():
+                    self._set_levels(seat_index, enter_at, exit_at)
+
+        gevent.spawn(set_when_crossing_ends)
+
+    def _run_node_index(self, pilotrace):
+        '''The pilot run's node index, or None when out of range for the current node count.'''
+        node_index = pilotrace.node_index
+        if node_index is None or not 0 <= node_index < self._racecontext.race.num_nodes:
+            logger.warning('Auto adjust of saved run {}: node {} out of range; node levels not set'.format(
+                pilotrace.id, node_index + 1 if isinstance(node_index, int) else node_index))
+            return None
+        return node_index
+
+    def _resave_pilotrun(self, pilotrace_id, enter_at, exit_at, laps, message, message_enter_at, message_exit_at):
+        '''Saves the levels and laps to the pilot run, with the follow-up the Marshal page's save gives; the
+           message is formatted with the heat name, round, callsign and the given levels.'''
+        rhdata = self._racecontext.rhdata
+        pilotrace = rhdata.resave_pilotrun(pilotrace_id, enter_at, exit_at, laps)
+        if not pilotrace:
+            return False
+        race_meta = rhdata.get_savedRaceMeta(pilotrace.race_id)
+        pilot = rhdata.get_pilot(pilotrace.pilot_id)
+        heat = rhdata.get_heat(race_meta.heat_id) if race_meta.heat_id and \
+            race_meta.heat_id != RHUtils.HEAT_ID_NONE else None
+        message = self._racecontext.language.__(message).format(
+            heat.display_name if heat else 'Practice', race_meta.round_id, pilot.callsign if pilot else '',
+            message_enter_at, message_exit_at)
+        self._racecontext.rhui.emit_priority_message(message, False)
+        logger.info(message)
+        if self._racecontext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
+            self.auto_calibrate()
+        gevent.spawn(self._build_result_caches, {
+            'race_id': pilotrace.race_id,
+            'heat_id': race_meta.heat_id,
+            'round_id': race_meta.round_id,
+        })
+        self._racecontext.events.trigger(Evt.LAPS_RESAVE, {
+            'race_id': pilotrace.race_id,
+            'pilot_id': pilotrace.pilot_id,
+            })
+        return True
+
+    @catchLogExceptionsWrapper
+    def _build_result_caches(self, params):
+        self._racecontext.pagecache.set_valid(False)
+        Results.build_atomic_results(self._racecontext.rhdata, params)
+        self._racecontext.rhui.emit_result_data()
