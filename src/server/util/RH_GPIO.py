@@ -1,5 +1,6 @@
 # Utility class for Raspberry Pi GPIO functions
 
+import glob
 import time
 
 try:
@@ -51,6 +52,82 @@ BOTH =  getattr(GPIO, "BOTH", 2)
 Input_devices_dict = {}
 Output_devices_dict = {}
 
+# Returns the gpiochip number for the Pi 5 RP1 controller, or None if absent.
+# Newer kernels may assign it a dynamic number instead of gpiochip0/gpiochip4.
+def _get_rp1_gpiochip_num():
+    for chip_path in glob.glob("/dev/gpiochip*"):
+        gpio_handle = None
+        try:
+            chip_num = int(chip_path.rsplit("gpiochip", 1)[1])
+            gpio_handle = lgpio.gpiochip_open(chip_num)
+            chip_info = lgpio.gpio_get_chip_info(gpio_handle)
+            if len(chip_info) >= 4 and chip_info[3] == "pinctrl-rp1":
+                return chip_num
+        except Exception:
+            pass
+        finally:
+            if gpio_handle is not None:
+                lgpio.gpiochip_close(gpio_handle)
+    return None
+
+class _LgpioInputDevice:
+    """Minimal gpiozero-compatible input using a selected gpiochip."""
+    def __init__(self, chip_num, channel, pull_up=False):
+        self._gpio_handle = lgpio.gpiochip_open(chip_num)
+        self._channel = channel
+        self._active_low = pull_up
+        try:
+            pull_flag = lgpio.SET_PULL_UP if pull_up else lgpio.SET_PULL_DOWN
+            lgpio.gpio_claim_input(self._gpio_handle, channel, pull_flag)
+        except Exception:
+            lgpio.gpiochip_close(self._gpio_handle)
+            self._gpio_handle = None
+            raise
+
+    @property
+    def is_active(self):
+        """Returns True when the configured active level is present."""
+        level = lgpio.gpio_read(self._gpio_handle, self._channel)
+        return not level if self._active_low else bool(level)
+
+    def close(self):
+        """Releases the GPIO line and gpiochip handle."""
+        if self._gpio_handle is not None:
+            try:
+                lgpio.gpio_free(self._gpio_handle, self._channel)
+            finally:
+                lgpio.gpiochip_close(self._gpio_handle)
+                self._gpio_handle = None
+
+class _LgpioOutputDevice:
+    """Minimal gpiozero-compatible output using a selected gpiochip."""
+    def __init__(self, chip_num, channel):
+        self._gpio_handle = lgpio.gpiochip_open(chip_num)
+        self._channel = channel
+        try:
+            lgpio.gpio_claim_output(self._gpio_handle, channel, LOW)
+        except Exception:
+            lgpio.gpiochip_close(self._gpio_handle)
+            self._gpio_handle = None
+            raise
+
+    def on(self):
+        """Sets the GPIO line high."""
+        lgpio.gpio_write(self._gpio_handle, self._channel, HIGH)
+
+    def off(self):
+        """Sets the GPIO line low."""
+        lgpio.gpio_write(self._gpio_handle, self._channel, LOW)
+
+    def close(self):
+        """Releases the GPIO line and gpiochip handle."""
+        if self._gpio_handle is not None:
+            try:
+                lgpio.gpio_free(self._gpio_handle, self._channel)
+            finally:
+                lgpio.gpiochip_close(self._gpio_handle)
+                self._gpio_handle = None
+
 # Returns True if real hardware GPIO detected
 def is_real_hw_GPIO():
     return Real_GPIO_Zero_flag or Real_RPi_GPIO_flag
@@ -67,10 +144,15 @@ def get_GPIO_type_str():
 def check_input_tied_low(pin_id):
     ret_flag = False
     if Real_GPIO_Zero_flag:
-        input_dev = gpiozero.InputDevice(pin_id, pull_up=True)
-        time.sleep(0.05)
-        ret_flag = input_dev.is_active
-        input_dev.close()
+        rp1_chip_num = _get_rp1_gpiochip_num()
+        input_dev = _LgpioInputDevice(rp1_chip_num, pin_id, pull_up=True) \
+                    if rp1_chip_num is not None \
+                    else gpiozero.InputDevice(pin_id, pull_up=True)
+        try:
+            time.sleep(0.05)
+            ret_flag = input_dev.is_active
+        finally:
+            input_dev.close()
     elif Real_RPi_GPIO_flag:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(pin_id, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -82,6 +164,7 @@ def check_input_tied_low(pin_id):
 # Set up channel as an input or an output
 def setup(channel, mode, *args, **kwargs):
     if Real_GPIO_Zero_flag:
+        rp1_chip_num = _get_rp1_gpiochip_num()
         if mode == OUT:
             if Output_devices_dict.get(channel):
                 Output_devices_dict[channel].close()
@@ -89,7 +172,9 @@ def setup(channel, mode, *args, **kwargs):
             if Input_devices_dict.get(channel):
                 Input_devices_dict[channel].close()
                 del Input_devices_dict[channel]
-            Output_devices_dict[channel] = gpiozero.OutputDevice(channel)
+            Output_devices_dict[channel] = _LgpioOutputDevice(rp1_chip_num, channel) \
+                                           if rp1_chip_num is not None \
+                                           else gpiozero.OutputDevice(channel)
         else:
             if Input_devices_dict.get(channel):
                 Input_devices_dict[channel].close()
@@ -97,8 +182,10 @@ def setup(channel, mode, *args, **kwargs):
             if Output_devices_dict.get(channel):
                 Output_devices_dict[channel].close()
                 del Output_devices_dict[channel]
-            Input_devices_dict[channel] = gpiozero.InputDevice(channel, \
-                                              pull_up=(kwargs.get("pull_up_down")==PUD_UP))
+            pull_up = kwargs.get("pull_up_down") == PUD_UP
+            Input_devices_dict[channel] = _LgpioInputDevice(rp1_chip_num, channel, pull_up) \
+                                          if rp1_chip_num is not None \
+                                          else gpiozero.InputDevice(channel, pull_up=pull_up)
     elif Real_RPi_GPIO_flag:
         GPIO.setup(channel, mode, *args, **kwargs)
 
