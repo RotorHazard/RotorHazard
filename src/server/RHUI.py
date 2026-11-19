@@ -85,7 +85,7 @@ class UIPanel():
     name: str
     label: str
     page: str
-    order: int = 0
+    order: int = None
     open: bool = False
 
 @dataclass
@@ -137,6 +137,7 @@ class RHUI():
         self._savedrace_attributes = []
         self._raceformat_attributes = []
         self._ui_panels = []
+        self._page_assets = []  # scripts and stylesheets plugins add to pages
         self._general_settings = []
         self._ui_fn_bindings = []
         self._quickbuttons = []
@@ -219,7 +220,7 @@ class RHUI():
         return self._raceformat_attributes
 
     # UI Panels
-    def register_ui_panel(self, name, label, page, order=0, open = False,):
+    def register_ui_panel(self, name, label, page, order=None, open = False,):
         for idx, panel in enumerate(self._ui_panels):
             if panel.name == name:
                 self._ui_panels[idx] = UIPanel(name, label, page, order, open)
@@ -345,6 +346,17 @@ class RHUI():
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
 
+    # Page scripts and stylesheets
+    def register_page_asset(self, page, url, asset_type):
+        asset = {'page': page, 'url': url, 'type': asset_type}
+        if asset not in self._page_assets:
+            self._page_assets.append(asset)
+
+    def get_page_assets(self, page, asset_type):
+        '''URLs of the scripts or stylesheets registered for a page, in registration order.'''
+        return [asset['url'] for asset in self._page_assets
+                if asset['type'] == asset_type and asset['page'] in (page, '*')]
+
     # Socket generics
     def socket_listen(self, message, handler, requires_auth=False):
         '''Registers a SocketIO event handler.
@@ -384,7 +396,8 @@ class RHUI():
         if 'replace_panels' in params:
             emit_payload['replace_panels'] = params['replace_panels']
 
-        for panel in self.ui_panels:
+        # by order, then as registered, with no order last
+        for panel in sorted(self.ui_panels, key=lambda ui_panel: (ui_panel.order is None, ui_panel.order or 0)):
             if panel.page == page:
                 panel_settings = self.get_panel_settings(panel.name)
 

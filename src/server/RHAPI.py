@@ -73,7 +73,7 @@ class UserInterfaceAPI():
     def panels(self):
         return self._racecontext.rhui.ui_panels
 
-    def register_panel(self, name, label, page, order=0, open = False):
+    def register_panel(self, name, label, page, order=None, open = False):
         return self._racecontext.rhui.register_ui_panel(name, label, page, order, open)
 
     # Quick button
@@ -87,6 +87,12 @@ class UserInterfaceAPI():
     # Blueprint
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)
+
+    def register_script(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'script')
+
+    def register_stylesheet(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'stylesheet')
 
     # Messaging
     def message_speak(self, message):

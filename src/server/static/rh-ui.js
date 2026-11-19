@@ -345,6 +345,19 @@ var rhui = {
 		}
 		return this._markdownConverter.makeHtml(text);
 	},
+	placePanel: function(panel_el, order) {
+		// puts a plugin panel before the first page panel with a higher order, or after the page's panels with no order
+		var end_el = $('#custom-ui');
+		if (order === null || order === undefined) {
+			end_el.append(panel_el);
+			return;
+		}
+		panel_el.attr('data-order', order);
+		var next_el = end_el.siblings('[data-order]').filter(function() {
+			return Number($(this).attr('data-order')) > order;
+		}).first();
+		panel_el.insertBefore(next_el.length ? next_el : end_el);
+	},
 	buildPanels: function(msg, page) {
 		// builds the plugin panels of a 'ui' message for this page
 		if (msg.page != page) {
@@ -352,6 +365,7 @@ var rhui = {
 		}
 		if (msg.replace_panels !== false) {
 			$('#custom-ui').empty();
+			$('.plugin-panel').remove();
 		}
 
 		for (var i in msg.panels) {
@@ -362,7 +376,7 @@ var rhui = {
 				var panel_content_el = panel_el.children('.panel-content');
 				panel_content_el.empty();
 			} else {
-				var panel_el = $('<div class="panel collapsing active">');
+				var panel_el = $('<div class="panel collapsing active plugin-panel">');
 				panel_el.attr('id', 'ui-custom-' + panel.panel.name);
 				var panel_header_el = $('<div class="panel-header">');
 				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
@@ -418,7 +432,7 @@ var rhui = {
 
 			panel_el.append(panel_content_el);
 
-			$('#custom-ui').append(panel_el);
+			this.placePanel(panel_el, panel.panel.order);
 		}
 
 		// load panel state

@@ -158,7 +158,7 @@ Panels are represented with the `UIPanel` class, which has the following propert
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to
-- `order` (int): Not yet implemented
+- `order` (int|None): Position on the page among its own panels; `None` for after them
 - `open` (boolean): Whether panel is open or closed
 
 
@@ -166,15 +166,26 @@ Panels are represented with the `UIPanel` class, which has the following propert
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
-#### ui.register_panel(name, label, page, order=0, open=False)
+#### ui.register_panel(name, label, page, order=None, open=False)
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
-- `page` (string): Page to add panel to; one of "format", "settings"
-- `order` _optional_ (int): Not yet implemented
+- `page` (string): Page to add panel to; one of "format", "marshal", "results", "run", "settings", "streams"
+- `order` _optional_ (int): Position on the page among its own panels, which have the base orders listed below; the panel is shown before the first page panel with a higher `order`, so `150` puts it between the panels at `100` and `200`. A panel with the same `order` as a page panel goes after it, and plugin panels with the same `order` appear in the order they were registered. With `None`, the panel goes after all of the page's panels (default: `None`)
 - `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
+
+Base orders of each page's own panels (a panel that is not shown, such as LED Control without LEDs, keeps its place in the order):
+
+| Page | Panels |
+|---|---|
+| `format` | 100 Event, 200 Pilots, 300 Classes and Heats, 400 Generators, 500 Race Formats, 600 Data Management |
+| `marshal` | 100 Marshal |
+| `results` | 100 event name and description, 200 results |
+| `run` | 100 timer, race controls, leaderboard and seat laps, 200 Race Management, 300 Send Message, 400 Audio Control, 500 Display Settings, 600 LED Control, 700 Callouts, 800 Status |
+| `settings` | 100 Frequency Setup, 200 Sensor Tuning, 300 Audio Control, 400 Event Actions, 500 LED Events, 600 LED Control, 700 VRx Control, 800 Plugins, 900 System, 1000 Secondary Timers, 1100 Environment Sensors, 1200 Backup/Restore Settings |
+| `streams` | 100 stream list |
 
 ### Quickbuttons
 
@@ -216,6 +227,8 @@ Register a Markdown block and assign it to a UI panel.
 - `name` (string): Internal identifier for this markdown block
 - `desc` (string): Markdown-formatted text to display
 
+Markdown is for display only. Don't use it to put code on a page: a `<script>` element in it may run today, but that is not supported and may stop working. Use `ui.register_script` instead.
+
 ### Pages
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
@@ -224,6 +237,18 @@ Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask
 Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 
 - `blueprint` (blueprint): Flask Blueprint object
+
+#### ui.register_script(page, url)
+Load a script on a page, such as a JavaScript file served by the plugin's blueprint. It is added at the end of the page's `<head>`, after the page's own scripts, so it can use jQuery and the page's code; wrap code that needs the page's elements or `socket` in `$(document).ready(...)`. Scripts load in the order registered; registering the same page and URL again has no effect. No return value.
+
+- `page` (string): first part of the page's URL path, such as "run", "format", "settings", "marshal", "results" or "streams" ("home" for the home page); also matches a blueprint's own pages by their first path part; `'*'` for every page
+- `url` (string): URL of the script
+
+#### ui.register_stylesheet(page, url)
+Load a stylesheet on a page. It is added at the end of the page's `<head>`, after the page's own styles, so its rules can override them. Otherwise as `ui.register_script`. No return value.
+
+- `page` (string): page to add the stylesheet to, as for `ui.register_script`
+- `url` (string): URL of the stylesheet
 
 ### UI Messages
 

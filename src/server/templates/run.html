@@ -2672,7 +2672,7 @@
 {% endblock %} {% block content %}
 <main class="page-race">
 
-<div id="main_panel" class="panel">
+<div data-order="100" id="main_panel" class="panel">
 	<div class="panel-content full-width">
 		<div class="timer">
 			<div class="timing-clock">
@@ -2820,7 +2820,7 @@
 
 
 <!--Format and Sensor-->
-<div class="panel collapsing">
+<div data-order="200" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Race Management') }}</h2>
 	</div>
@@ -2883,7 +2883,7 @@
 </div>
 
 <!--Client Messaging-->
-<div class="panel collapsing">
+<div data-order="300" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Send Message') }}</h2>
 	</div>
@@ -2896,7 +2896,7 @@
 </div>
 
 <!--Voice Settings-->
-<div class="panel collapsing">
+<div data-order="400" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Audio Control') }}</h2>
 	</div>
@@ -3121,7 +3121,7 @@
 </div>
 
 <!--Display Settings-->
-<div class="panel collapsing">
+<div data-order="500" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Display Settings') }}</h2>
 	</div>
@@ -3153,7 +3153,7 @@
 
 <!--LED Controls-->
 {% if led_enabled %}
-<div class="panel collapsing">
+<div data-order="600" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
@@ -3191,7 +3191,7 @@
 {% endif %}
 
 <!--Voice Callouts-->
-<div class="panel collapsing">
+<div data-order="700" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Callouts') }}</h2>
 	</div>
@@ -3213,7 +3213,7 @@
 </div>
 
 <!-- Status -->
-<div class="panel collapsing">
+<div data-order="800" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Status') }}</h2>
 	</div>
