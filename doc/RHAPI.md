@@ -1208,6 +1208,59 @@ Set value for the option with provided name. No return value.
 #### db.options_reset()
 Delete all options. No return value.
 
+### Other Database Files
+Read saved races from database files other than the live one, such as backups in the server's `db_bkp` directory or a database copied from another timer.
+
+#### db.backup_dir
+_Read only_
+Full path of the directory where the server keeps database backups. Returns `string`.
+
+#### db.backup_list()
+Database backup files in `db.backup_dir`, sorted by name. Returns `list[string]` of file names (empty if there are none).
+
+#### db.open_readonly(source, name=None)
+Open a database for reading only, without touching the live database. Use it as a context manager, which closes the database at the end, or call `close()` on the result when done:
+
+```
+with rhapi.db.open_readonly(os.path.join(rhapi.db.backup_dir, name)) as backup:
+    for race in backup.races:
+        runs = backup.pilotruns_by_race(race.id)
+```
+
+`source` can also be a database's contents, such as a file a user picked in the browser and sent to the plugin. They are read into memory and no file is written:
+
+```
+def on_upload(data):
+    try:
+        with rhapi.db.open_readonly(data['contents'], data['filename']) as upload:
+            races = upload.races
+    except ValueError as ex:
+        rhapi.ui.message_alert(str(ex))
+```
+
+Returns a `DatabaseReader`, or raises `FileNotFoundError` if there is no such file, or `ValueError` if it is not a RotorHazard database with saved races (including empty or invalid contents) or was written by a newer server version than this one.
+- `source` (string|bytes): path of the database file, where a relative path is relative to the data directory; or the database's contents as `bytes`, `bytearray` or `memoryview`
+- `name` _optional_ (string): name to show for a database given as contents, such as the uploaded file's name
+
+Contents are opened with SQLite's in-memory deserialization (Python 3.11 or newer). Where it is not available, such as on Python 3.10, they are written to a temporary file in the system temp directory, copied into memory, and the file is deleted before `open_readonly` returns.
+
+Files from older server versions can be read: each table is read by the columns the file has, and an attribute the file has no column for is `None`. The reader has these properties and methods, named and behaving as the matching `db` ones but returning read-only records (`DatabaseRecord`) instead of live data objects:
+- `races`, `race_by_id(race_id)`, `races_by_heat(heat_id)`: saved races, with the attributes of `SavedRaceMeta` except `results`
+- `pilotruns`, `pilotrun_by_id(run_id)`, `pilotruns_by_race(race_id)`: pilot runs, with the attributes of `SavedPilotRace`, including RSSI history (see `db.pilotrun_history`)
+- `laps_by_pilotrun(run_id)`: laps, with the attributes of `SavedRaceLap`, in time order
+- `pilots`, `pilot_by_id(pilot_id)`; `heats`, `heat_by_id(heat_id)`; `raceclasses`, `raceclass_by_id(raceclass_id)`; `raceformats`, `raceformat_by_id(format_id)`: with the attributes stored in their tables (computed ones, such as a heat's `display_name`, are not available)
+- `option(name, default=None)`: the stored value of an option
+- `server_api` (int): server API version the file was written by (`0` if it does not say)
+- `path` (string): the file's path, or `None` for a database given as contents
+- `name` (string): the file's name without its directory; for a database given as contents, the `name` passed to `open_readonly`, or `"(in memory)"` if none was
+- `close()`: close the database, releasing the memory of one given as contents
+
+A record's attributes cannot be changed; `asdict()` returns them as a `dict`. Methods return `None` (or an empty list) for something not in the file.
+
+#### db.pilotrun_history(pilotrun_or_id)
+The RSSI history of a pilot run, decoded. Works with live pilot runs and with records from `db.open_readonly`. Returns `tuple` of `(values, times)`, each a `list` (empty if the run has no history), or `None` if no live pilot run has the given ID.
+- `pilotrun_or_id` (SavedPilotRace|DatabaseRecord|int): pilot run, or ID of a live pilot run
+
 
 ## Data input/output
 
