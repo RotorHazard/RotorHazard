@@ -1,6 +1,8 @@
 ''' Class to access race functions and details '''
 import functools
+import os
 from Database import LapSource
+import util.DatabaseReader as DatabaseReader
 
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 12
@@ -932,6 +934,24 @@ class DatabaseAPI():
     @callWithDatabaseWrapper
     def options(self):
         return self._racecontext.rhdata.get_options()
+
+    @property
+    def backup_dir(self):
+        return os.path.abspath(self._racecontext.rhdata.backup_dir)
+
+    def backup_list(self):
+        return self._racecontext.rhdata.list_backup_files() or []
+
+    def open_readonly(self, source, name=None):
+        return DatabaseReader.DatabaseReader(source, self._racecontext.rhdata.server_api, name)
+
+    @callWithDatabaseWrapper
+    def pilotrun_history(self, pilotrun_or_id):
+        pilotrun = self._racecontext.rhdata.get_savedPilotRace(pilotrun_or_id) \
+            if isinstance(pilotrun_or_id, int) else pilotrun_or_id
+        if not pilotrun:
+            return None
+        return DatabaseReader.decode_history(pilotrun)
 
     @callWithDatabaseWrapper
     def option(self, name, default=False, as_int=False):
