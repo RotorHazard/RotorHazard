@@ -196,7 +196,7 @@ Quickbuttons are represented with the `QuickButton` class, which has the followi
 
 Pass a dict to `args` and parse it in your `function` if multiple arguments are needed.
 
-#### ui.register_quickbutton(panel, name, label, function)
+#### ui.register_quickbutton(panel, name, label, function, args=None, requires_auth=False, client_context=False)
 Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list[QuickButton]`.
 
 - `panel` (string): `name` of panel previously registered with `ui.register_panel`
@@ -204,6 +204,18 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 - `label` (string): Text used for visible button label
 - `function` (callable): Function to run when button is pressed
 - `args` (any): Argument passed to `function` when called
+- `requires_auth` _optional_ (boolean): if True, `function` runs only for clients that have passed the server's admin authentication (as for `ui.socket_listen`); others are shown "Action requires authentication." Without it, any client that can see the button can press it, including on pages that need no login, such as Results.
+- `client_context` _optional_ (boolean): if True, `function` is also passed the pressing client's `ClientContext` as the `client` keyword argument: `function(args, client=...)`
+
+### Client Context
+
+Callbacks registered with `client_context=True` (quickbuttons, function bindings and `ui.socket_listen` handlers) are passed a `ClientContext` describing the client they were invoked for, as the `client` keyword argument. It has these properties:
+- `sid` (string): the client's SocketIO session ID; reply to only this client with `ui.socket_send_to`
+- `address` (string): the client's remote address, as the server sees it (that of a proxy, if one is in between)
+- `local` (boolean): whether the client is connected from the server's own computer (a loopback address)
+- `admin` (boolean): whether the client is logged in with the admin credentials (also `True` when the server has no admin credentials set)
+
+`client` is `None` if the callback is invoked other than for a client's event.
 
 ### Markdown
 
@@ -272,8 +284,15 @@ Calls function when a socket event is received.
 - `message` (string): Socket event name
 - `handler` (callable): Function to call
 - `requires_auth` (boolean): if True, `handler` is only invoked for clients that have passed the server's admin authentication (the same check used by the server's own destructive/config-mutating socket handlers)
+- `client_context` _optional_ (boolean): if True, `handler` is also passed the sending client's `ClientContext` as the `client` keyword argument
 
 `handler` is passed socket data as an argument.
+
+#### ui.socket_send_to(sid, message, data)
+Send a socket message to one client, such as the one a callback was invoked for (`client.sid`).
+- `sid` (string): SocketIO session ID of the client
+- `message` (string): Socket event name
+- `data` (any): Data to send
 
 ### Data Broadcast
 
@@ -358,6 +377,7 @@ Register a field bound to user-defined functions instead of directly to an optio
 - `args` _optional_ (dict): arguments to be passed to the setter function when called
 - `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`
 - `order` _optional_ (int): Not yet implemented
+- `client_context` _optional_ (boolean): if True, `setter_fn` is also passed the changing client's `ClientContext` as the `client` keyword argument: `setter_fn(value, args, client=...)`
 
 
 ### Pilot Attributes

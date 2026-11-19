@@ -6,7 +6,9 @@ from time import monotonic_ns
 from typing import List, Any  # @UnusedImport
 from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
-from flask import request
+from flask import request, session
+import functools
+import ipaddress
 from flask_socketio import emit
 from eventmanager import Evt
 import json
@@ -106,6 +108,7 @@ class UIFunctionBinding():
     args: dict
     panel: str = None
     order: int = 0
+    client_context: bool = False
 
 @dataclass
 class QuickButton():
@@ -114,6 +117,16 @@ class QuickButton():
     label: str
     fn: callable
     args: dict
+    requires_auth: bool = False
+    client_context: bool = False
+
+@dataclass
+class ClientContext():
+    '''The client a callback was invoked for.'''
+    sid: str        # SocketIO session id, for replying with 'socket_send_to'
+    address: str    # remote address, as the server sees it (a proxy's, if there is one)
+    local: bool     # whether connected from this computer (loopback address)
+    admin: bool     # whether logged in with the admin credentials
 
 @dataclass
 class Markdown():
@@ -277,9 +290,11 @@ class RHUI():
         return self._general_settings
 
     # UI Variables
-    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0,
+                            client_context=False):
         field_internal_id = field.name
-        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order))
+        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order,
+                                                      client_context))
         return self._ui_fn_bindings
 
     @property
@@ -287,14 +302,14 @@ class RHUI():
         return self._ui_fn_bindings
 
     # Quickbuttons
-    def register_quickbutton(self, panel, name, label, fn, args=None):
+    def register_quickbutton(self, panel, name, label, fn, args=None, requires_auth=False, client_context=False):
         for idx, button in enumerate(self._quickbuttons):
             if button.name == name:
-                self._quickbuttons[idx] = QuickButton(panel, name, label, fn, args)
+                self._quickbuttons[idx] = QuickButton(panel, name, label, fn, args, requires_auth, client_context)
                 logger.debug(F'Redefining quickbutton "{name}"')
                 break
         else:
-            self._quickbuttons.append(QuickButton(panel, name, label, fn, args))
+            self._quickbuttons.append(QuickButton(panel, name, label, fn, args, requires_auth, client_context))
         return self._quickbuttons
 
     def get_panel_settings(self, name):
@@ -323,8 +338,31 @@ class RHUI():
         if 'namespace' in args and args['namespace'] == 'quickbutton':
             for btn in self._quickbuttons:
                 if btn.name == args['id']:
-                    btn.fn(btn.args)
+                    def press(btn=btn):
+                        if btn.client_context:
+                            btn.fn(btn.args, client=self.client_context())
+                        else:
+                            btn.fn(btn.args)
+                    if btn.requires_auth:
+                        press = AdminAuth.make_socketio_auth_guard(self._racecontext)(press)
+                    press()
                     return
+
+    def client_context(self):
+        '''ClientContext of the SocketIO client whose event is being handled, or None outside of one.'''
+        try:
+            sid = request.sid
+            address = request.remote_addr
+            auth = request.authorization
+            cached_admin = session.get('socketio_admin_auth')
+        except (RuntimeError, AttributeError):
+            return None
+        try:
+            local = ipaddress.ip_address(address).is_loopback
+        except ValueError:
+            local = False
+        admin = bool(cached_admin) or AdminAuth.check_auth(self._racecontext, auth)
+        return ClientContext(sid, address, local, admin)
 
     # Markdown
     def register_markdown(self, panel, name, desc):
@@ -428,18 +466,29 @@ class RHUI():
                 if asset['type'] == asset_type and asset['page'] in (page, '*')]
 
     # Socket generics
-    def socket_listen(self, message, handler, requires_auth=False):
+    def socket_listen(self, message, handler, requires_auth=False, client_context=False):
         '''Registers a SocketIO event handler.
         :param requires_auth: If True, the handler is guarded by the same
         admin-authentication check used for the server's own
         destructive/config-mutating SocketIO handlers.
+        :param client_context: If True, the handler is also passed the
+        requesting client's ClientContext as the 'client' keyword argument.
         '''
+        if client_context:
+            plugin_handler = handler
+
+            @functools.wraps(plugin_handler)
+            def handler(*args):
+                return plugin_handler(*args, client=self.client_context())
         if requires_auth:
             handler = AdminAuth.make_socketio_auth_guard(self._racecontext)(handler)
         self._socket.on_event(message, handler)
 
     def socket_send(self, message, data):
         emit(message, data)
+
+    def socket_send_to(self, sid, message, data):
+        self._socket.emit(message, data, to=sid)
 
     def socket_broadcast(self, message, data):
         self._socket.emit(message, data)
