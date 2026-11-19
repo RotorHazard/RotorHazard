@@ -581,6 +581,16 @@ def render_marshal():
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.context_processor
+def inject_plugin_assets():
+    '''Scripts and stylesheets plugins registered for the requested page, named by the first part of its path.'''
+    from flask import has_request_context
+    if not has_request_context() or not RaceContext.rhui:
+        return {'pluginScripts': [], 'pluginStylesheets': []}
+    page = request.path.strip('/').split('/')[0] or 'home'
+    return {'pluginScripts': RaceContext.rhui.get_page_assets(page, 'script'),
+            'pluginStylesheets': RaceContext.rhui.get_page_assets(page, 'stylesheet')}
+
+@APP.context_processor
 def inject_frequency_table():
     '''Band/channel frequency table for the page layouts, which hand it to rotorhazard.js.'''
     # a list of pairs, since 'tojson' sorts object keys and the order decides shared frequencies

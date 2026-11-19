@@ -88,6 +88,12 @@ class UserInterfaceAPI():
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)
 
+    def register_script(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'script')
+
+    def register_stylesheet(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'stylesheet')
+
     # Messaging
     def message_speak(self, message):
         self._racecontext.rhui.emit_phonetic_text(message)
