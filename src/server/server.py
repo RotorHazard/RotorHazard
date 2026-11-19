@@ -1823,17 +1823,7 @@ def on_list_backups(*args):
 
 def list_backup_files():
     '''Returns sorted list of database files in db_bkp, or None if the directory does not exist'''
-    if not os.path.exists(DB_BKP_DIR_NAME):
-        return None
-
-    files = []
-    for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
-        files.extend(filenames)
-        break
-
-    files.sort(key=str.casefold)
-
-    return list(filter(lambda x: x.endswith(".db"), files))
+    return RaceContext.rhdata.list_backup_files()
 
 def restore_database_file(db_file_name):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
