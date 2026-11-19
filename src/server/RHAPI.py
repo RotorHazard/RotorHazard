@@ -84,6 +84,15 @@ class UserInterfaceAPI():
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
 
+    def update_field(self, panel, name, value):
+        return self._racecontext.rhui.update_field(panel, name, value)
+
+    def update_field_options(self, panel, name, options):
+        return self._racecontext.rhui.update_field_options(panel, name, options)
+
+    def update_markdown(self, panel, name, desc):
+        return self._racecontext.rhui.update_markdown(panel, name, desc)
+
     # Blueprint
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)

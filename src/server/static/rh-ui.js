@@ -182,9 +182,14 @@ var rhui = {
 					.text(opt.label);
 				field.append(opt_el);
 			}
-			if (!settings.value) {
-				settings.value = settings.options[0].name;
+			if (!settings.value && settings.options && settings.options.length) {
+				settings.value = settings.options[0].value;
 			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'status') {
+			var field = $('<output>')
+				.addClass('uifield-status');
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'checkbox') {
@@ -309,6 +314,8 @@ var rhui = {
 
 		if (settings.field_type == 'checkbox') {
 			element.prop('checked', settings.value);
+		} else if (settings.field_type == 'status') {
+			element.text(settings.value == null ? '' : settings.value);
 		} else {
 			element.val(settings.value);
 		}
@@ -347,6 +354,7 @@ var rhui = {
 	},
 	buildPanels: function(msg, page) {
 		// builds the plugin panels of a 'ui' message for this page
+		this.listenPanelUpdates(page);
 		if (msg.page != page) {
 			return;
 		}
@@ -381,7 +389,9 @@ var rhui = {
 
 			// add markdown content
 			for (var md_idx in panel.markdowns) {
-				var md_element = $('<div class="ui-md-el">').html(this.markdownToHtml(panel.markdowns[md_idx].desc));
+				var md_element = $('<div class="ui-md-el">')
+					.attr('data-md-name', panel.markdowns[md_idx].name)
+					.html(this.markdownToHtml(panel.markdowns[md_idx].desc));
 				panel_content_el.append(md_element);
 			}
 
@@ -406,6 +416,7 @@ var rhui = {
 
 				settings.wrapperEl = 'li';
 				settings.fieldClass = 'set_ui_binding_value';
+				settings.id = 'genericBinding_' + settings.name;
 				settings.data = {
 					field: settings.name,
 				}
@@ -434,6 +445,76 @@ var rhui = {
 				panel_obj.children('.panel-content').stop().slideUp();
 			}
 		}
+	},
+	_panelUpdatesPage: null,
+	listenPanelUpdates: function(page) {
+		// applies single field and markdown changes to this page's plugin panels
+		if (this._panelUpdatesPage !== null) {
+			return;
+		}
+		this._panelUpdatesPage = page;
+		var rhuiObj = this;
+		socket.on('ui_field_update', function (msg) {
+			if (msg.page == page) {
+				rhuiObj.applyFieldUpdate(msg);
+			}
+		});
+		socket.on('ui_markdown_update', function (msg) {
+			if (msg.page == page) {
+				rhuiObj.applyMarkdownUpdate(msg);
+			}
+		});
+	},
+	applyFieldUpdate: function(msg) {
+		var panel_el = $('#ui-custom-' + msg.panel);
+		var field = panel_el.find('[id="genericOption_' + msg.name + '"], [id="genericBinding_' + msg.name + '"]').first();
+		if (!field.length) {
+			return;
+		}
+		if (msg.options) {
+			var current = field.val();
+			field.empty();
+			for (var opt_id in msg.options) {
+				$('<option>')
+					.attr('value', msg.options[opt_id].value)
+					.text(msg.options[opt_id].label)
+					.appendTo(field);
+			}
+			if (field.find('option').filter(function () { return this.value == current; }).length) {
+				field.val(current);
+			}
+		}
+		if ('value' in msg) {
+			if (field.is('output')) {
+				field.text(msg.value == null ? '' : msg.value);
+			} else if (field.attr('type') == 'checkbox') {
+				field.prop('checked', Boolean(msg.value));
+			} else if (!field.is(':focus')) {  // leave a value the user is typing
+				field.val(msg.value);
+				if (field.attr('type') == 'range') {
+					this.updateRangeValue(field);
+				}
+			}
+		}
+	},
+	applyMarkdownUpdate: function(msg) {
+		var panel_content_el = $('#ui-custom-' + msg.panel).children('.panel-content');
+		if (!panel_content_el.length) {
+			return;
+		}
+		var md_element = panel_content_el.children('.ui-md-el').filter(function () {
+			return $(this).attr('data-md-name') == msg.name;
+		});
+		if (!md_element.length) {
+			md_element = $('<div class="ui-md-el">').attr('data-md-name', msg.name);
+			var last_md = panel_content_el.children('.ui-md-el').last();
+			if (last_md.length) {
+				last_md.after(md_element);
+			} else {
+				panel_content_el.prepend(md_element);
+			}
+		}
+		md_element.html(this.markdownToHtml(msg.desc));
 	},
 	panelSlot: function(slot) {
 		// container for a plugin panel's slot; a slot the page lacks falls back to the bottom one

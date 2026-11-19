@@ -285,6 +285,24 @@ Broadcast UI panel setup to all connected clients.
 - `page` (string): Page to update
 - `replace_panels` (boolean): if True, replaces all panels on page
 
+#### ui.update_field(panel, name, value)
+Change one field's value on a panel and send only that value to connected clients, instead of rebuilding the panel with `broadcast_ui`; suitable for values that change several times a second. For an option, the value is stored as a user's change would be (in the event, or in `persistent_section`), and `Evt.OPTION_SET` or `Evt.CONFIG_SET` is triggered. A `UIFieldType.STATUS` field's value is kept in memory only. For a function binding, the value is only shown; its getter still supplies the value when the panel is built. A field a user is typing in keeps what they typed. Returns `True`, or `False` if no field of that name is on the panel.
+- `panel` (string): `name` of the panel the field is on
+- `name` (string): `name` of the field
+- `value` (any): new value
+
+#### ui.update_field_options(panel, name, options)
+Replace the options of a `UIFieldType.SELECT` field on a panel and send them to connected clients. A selection that is still among the options is kept; otherwise the first option is shown. The stored value is not changed; use `ui.update_field` for that. Returns `True`, or `False` if no select field of that name is on the panel.
+- `panel` (string): `name` of the panel the field is on
+- `name` (string): `name` of the field
+- `options` (list\[UIFieldSelectOption\]): new options
+
+#### ui.update_markdown(panel, name, desc)
+Replace the text of a markdown block on a panel (or add it, as `ui.register_markdown` does) and send only that block to connected clients. Returns `True`.
+- `panel` (string): `name` of the panel the block is on
+- `name` (string): `name` of the markdown block
+- `desc` (string): Markdown-formatted text to display
+
 #### ui.broadcast_frequencies():
 Broadcast seat frequencies to all connected clients.
 
