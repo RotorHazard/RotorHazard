@@ -352,7 +352,7 @@
 		socket.on('ui', function (msg) {
 			if (msg.page == 'marshal') {
 				if (msg.replace_panels !== false) {
-					$('#custom-ui').empty();
+					$('.custom-ui-slot').empty();
 				}
 
 				for (var i in msg.panels) {
@@ -402,7 +402,7 @@
 					panel_el.append(panel_header_el);
 					panel_el.append(panel_content_el);
 
-					$('#custom-ui').append(panel_el);
+					rhui.panelSlot(panel.panel.slot).append(panel_el);
 				}
 			}
 		});
@@ -1039,6 +1039,7 @@
 </script>
 {% endblock %} {% block content %}
 <main class="page-marshal">
+<div id="custom-ui-top" class="custom-ui-slot"></div>
 
 <div class="panel">
 	<div class="panel-content">
@@ -1142,7 +1143,7 @@
 </div>
 
 <!-- Custom UI -->
-<div id="custom-ui"></div>
+<div id="custom-ui" class="custom-ui-slot"></div>
 
 <div id="delete-round-confirm" class="priority-message-interrupt mfp-hide popup">
 	<h2>{{ __('Delete This Round') }}</h2>

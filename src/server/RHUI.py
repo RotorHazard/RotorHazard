@@ -87,6 +87,7 @@ class UIPanel():
     page: str
     order: int = 0
     open: bool = False
+    slot: str = 'bottom'
 
 @dataclass
 class GeneralSetting():
@@ -137,6 +138,7 @@ class RHUI():
         self._savedrace_attributes = []
         self._raceformat_attributes = []
         self._ui_panels = []
+        self._page_assets = []  # scripts and stylesheets plugins add to pages
         self._general_settings = []
         self._ui_fn_bindings = []
         self._quickbuttons = []
@@ -219,14 +221,14 @@ class RHUI():
         return self._raceformat_attributes
 
     # UI Panels
-    def register_ui_panel(self, name, label, page, order=0, open = False,):
+    def register_ui_panel(self, name, label, page, order=0, open = False, slot='bottom'):
         for idx, panel in enumerate(self._ui_panels):
             if panel.name == name:
-                self._ui_panels[idx] = UIPanel(name, label, page, order, open)
+                self._ui_panels[idx] = UIPanel(name, label, page, order, open, slot)
                 logger.debug(F'Redefining panel "{name}"')
                 break
         else:
-            self._ui_panels.append(UIPanel(name, label, page, order, open))
+            self._ui_panels.append(UIPanel(name, label, page, order, open, slot))
         return self.ui_panels
 
     @property
@@ -345,6 +347,17 @@ class RHUI():
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
 
+    # Page scripts and stylesheets
+    def register_page_asset(self, page, url, asset_type):
+        asset = {'page': page, 'url': url, 'type': asset_type}
+        if asset not in self._page_assets:
+            self._page_assets.append(asset)
+
+    def get_page_assets(self, page, asset_type):
+        '''URLs of the scripts or stylesheets registered for a page, in registration order.'''
+        return [asset['url'] for asset in self._page_assets
+                if asset['type'] == asset_type and asset['page'] in (page, '*')]
+
     # Socket generics
     def socket_listen(self, message, handler, requires_auth=False):
         '''Registers a SocketIO event handler.
@@ -434,6 +447,7 @@ class RHUI():
                         'label': panel.label,
                         'order': panel.order,
                         'open': panel.open,
+                        'slot': panel.slot,
                     },
                     'settings': settings,
                     'fn_binds': fn_binds,

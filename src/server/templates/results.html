@@ -33,7 +33,7 @@
 		socket.on('ui', function (msg) {
 			if (msg.page == 'results') {
 				if (msg.replace_panels !== false) {
-					$('#custom-ui').empty();
+					$('.custom-ui-slot').empty();
 				}
 
 				for (var i in msg.panels) {
@@ -91,7 +91,7 @@
 					panel_el.append(panel_header_el);
 					panel_el.append(panel_content_el);
 
-					$('#custom-ui').append(panel_el);
+					rhui.panelSlot(panel.panel.slot).append(panel_el);
 				}
 
 				// load panel state
@@ -696,6 +696,7 @@
 	});
 </script>
 <main class="page-rounds">
+<div id="custom-ui-top" class="custom-ui-slot"></div>
 
 <div id="section-event">
 	<h1>{{ __('Results') }}: {{ getOption('eventName') }}</h1>
@@ -709,7 +710,7 @@
 </div>
 
 <!-- Custom UI -->
-<div id="custom-ui"></div>
+<div id="custom-ui" class="custom-ui-slot"></div>
 
 {% if Debug %}
 <p><button class="debug button-like clean-cache unprinted">{{ __('Clean Cache') }}</button></p>

@@ -66,6 +66,13 @@
 	</style>
 	<!-- Child template head content -->
 	{% block head %}{% endblock %}
+	<!-- Plugin scripts and stylesheets -->
+	{% for url in pluginStylesheets %}
+	<link rel="stylesheet" href="{{ url }}">
+	{% endfor %}
+	{% for url in pluginScripts %}
+	<script type="text/javascript" src="{{ url }}"></script>
+	{% endfor %}
 </head>
 
 <body>

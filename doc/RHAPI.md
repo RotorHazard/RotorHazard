@@ -160,21 +160,28 @@ Panels are represented with the `UIPanel` class, which has the following propert
 - `page` (string): Page to add panel to
 - `order` (int): Not yet implemented
 - `open` (boolean): Whether panel is open or closed
+- `slot` (string): Where on the page the panel is placed
 
 
 #### ui.panels
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
-#### ui.register_panel(name, label, page, order=0, open=False)
+#### ui.register_panel(name, label, page, order=0, open=False, slot='bottom')
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
-- `page` (string): Page to add panel to; one of "format", "settings"
+- `page` (string): Page to add panel to; one of "format", "marshal", "results", "run", "settings", "streams"
 - `order` _optional_ (int): Not yet implemented
 - `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
+- `slot` _optional_ (string): Where on the page the panel is placed (default: `'bottom'`):
+  - `'top'`: at the top of the page, above its own panels
+  - `'after_main'`: on the "run" page, directly below the timer, race controls, leaderboard and seat laps; on other pages the same as `'bottom'`
+  - `'bottom'`: at the bottom of the page, below its own panels
+
+  Panels in the same slot appear in the order they were registered. A slot a page does not have falls back to `'bottom'`.
 
 ### Quickbuttons
 
@@ -216,6 +223,8 @@ Register a Markdown block and assign it to a UI panel.
 - `name` (string): Internal identifier for this markdown block
 - `desc` (string): Markdown-formatted text to display
 
+Markdown is for display only. Don't use it to put code on a page: a `<script>` element in it may run today, but that is not supported and may stop working. Use `ui.register_script` instead.
+
 ### Pages
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
@@ -224,6 +233,18 @@ Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask
 Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 
 - `blueprint` (blueprint): Flask Blueprint object
+
+#### ui.register_script(page, url)
+Load a script on a page, such as a JavaScript file served by the plugin's blueprint. It is added at the end of the page's `<head>`, after the page's own scripts, so it can use jQuery and the page's code; wrap code that needs the page's elements or `socket` in `$(document).ready(...)`. Scripts load in the order registered; registering the same page and URL again has no effect. No return value.
+
+- `page` (string): first part of the page's URL path, such as "run", "format", "settings", "marshal", "results" or "streams" ("home" for the home page); also matches a blueprint's own pages by their first path part; `'*'` for every page
+- `url` (string): URL of the script
+
+#### ui.register_stylesheet(page, url)
+Load a stylesheet on a page. It is added at the end of the page's `<head>`, after the page's own styles, so its rules can override them. Otherwise as `ui.register_script`. No return value.
+
+- `page` (string): page to add the stylesheet to, as for `ui.register_script`
+- `url` (string): URL of the stylesheet
 
 ### UI Messages
 

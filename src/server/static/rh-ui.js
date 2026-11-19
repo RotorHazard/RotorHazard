@@ -332,6 +332,11 @@ var rhui = {
 
 		return value;
 	},
+	panelSlot: function(slot) {
+		// container for a plugin panel's slot; a slot the page lacks falls back to the bottom one
+		var slot_el = slot ? $('#custom-ui-' + slot) : $();
+		return slot_el.length ? slot_el : $('#custom-ui');
+	},
 	buildQuickbuttons: function(btn_list) {
 		var btn_list_el = $('<div class="control-set">');
 		for (var idx in btn_list) {
