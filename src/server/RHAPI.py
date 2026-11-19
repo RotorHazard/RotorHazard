@@ -1394,6 +1394,25 @@ class HardwareInterfaceAPI():
     def seat_crossing_end(self, seat_index):
         return self._racecontext.interface.force_end_crossing(seat_index)
 
+    def seat_provider_type(self, seat_index):
+        return self._racecontext.interface.nodes[seat_index].provider_type
+
+    def is_mock_only(self):
+        nodes = self._racecontext.interface.nodes
+        return bool(nodes) and all(node.provider_type == InterfaceType.MOCK for node in nodes)
+
+    def register_mock_signal(self, name, label, provider):
+        import MockSignal  # the interface dir is on the path only after this module is loaded
+        if str(name).isdigit():
+            logger.warning("Mock signal name '{}' rejected; numbers are reserved for built-in signals".format(name))
+            return False
+        return MockSignal.register_signal(name, label, provider)
+
+    @property
+    def mock_signals(self):
+        import MockSignal
+        return [{'name': entry.name, 'label': entry.label} for entry in MockSignal.get_signals()]
+
 #
 # Server Config
 #
