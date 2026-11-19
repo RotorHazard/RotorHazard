@@ -112,7 +112,7 @@ As you run races, classes and heats will become locked and cannot be modified. T
 
 **Count races per heat** is the default. Each heat is a fixed lineup flown repeatedly, and its round number is the number of times it has been raced. Heats A, B and C run as A, B, C, A, B, C…, recording round 2 on the second pass.
 
-**Generate heat groups** treats each heat as belonging to a single round. You build the lineups once and RotorHazard duplicates them per round: saving a race creates a copy of that heat in the next round and deactivates the one just flown, unless the class has reached its _Rounds_ count. Each heat carries a group number, shown as "Round 1", "Round 2" and so on beside the heat name on the Format page, and heats advance in round order — all of round 1, then all of round 2.
+**Generate heat groups** treats each heat as belonging to a single round. You build the lineups once and RotorHazard duplicates them per round: saving a race creates a copy of that heat in the next round and deactivates the one just flown, unless the class has reached its _Rounds_ count. Each heat carries a group number, shown as "Round 1", "Round 2" and so on beside the heat name on the Format page, and heats advance in round order — all of round 1, then all of round 2. "Add Heat" adds the new heat to the round selected beside it, which defaults to the current round (the earliest round with heats still to be flown), so heats added partway through an event join the rotation without repeating to catch up.
 
 Use heat groups when rounds need to be editable individually: a later round's pilots can be changed without touching rounds already flown, and a round can be seeded from the previous one using the "Heat" or "Class" slot methods.
 
