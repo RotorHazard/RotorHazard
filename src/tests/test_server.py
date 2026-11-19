@@ -42,7 +42,22 @@ from Node import Node
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 from Database import LapSource
+from RHRace import RaceStatus
 import frequencies
+import calibration
+
+def three_pass_trace(start):
+    '''RSSI history with clean gate passes at 5, 35 and 65 s over a flat noise floor.'''
+    values, times = [], []
+    for tenth in range(0, 900):
+        t = tenth / 10.0
+        rssi = 45 + (tenth % 3)
+        for pass_time in (5.0, 35.0, 65.0):
+            if abs(t - pass_time) <= 1.5:
+                rssi = 110 - int(abs(t - pass_time) * 30)
+        values.append(rssi)
+        times.append(start + t)
+    return values, times
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -779,19 +794,9 @@ class ServerTest(unittest.TestCase):
         server.RHAPI.events.off(Evt.LAPS_RESAVE, 'test_pilotrun_alter_listener')
 
     def test_calibration_suggestion(self):
-        import json
-        import calibration
         # three clean gate passes over a flat noise floor
         start = 1000.0
-        values, times = [], []
-        for tenth in range(0, 900):
-            t = tenth / 10.0
-            rssi = 45 + (tenth % 3)
-            for pass_time in (5.0, 35.0, 65.0):
-                if abs(t - pass_time) <= 1.5:
-                    rssi = 110 - int(abs(t - pass_time) * 30)
-            values.append(rssi)
-            times.append(start + t)
+        values, times = three_pass_trace(start)
         result = calibration.suggest_calibration(values, times, start, True, 0, 10000, 0, 0)
         self.assertIsNotNone(result)
         self.assertEqual(result['lap_count'], 3)
@@ -830,6 +835,45 @@ class ServerTest(unittest.TestCase):
                          (result['enter_at'], result['exit_at'], 3))
 
         server.RHAPI.db.races_clear()  # a saved race would block the heat/pilot delete tests
+
+    def auto_adjust_heat(self):
+        '''Heat with a pilot in seat 0, run with a format that has no time limit; returns the pilot.'''
+        pilot = server.RHAPI.db.pilot_add()
+        heat = server.RHAPI.db.heat_add()
+        server.RHAPI.db.slot_alter(server.RHAPI.db.slots_by_heat(heat.id)[0].id, pilot=pilot.id)
+        server.RHAPI.race.raceformat = server.RHAPI.db.raceformat_add(name='no time limit', unlimited_time=1).id
+        server.RHAPI.race.heat = heat.id
+        return pilot
+
+    def start_race_with_lap(self):
+        '''Running race with seat 0 at EnterAt/ExitAt 120/115, one lap at 35 s and the three-pass history.'''
+        race = server.RaceContext.race
+        race.stage(immediate=True)
+        for _ in range(100):
+            if race.race_status == RaceStatus.RACING:
+                break
+            gevent.sleep(0.1)
+        self.assertEqual(race.race_status, RaceStatus.RACING)
+        node = server.RaceContext.interface.nodes[0]
+        server.RaceContext.calibration.set_enter_at_level(0, 120)
+        server.RaceContext.calibration.set_exit_at_level(0, 115)
+        race.add_lap(node, race.start_time_monotonic + 35.0, LapSource.API)
+        node.history_values, node.history_times = three_pass_trace(race.start_time_monotonic)
+        return race, node
+
+    def test_lap_insert(self):
+        self.auto_adjust_heat()
+        race, node = self.start_race_with_lap()
+        race.add_lap(node, race.start_time_monotonic + 65.0, LapSource.API)
+
+        # a lap between the two renumbers the later lap and shortens its lap time
+        lap_index = server.RHAPI.race.lap_insert(0, 50000)
+        self.assertEqual(race.node_laps[0][lap_index].lap_time_stamp, 50000)
+        self.assertEqual([(lap.lap_number, round(lap.lap_time)) for lap in race.get_active_laps()[0]],
+                         [(0, 35000), (1, 15000), (2, 15000)])
+
+        race.discard_laps()
+        self.assertIsNone(server.RHAPI.race.lap_insert(0, 20000))
 
     def test_resave_laps_socket(self):
         pilot = server.RHAPI.db.pilot_add()

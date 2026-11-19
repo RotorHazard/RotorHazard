@@ -1310,6 +1310,9 @@ class RaceAPI():
             } for lap in laps],
         })
 
+    def lap_insert(self, seat_index, lap_time_stamp, source=LapSource.API, peak=None):
+        return self._racecontext.race.insert_lap(seat_index, lap_time_stamp, source, peak_rssi=peak)
+
     @property
     def last_race(self):
         return self._racecontext.last_race

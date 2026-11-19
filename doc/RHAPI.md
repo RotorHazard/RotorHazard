@@ -1547,6 +1547,13 @@ Replace all laps of a seat in the current race, as the Marshal page does for the
 - `seat_index` (int): seat whose laps to replace
 - `laps` (list[dict]): replacement lap list, in order; each item requires `lap_time_stamp` and `lap_time` (both in milliseconds), and may also include `source` (default `LapSource.API`) and `deleted` (default `False`)
 
+#### race.lap_insert(seat_index, lap_time_stamp, source=LapSource.API, peak=None)
+Insert a lap into the current race (running or stopped) at its place by time stamp, for a pass the seat missed. Unlike `lap_add`, the lap need not be the latest. Later laps are renumbered, lap times and finished flags recalculated, later splits moved up a lap, the win condition and leader rechecked and the lap list broadcast to all clients, and `Evt.LAP_INSERT` is triggered with `node_index` and `lap_index`. Minimum lap rules are not applied. Returns the index of the new lap in the seat's lap list, or `None` if the race is not running or stopped.
+- `seat_index` (int): seat on which to insert the lap
+- `lap_time_stamp` (int): time stamp of the lap, in milliseconds since the race start
+- `source` _(optional)_ (int): `LapSource` of the lap
+- `peak` _(optional)_ (int): peak RSSI of the pass, stored with the lap
+
 #### race.last_race
 _Read only_
 The saved-off copy of the most recent race, set when the current race is cleared (after a save or a discard) and cleared when the next race is staged. Returns `RHRace`, or `None`.

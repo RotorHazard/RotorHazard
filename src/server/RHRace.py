@@ -1439,6 +1439,73 @@ class RHRace():
                 self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
 
     @catchLogExceptionsWrapper
+    def insert_lap(self, node_index, lap_time_stamp, source, peak_rssi=None, update_race_state=True):
+        '''Insert a lap at its place by time stamp, for a pass the seat missed; returns its lap index, or None.'''
+
+        if self.race_status not in (RaceStatus.RACING, RaceStatus.DONE) or node_index not in self.node_laps or \
+                lap_time_stamp is None or lap_time_stamp < 0:
+            logger.info('Unable to insert lap: Node {0} TimeStamp {1}'.format(
+                node_index + 1 if isinstance(node_index, int) else node_index, lap_time_stamp))
+            return None
+
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+            laps = self.node_laps[node_index]
+            lap_index = next((idx for idx, lap in enumerate(laps) if lap.lap_time_stamp > lap_time_stamp), len(laps))
+
+            lap_obj = Crossing()
+            lap_obj.lap_time_stamp = lap_time_stamp
+            lap_obj.source = source
+            lap_obj.peak_rssi = peak_rssi
+            laps.insert(lap_index, lap_obj)
+
+            self.calc_lap_times(node_index, lap_index)
+
+            # recheck if pilot finished, marking later laps late
+            race_format = self.format
+            if race_format:
+                self.set_node_finished_flag(node_index, False)
+                for lap in laps:
+                    if lap.deleted:
+                        continue
+                    lap.late_lap = self.get_node_finished_flag(node_index)
+                    if race_format.unlimited_time == 0 and lap.lap_time_stamp > (race_format.race_time_sec * 1000) or \
+                        (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap.lap_number >= race_format.number_laps_win):
+                        self.set_node_finished_flag(node_index)
+
+            try:  # move later splits up to match renumbered laps
+                if lap_obj.lap_number is not None:
+                    self._racecontext.rhdata.shift_lapSplits(node_index, lap_obj.lap_number, 1)
+            except:
+                logger.exception("Error shifting split laps")
+
+            self._racecontext.events.trigger(Evt.LAP_INSERT, {
+                'node_index': node_index,
+                'lap_index': lap_index,
+                })
+
+            logger.info('Inserted lap: Node {0} LapIndex {1} TimeStamp {2}'.format(node_index+1, lap_index, lap_time_stamp))
+
+            if update_race_state:
+                self.clear_results()
+                self.get_results()  # update leaderboard before checking possible updated winner/leader
+                self.check_win_condition(deletedLap=True)  # handle possible change in win status
+
+                # handle possible change in race leader
+                if self.format and self.format.team_racing_mode == RacingMode.INDIVIDUAL:
+                    leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+                    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                        self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                        leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                        if leader_pilot_obj:
+                            logger.info('Pilot {} is leading (after inserted lap)'.format(leader_pilot_obj.callsign))
+
+                self._racecontext.rhui.emit_current_laps() # Race page, update web client
+                self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
+
+            return lap_index
+
+    @catchLogExceptionsWrapper
     def calc_lap_times(self, node_index, start_index=0):
         lap_number = 0
         last_lap_ts = 0
