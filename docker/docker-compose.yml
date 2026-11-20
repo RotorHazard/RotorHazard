@@ -1,0 +1,22 @@
+version: '3.8'
+
+# Local dev: builds from source. Run this from repo root: docker-compose -f docker/docker-compose.yml up
+# Dev uses a named volume so repo stays clean and personal data isn't accidentally committed.
+services:
+  rotorhazard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: rotorhazard-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - rotorhazard-dev-data:/app/data
+    environment:
+      - RH_DATA_DIR=/app/data
+    restart: unless-stopped
+    # Hardware access (USB, GPIO, SPI, I2C) via privileged mode
+    privileged: true
+
+volumes:
+  rotorhazard-dev-data:
