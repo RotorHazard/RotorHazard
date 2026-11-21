@@ -75,7 +75,7 @@ class UserInterfaceAPI():
     def panels(self):
         return self._racecontext.rhui.ui_panels
 
-    def register_panel(self, name, label, page, order=0, open = False):
+    def register_panel(self, name, label, page, order=None, open = False):
         return self._racecontext.rhui.register_ui_panel(name, label, page, order, open)
 
     # Quick button

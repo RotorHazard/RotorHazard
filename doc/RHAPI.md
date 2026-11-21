@@ -158,7 +158,7 @@ Panels are represented with the `UIPanel` class, which has the following propert
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to
-- `order` (int): Position among the page's plugin panels; lower numbers first
+- `order` (int|None): Position on the page among its own panels; `None` for after them
 - `open` (boolean): Whether panel is open or closed
 
 
@@ -166,15 +166,26 @@ Panels are represented with the `UIPanel` class, which has the following propert
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
-#### ui.register_panel(name, label, page, order=0, open=False)
+#### ui.register_panel(name, label, page, order=None, open=False)
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to; one of "format", "marshal", "results", "run", "settings", "streams"
-- `order` _optional_ (int): Position among the page's plugin panels, which are shown below the page's own panels; lower numbers first, and panels with the same `order` in the order they were registered (default: `0`)
+- `order` _optional_ (int): Position on the page among its own panels, which have the base orders listed below; the panel is shown before the first page panel with a higher `order`, so `150` puts it between the panels at `100` and `200`. A panel with the same `order` as a page panel goes after it, and plugin panels with the same `order` appear in the order they were registered. With `None`, the panel goes after all of the page's panels (default: `None`)
 - `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
+
+Base orders of each page's own panels (a panel that is not shown, such as LED Control without LEDs, keeps its place in the order):
+
+| Page | Panels |
+|---|---|
+| `format` | 100 Event, 200 Pilots, 300 Classes and Heats, 400 Generators, 500 Race Formats, 600 Data Management |
+| `marshal` | 100 Marshal |
+| `results` | 100 event name and description, 200 results |
+| `run` | 100 timer, race controls, leaderboard and seat laps, 200 Race Management, 300 Send Message, 400 Audio Control, 500 Display Settings, 600 LED Control, 700 Callouts, 800 Status |
+| `settings` | 100 Frequency Setup, 200 Sensor Tuning, 300 Audio Control, 400 Event Actions, 500 LED Events, 600 LED Control, 700 VRx Control, 800 Plugins, 900 System, 1000 Secondary Timers, 1100 Environment Sensors, 1200 Backup/Restore Settings |
+| `streams` | 100 stream list |
 
 ### Quickbuttons
 

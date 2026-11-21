@@ -339,6 +339,19 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
 
+    def test_ui_panel_order(self):
+        for name, order in (('order_a', 500), ('order_b', None), ('order_c', 150), ('order_d', 500), ('order_e', -1)):
+            server.RHAPI.ui.register_panel(name, name, 'order_page', order)
+        server.RHAPI.ui.register_panel('order_other', 'order_other', 'other_page', 1)
+        self.assertIsNone(next(p for p in server.RHAPI.ui.panels if p.name == 'order_b').order)
+
+        # sent by order, then as registered, with no order last
+        self.client.get_received()
+        server.RaceContext.rhui.emit_ui('order_page')
+        msg = [resp['args'][0] for resp in self.client.get_received() if resp['name'] == 'ui'][-1]
+        self.assertEqual([(p['panel']['name'], p['panel']['order']) for p in msg['panels']],
+                         [('order_e', -1), ('order_c', 150), ('order_a', 500), ('order_d', 500), ('order_b', None)])
+
     def test_ui_api(self):
         panels = server.RHAPI.ui.register_panel('test_panel', "Test Panel", 'test_page', 1)
         self.assertEqual(panels, server.RHAPI.ui.panels)

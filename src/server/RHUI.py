@@ -88,7 +88,7 @@ class UIPanel():
     name: str
     label: str
     page: str
-    order: int = 0
+    order: int = None
     open: bool = False
 
 @dataclass
@@ -235,7 +235,7 @@ class RHUI():
         return self._raceformat_attributes
 
     # UI Panels
-    def register_ui_panel(self, name, label, page, order=0, open = False,):
+    def register_ui_panel(self, name, label, page, order=None, open = False,):
         for idx, panel in enumerate(self._ui_panels):
             if panel.name == name:
                 self._ui_panels[idx] = UIPanel(name, label, page, order, open)
@@ -514,7 +514,8 @@ class RHUI():
         if 'replace_panels' in params:
             emit_payload['replace_panels'] = params['replace_panels']
 
-        for panel in sorted(self.ui_panels, key=lambda ui_panel: ui_panel.order):  # by order, then as registered
+        # by order, then as registered, with no order last
+        for panel in sorted(self.ui_panels, key=lambda ui_panel: (ui_panel.order is None, ui_panel.order or 0)):
             if panel.page == page:
                 panel_settings = self.get_panel_settings(panel.name)
 
