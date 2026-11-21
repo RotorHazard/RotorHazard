@@ -896,6 +896,11 @@ class ClusterNodeSet:
         for secondary in self.secondaries:
             gevent.spawn(secondary.emit, event, data)
 
+    def resendFrequencies(self):
+        '''Has each split secondary sent the current profile's frequencies, within a second or once it reconnects.'''
+        for secondary in self.splitSecondaries:
+            secondary.freqsSentFlag = False
+
     def emitToSplits(self, event, data=None, addTimeCorrFlag=False):
         for secondary in self.splitSecondaries:
             if addTimeCorrFlag and type(data) is dict:

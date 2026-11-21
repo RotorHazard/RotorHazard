@@ -1650,6 +1650,8 @@ def on_set_profile(data, emit_vals=True):
         RaceContext.interface.set_all_frequencies(freqs)
         RaceContext.calibration.hardware_set_all_enter_ats(enter_ats)
         RaceContext.calibration.hardware_set_all_exit_ats(exit_ats)
+        if RaceContext.cluster:
+            RaceContext.cluster.resendFrequencies()
 
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
