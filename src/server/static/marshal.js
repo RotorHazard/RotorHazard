@@ -121,6 +121,7 @@ class RHMarshal {
 	show_points = false; // show-points mode: point dots always shown, and the point tooltip on hover
 	long_press_timer = null;
 	long_press_ms = 500;
+	zoom_gestures = false; // wheel/pinch zoom and drag scrolling without zoom controls
 
 	constructor(options) {
 		self = this;
@@ -131,6 +132,7 @@ class RHMarshal {
 		self.min_lap_ms = options.min_lap_ms
 		self.min_lap_behavior = options.min_lap_behavior
 		self.min_first_crossing_ms = options.min_first_crossing_ms
+		self.zoom_gestures = !!options.zoom_gestures;
 		self.callbacks.calcLaps = options.callbacks.calcLaps;
 		self.callbacks.calibration = options.callbacks.calibration;
 		self.callbacks.clearMarkedLap = options.callbacks.clearMarkedLap;
@@ -540,8 +542,8 @@ class RHMarshal {
 	}
 
 	canZoom() {
-		// wheel zoom and drag scrolling only where the page shows the zoom controls
-		return typeof self.callbacks.viewRange === 'function';
+		// wheel zoom and drag scrolling where the page shows the zoom controls or turns on zoom gestures
+		return self.zoom_gestures || typeof self.callbacks.viewRange === 'function';
 	}
 
 	setViewRange(from, to, render=true) {
@@ -697,7 +699,13 @@ class RHMarshal {
 			return false;
 		}
 		if (!self.tooltip_el) {
-			self.tooltip_el = $('<div class="graph-tooltip" role="tooltip"></div>').appendTo('body');
+			// in a modal dialog the tooltip goes inside it, as the dialog is shown above the rest of the page
+			var dialog_el = $(self.elements.graph_canvas).closest('dialog');
+			self.tooltip_el = $('<div class="graph-tooltip" role="tooltip"></div>')
+				.appendTo(dialog_el.length ? dialog_el : 'body');
+			if (dialog_el.length) {
+				self.tooltip_el.css('position', 'fixed');
+			}
 		}
 		if (!(self.dots_el && self.dots_el.is(':visible'))) {
 			self.showGraphDots();
@@ -716,7 +724,11 @@ class RHMarshal {
 		if (top < 4) {
 			top = clientY + 20;
 		}
-		self.tooltip_el.css({left: left + window.scrollX, top: top + window.scrollY});
+		if (self.tooltip_el.css('position') == 'fixed') {
+			self.tooltip_el.css({left: left, top: top});
+		} else {
+			self.tooltip_el.css({left: left + window.scrollX, top: top + window.scrollY});
+		}
 		return true;
 	}
 
