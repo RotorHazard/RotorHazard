@@ -52,23 +52,59 @@ BOTH =  getattr(GPIO, "BOTH", 2)
 Input_devices_dict = {}
 Output_devices_dict = {}
 
-# Returns the gpiochip number for the Pi 5 RP1 controller, or None if absent.
+# Set True to use lgpio directly on the Pi 5 RP1 gpiochip even when GPIO Zero can access it
+PREFER_RP1_LGPIO_FLAG = False
+
+_RP1_NOT_CHECKED = -1
+_rp1_gpiochip_num = _RP1_NOT_CHECKED
+_rp1_search_errors = []
+
+# Returns the gpiochip number that the GPIO Zero lgpio pin factory opens
+def _get_gpiozero_chip_num():
+    from gpiozero.pins.local import get_pi_revision  #pylint: disable=import-error,import-outside-toplevel
+    return 4 if (get_pi_revision() & 0xff0) >> 4 == 0x17 else 0
+
+# Returns True if the given gpiochip is the Pi 5 RP1 controller
+def _is_rp1_gpiochip(chip_num):
+    gpio_handle = None
+    try:
+        gpio_handle = lgpio.gpiochip_open(chip_num)
+        chip_info = lgpio.gpio_get_chip_info(gpio_handle)
+        return len(chip_info) >= 4 and chip_info[3] == "pinctrl-rp1"
+    except Exception as ex:
+        _rp1_search_errors.append("/dev/gpiochip{}: {}".format(chip_num, ex))
+        return False
+    finally:
+        if gpio_handle is not None:
+            lgpio.gpiochip_close(gpio_handle)
+
+# Returns the gpiochip number for the Pi 5 RP1 controller if GPIO Zero does not open it
+# (or if PREFER_RP1_LGPIO_FLAG is set), or None.
 # Newer kernels may assign it a dynamic number instead of gpiochip0/gpiochip4.
-def _get_rp1_gpiochip_num():
+def _find_rp1_gpiochip_num():
+    gpiozero_chip_num = None
+    if not PREFER_RP1_LGPIO_FLAG:
+        try:
+            gpiozero_chip_num = _get_gpiozero_chip_num()
+        except Exception as ex:
+            _rp1_search_errors.append("GPIO Zero chip: {}".format(ex))
+        if gpiozero_chip_num is not None and _is_rp1_gpiochip(gpiozero_chip_num):
+            return None
     for chip_path in glob.glob("/dev/gpiochip*"):
-        gpio_handle = None
         try:
             chip_num = int(chip_path.rsplit("gpiochip", 1)[1])
-            gpio_handle = lgpio.gpiochip_open(chip_num)
-            chip_info = lgpio.gpio_get_chip_info(gpio_handle)
-            if len(chip_info) >= 4 and chip_info[3] == "pinctrl-rp1":
-                return chip_num
-        except Exception:
-            pass
-        finally:
-            if gpio_handle is not None:
-                lgpio.gpiochip_close(gpio_handle)
+        except ValueError:
+            continue
+        if chip_num != gpiozero_chip_num and _is_rp1_gpiochip(chip_num):
+            return chip_num
     return None
+
+# Returns the RP1 gpiochip number to use via lgpio, or None to use GPIO Zero; searches on the first call only
+def _get_rp1_gpiochip_num():
+    global _rp1_gpiochip_num
+    if _rp1_gpiochip_num == _RP1_NOT_CHECKED:
+        _rp1_gpiochip_num = _find_rp1_gpiochip_num()
+    return _rp1_gpiochip_num
 
 class _LgpioInputDevice:
     """Minimal gpiozero-compatible input using a selected gpiochip."""
@@ -135,6 +171,11 @@ def is_real_hw_GPIO():
 # Returns a string indicating the type of GPIO detected
 def get_GPIO_type_str():
     if Real_GPIO_Zero_flag:
+        rp1_chip_num = _get_rp1_gpiochip_num()
+        if rp1_chip_num is not None:
+            return "True (lgpio gpiochip{})".format(rp1_chip_num)
+        if _rp1_search_errors:
+            return "True (GPIO Zero; gpiochip errors: {})".format("; ".join(_rp1_search_errors))
         return "True (GPIO Zero)"
     if Real_RPi_GPIO_flag:
         return "True (RPi.GPIO)"
