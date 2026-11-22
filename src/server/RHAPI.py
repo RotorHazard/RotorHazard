@@ -5,7 +5,7 @@ from Database import LapSource
 import util.DatabaseReader as DatabaseReader
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 12
+API_VERSION_MINOR = 13
 
 import dataclasses
 import json
@@ -117,6 +117,10 @@ class UserInterfaceAPI():
 
     def clear_messages(self):
         self._racecontext.rhui.emit_clear_priority_messages()
+
+    # Config
+    def register_config_section(self, section, items=None):
+        self._racecontext.rhui.register_config_section(section, items)
 
     # Socket
     def socket_listen(self, message, handler, requires_auth=False, client_context=False):

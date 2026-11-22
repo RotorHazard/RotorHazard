@@ -281,6 +281,13 @@ Send a message which appears as a pop-up alert.
 
 - `message` (string): Text of message to display
 
+### Config
+
+#### ui.register_config_section(section, items=None)
+Allows a config section to be fetched by a page with a `load_data` request of type `config`. Sections are not readable this way unless registered, so a plugin that keeps its own section in the server config should register it here if its pages need to read it. The server's `SECRETS` section can never be registered.
+- `section` (string): Name of the config section
+- `items` _optional_ (list): Keys within the section that may be fetched; if omitted, the whole section may be fetched
+
 ### Sockets
 
 #### ui.socket_listen(message, handler, requires_auth=False)

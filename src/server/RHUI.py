@@ -34,8 +34,10 @@ IMDTABLER_MAX_FREQS = 99  # upper bound on frequencies accepted for an IMDTabler
 
 CONFIG_LOAD_ITEMS = {  # config values a page may fetch via a 'load_data' request
     'GENERAL': ('SECONDARIES', 'SERIAL_PORTS'),
-    'SENSORS': (),  # whole section, which holds no secrets
+    'SENSORS': None,  # None allows the whole section, which holds no secrets
 }
+
+RESERVED_CONFIG_SECTIONS = ('SECRETS',)  # never fetchable, whatever a plugin registers
 
 from FlaskAppObj import APP
 APP.app_context().push()
@@ -164,6 +166,7 @@ class RHUI():
         self._quickbuttons = []
         self._markdowns = []
         self._status_values = {}  # current values of status fields, by name; never stored
+        self._config_load_items = dict(CONFIG_LOAD_ITEMS)  # plugins add to this via "register_config_section"
         self._UI_server_messages = {}
 
     # Pilot Attributes
@@ -717,17 +720,28 @@ class RHUI():
         else:
             self._socket.emit('option_update', emit_payload)
 
+    def register_config_section(self, section, items=None):
+        '''Allows a config section to be fetched via a 'load_data' request.
+        :param items: Keys within the section that may be fetched, or None
+        for the whole section.
+        '''
+        if section in RESERVED_CONFIG_SECTIONS:
+            logger.warning('Refusing to register protected config section: {0}'.format(section))
+            return
+        self._config_load_items[section] = tuple(items) if items is not None else None
+
     def emit_config_update(self, settings, **params):
         config_vals = {}
         for section, items in settings.items():
-            if section not in CONFIG_LOAD_ITEMS:  # never serve a section such as SECRETS
+            if section not in self._config_load_items:  # never serve a section such as SECRETS
                 logger.warning("Ignoring 'load_data' request for config section: {0}".format(section))
                 continue
-            if section == 'SENSORS':
-                config_vals['SENSORS'] = self._racecontext.serverconfig.get_section('SENSORS')
+            allowed_items = self._config_load_items[section]
+            if allowed_items is None:  # whole section is allowed
+                config_vals[section] = self._racecontext.serverconfig.get_section(section)
             else:
                 for item in items:
-                    if item not in CONFIG_LOAD_ITEMS[section]:
+                    if item not in allowed_items:
                         logger.warning("Ignoring 'load_data' request for config item: {0}/{1}".format(section, item))
                         continue
                     if section not in config_vals:
