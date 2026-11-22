@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 IMDTABLER_MAX_FREQS = 99  # upper bound on frequencies accepted for an IMDTabler query
 
+CONFIG_LOAD_ITEMS = {  # config values a page may fetch via a 'load_data' request
+    'GENERAL': ('SECONDARIES', 'SERIAL_PORTS'),
+    'SENSORS': (),  # whole section, which holds no secrets
+}
+
 from FlaskAppObj import APP
 APP.app_context().push()
 
@@ -715,10 +720,16 @@ class RHUI():
     def emit_config_update(self, settings, **params):
         config_vals = {}
         for section, items in settings.items():
+            if section not in CONFIG_LOAD_ITEMS:  # never serve a section such as SECRETS
+                logger.warning("Ignoring 'load_data' request for config section: {0}".format(section))
+                continue
             if section == 'SENSORS':
                 config_vals['SENSORS'] = self._racecontext.serverconfig.get_section('SENSORS')
             else:
                 for item in items:
+                    if item not in CONFIG_LOAD_ITEMS[section]:
+                        logger.warning("Ignoring 'load_data' request for config item: {0}/{1}".format(section, item))
+                        continue
                     if section not in config_vals:
                         config_vals[section] = {}
 
