@@ -51,7 +51,7 @@ This public page will display results and calculated statistics of all previousl
 
 ### Current
 
-This page displays information about the currently running race, including real-time race time, pilot lap times and leaderboard. It automatially updates with the event, and is suitable for projecting to a prominently displayed screen.
+This page displays information about the currently running race, including real-time race time, pilot lap times and leaderboard. It automatically updates with the event, and is suitable for projecting to a prominently displayed screen.
 
 In the Audio Control section, the user can select whether any one pilot, all pilots, or no pilots will have laps announced. In this way, a pilot might elect to hear only their own laps announced. A user can also adjust the voice, volume, rate, and pitch of these announcements.
 

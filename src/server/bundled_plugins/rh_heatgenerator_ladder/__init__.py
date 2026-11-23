@@ -165,7 +165,7 @@ def register_handlers(args):
             },
             [
                 UIField('qualifiers_per_heat', "Maximum pilots per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
-                UIField('total_pilots', "Maxiumum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
+                UIField('total_pilots', "Maximum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
                 UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
                 UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Main", value="Main"),
             ],
@@ -176,7 +176,7 @@ def register_handlers(args):
             None,
             [
                 UIField('qualifiers_per_heat', "Maximum pilots per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
-                UIField('total_pilots', "Maxiumum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
+                UIField('total_pilots', "Maximum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
                 UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
                 UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Qualifier", value="Qualifier"),
             ]
