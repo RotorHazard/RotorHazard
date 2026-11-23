@@ -1328,7 +1328,8 @@ def on_expand_heat(data):
 @catchLogExcWithDBWrapper
 def on_get_class_recents(data):
     if data and 'class_id' in data:
-        RaceContext.rhui.emit_recent_heats(data['class_id'], 6) # TODO: Place var in UI Config
+        limit = max(1, RaceContext.rhdata.get_optionInt('recentHeatsCount', 6))
+        RaceContext.rhui.emit_recent_heats(data['class_id'], limit)
 
 @SOCKET_IO.on('add_heat')
 @requires_socketio_auth
