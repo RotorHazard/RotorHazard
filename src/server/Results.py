@@ -1296,7 +1296,7 @@ def get_gap_info(racecontext, seat_index):
                     next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
                 if next_rank_split_result['fastest_lap_raw']:
-                    next_rank_split = result['last_lap_raw'] or 0 - next_rank_split_result['fastest_lap_raw']
+                    next_rank_split = (result['last_lap_raw'] or 0) - next_rank_split_result['fastest_lap_raw']
             else:
                 # WinCondition.MOST_LAPS
                 # WinCondition.FIRST_TO_LAP_X
@@ -1322,7 +1322,7 @@ def get_gap_info(racecontext, seat_index):
                     first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
                 if first_rank_split_result['fastest_lap_raw']:
-                    first_rank_split = result['last_lap_raw'] or 0 - first_rank_split_result['fastest_lap_raw']
+                    first_rank_split = (result['last_lap_raw'] or 0) - first_rank_split_result['fastest_lap_raw']
             else:
                 # WinCondition.MOST_LAPS
                 # WinCondition.FIRST_TO_LAP_X
