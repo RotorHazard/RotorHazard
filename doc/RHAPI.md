@@ -158,7 +158,7 @@ Panels are represented with the `UIPanel` class, which has the following propert
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to
-- `order` (int): Not yet implemented
+- `order` (int|None): Position on the page among its own panels; `None` for after them
 - `open` (boolean): Whether panel is open or closed
 
 
@@ -166,15 +166,26 @@ Panels are represented with the `UIPanel` class, which has the following propert
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
-#### ui.register_panel(name, label, page, order=0, open=False)
+#### ui.register_panel(name, label, page, order=None, open=False)
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
-- `page` (string): Page to add panel to; one of "format", "settings"
-- `order` _optional_ (int): Not yet implemented
+- `page` (string): Page to add panel to; one of "format", "marshal", "results", "run", "settings", "streams"
+- `order` _optional_ (int): Position on the page among its own panels, which have the base orders listed below; the panel is shown before the first page panel with a higher `order`, so `150` puts it between the panels at `100` and `200`. A panel with the same `order` as a page panel goes after it, and plugin panels with the same `order` appear in the order they were registered. With `None`, the panel goes after all of the page's panels (default: `None`)
 - `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
+
+Base orders of each page's own panels (a panel that is not shown, such as LED Control without LEDs, keeps its place in the order):
+
+| Page | Panels |
+|---|---|
+| `format` | 100 Event, 200 Pilots, 300 Classes and Heats, 400 Generators, 500 Race Formats, 600 Data Management |
+| `marshal` | 100 Marshal |
+| `results` | 100 event name and description, 200 results |
+| `run` | 100 timer, race controls, leaderboard and seat laps, 200 Race Management, 300 Send Message, 400 Audio Control, 500 Display Settings, 600 LED Control, 700 Callouts, 800 Status |
+| `settings` | 100 Frequency Setup, 200 Sensor Tuning, 300 Audio Control, 400 Event Actions, 500 LED Events, 600 LED Control, 700 VRx Control, 800 Plugins, 900 System, 1000 Secondary Timers, 1100 Environment Sensors, 1200 Backup/Restore Settings |
+| `streams` | 100 stream list |
 
 ### Quickbuttons
 
@@ -189,7 +200,7 @@ Quickbuttons are represented with the `QuickButton` class, which has the followi
 
 Pass a dict to `args` and parse it in your `function` if multiple arguments are needed.
 
-#### ui.register_quickbutton(panel, name, label, function)
+#### ui.register_quickbutton(panel, name, label, function, args=None, requires_auth=False, client_context=False)
 Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list[QuickButton]`.
 
 - `panel` (string): `name` of panel previously registered with `ui.register_panel`
@@ -197,6 +208,18 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 - `label` (string): Text used for visible button label
 - `function` (callable): Function to run when button is pressed
 - `args` (any): Argument passed to `function` when called
+- `requires_auth` _optional_ (boolean): if True, `function` runs only for clients that have passed the server's admin authentication (as for `ui.socket_listen`); others are shown "Action requires authentication." Without it, any client that can see the button can press it, including on pages that need no login, such as Results.
+- `client_context` _optional_ (boolean): if True, `function` is also passed the pressing client's `ClientContext` as the `client` keyword argument: `function(args, client=...)`
+
+### Client Context
+
+Callbacks registered with `client_context=True` (quickbuttons, function bindings and `ui.socket_listen` handlers) are passed a `ClientContext` describing the client they were invoked for, as the `client` keyword argument. It has these properties:
+- `sid` (string): the client's SocketIO session ID; reply to only this client with `ui.socket_send_to`
+- `address` (string): the client's remote address, as the server sees it (that of a proxy, if one is in between)
+- `local` (boolean): whether the client is connected from the server's own computer (a loopback address)
+- `admin` (boolean): whether the client is logged in with the admin credentials (also `True` when the server has no admin credentials set)
+
+`client` is `None` if the callback is invoked other than for a client's event.
 
 ### Markdown
 
@@ -216,6 +239,8 @@ Register a Markdown block and assign it to a UI panel.
 - `name` (string): Internal identifier for this markdown block
 - `desc` (string): Markdown-formatted text to display
 
+Markdown is for display only. Don't use it to put code on a page: a `<script>` element in it may run today, but that is not supported and may stop working. Use `ui.register_script` instead.
+
 ### Pages
 
 Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask.palletsprojects.com/blueprints/). 
@@ -224,6 +249,18 @@ Add custom pages to RotorHazard's frontend with [Flask Blueprints](https://flask
 Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 
 - `blueprint` (blueprint): Flask Blueprint object
+
+#### ui.register_script(page, url)
+Load a script on a page, such as a JavaScript file served by the plugin's blueprint. It is added at the end of the page's `<head>`, after the page's own scripts, so it can use jQuery and the page's code; wrap code that needs the page's elements or `socket` in `$(document).ready(...)`. Scripts load in the order registered; registering the same page and URL again has no effect. No return value.
+
+- `page` (string): first part of the page's URL path, such as "run", "format", "settings", "marshal", "results" or "streams" ("home" for the home page); also matches a blueprint's own pages by their first path part; `'*'` for every page
+- `url` (string): URL of the script
+
+#### ui.register_stylesheet(page, url)
+Load a stylesheet on a page. It is added at the end of the page's `<head>`, after the page's own styles, so its rules can override them. Otherwise as `ui.register_script`. No return value.
+
+- `page` (string): page to add the stylesheet to, as for `ui.register_script`
+- `url` (string): URL of the stylesheet
 
 ### UI Messages
 
@@ -251,8 +288,15 @@ Calls function when a socket event is received.
 - `message` (string): Socket event name
 - `handler` (callable): Function to call
 - `requires_auth` (boolean): if True, `handler` is only invoked for clients that have passed the server's admin authentication (the same check used by the server's own destructive/config-mutating socket handlers)
+- `client_context` _optional_ (boolean): if True, `handler` is also passed the sending client's `ClientContext` as the `client` keyword argument
 
 `handler` is passed socket data as an argument.
+
+#### ui.socket_send_to(sid, message, data)
+Send a socket message to one client, such as the one a callback was invoked for (`client.sid`).
+- `sid` (string): SocketIO session ID of the client
+- `message` (string): Socket event name
+- `data` (any): Data to send
 
 ### Data Broadcast
 
@@ -263,6 +307,24 @@ Broadcast UI panel setup to all connected clients.
 
 - `page` (string): Page to update
 - `replace_panels` (boolean): if True, replaces all panels on page
+
+#### ui.update_field(panel, name, value)
+Change one field's value on a panel and send only that value to connected clients, instead of rebuilding the panel with `broadcast_ui`; suitable for values that change several times a second. For an option, the value is stored as a user's change would be (in the event, or in `persistent_section`), and `Evt.OPTION_SET` or `Evt.CONFIG_SET` is triggered. A `UIFieldType.STATUS` field's value is kept in memory only. For a function binding, the value is only shown; its getter still supplies the value when the panel is built. A field a user is typing in keeps what they typed. Returns `True`, or `False` if no field of that name is on the panel.
+- `panel` (string): `name` of the panel the field is on
+- `name` (string): `name` of the field
+- `value` (any): new value
+
+#### ui.update_field_options(panel, name, options)
+Replace the options of a `UIFieldType.SELECT` field on a panel and send them to connected clients. A selection that is still among the options is kept; otherwise the first option is shown. The stored value is not changed; use `ui.update_field` for that. Returns `True`, or `False` if no select field of that name is on the panel.
+- `panel` (string): `name` of the panel the field is on
+- `name` (string): `name` of the field
+- `options` (list\[UIFieldSelectOption\]): new options
+
+#### ui.update_markdown(panel, name, desc)
+Replace the text of a markdown block on a panel (or add it, as `ui.register_markdown` does) and send only that block to connected clients. Returns `True`.
+- `panel` (string): `name` of the panel the block is on
+- `name` (string): `name` of the markdown block
+- `desc` (string): Markdown-formatted text to display
 
 #### ui.broadcast_frequencies():
 Broadcast seat frequencies to all connected clients.
@@ -319,6 +381,7 @@ Register a field bound to user-defined functions instead of directly to an optio
 - `args` _optional_ (dict): arguments to be passed to the setter function when called
 - `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`
 - `order` _optional_ (int): Not yet implemented
+- `client_context` _optional_ (boolean): if True, `setter_fn` is also passed the changing client's `ClientContext` as the `client` keyword argument: `setter_fn(value, args, client=...)`
 
 
 ### Pilot Attributes
@@ -1176,6 +1239,59 @@ Set value for the option with provided name. No return value.
 #### db.options_reset()
 Delete all options. No return value.
 
+### Other Database Files
+Read saved races from database files other than the live one, such as backups in the server's `db_bkp` directory or a database copied from another timer.
+
+#### db.backup_dir
+_Read only_
+Full path of the directory where the server keeps database backups. Returns `string`.
+
+#### db.backup_list()
+Database backup files in `db.backup_dir`, sorted by name. Returns `list[string]` of file names (empty if there are none).
+
+#### db.open_readonly(source, name=None)
+Open a database for reading only, without touching the live database. Use it as a context manager, which closes the database at the end, or call `close()` on the result when done:
+
+```
+with rhapi.db.open_readonly(os.path.join(rhapi.db.backup_dir, name)) as backup:
+    for race in backup.races:
+        runs = backup.pilotruns_by_race(race.id)
+```
+
+`source` can also be a database's contents, such as a file a user picked in the browser and sent to the plugin. They are read into memory and no file is written:
+
+```
+def on_upload(data):
+    try:
+        with rhapi.db.open_readonly(data['contents'], data['filename']) as upload:
+            races = upload.races
+    except ValueError as ex:
+        rhapi.ui.message_alert(str(ex))
+```
+
+Returns a `DatabaseReader`, or raises `FileNotFoundError` if there is no such file, or `ValueError` if it is not a RotorHazard database with saved races (including empty or invalid contents) or was written by a newer server version than this one.
+- `source` (string|bytes): path of the database file, where a relative path is relative to the data directory; or the database's contents as `bytes`, `bytearray` or `memoryview`
+- `name` _optional_ (string): name to show for a database given as contents, such as the uploaded file's name
+
+Contents are opened with SQLite's in-memory deserialization (Python 3.11 or newer). Where it is not available, such as on Python 3.10, they are written to a temporary file in the system temp directory, copied into memory, and the file is deleted before `open_readonly` returns.
+
+Files from older server versions can be read: each table is read by the columns the file has, and an attribute the file has no column for is `None`. The reader has these properties and methods, named and behaving as the matching `db` ones but returning read-only records (`DatabaseRecord`) instead of live data objects:
+- `races`, `race_by_id(race_id)`, `races_by_heat(heat_id)`: saved races, with the attributes of `SavedRaceMeta` except `results`
+- `pilotruns`, `pilotrun_by_id(run_id)`, `pilotruns_by_race(race_id)`: pilot runs, with the attributes of `SavedPilotRace`, including RSSI history (see `db.pilotrun_history`)
+- `laps_by_pilotrun(run_id)`: laps, with the attributes of `SavedRaceLap`, in time order
+- `pilots`, `pilot_by_id(pilot_id)`; `heats`, `heat_by_id(heat_id)`; `raceclasses`, `raceclass_by_id(raceclass_id)`; `raceformats`, `raceformat_by_id(format_id)`: with the attributes stored in their tables (computed ones, such as a heat's `display_name`, are not available)
+- `option(name, default=None)`: the stored value of an option
+- `server_api` (int): server API version the file was written by (`0` if it does not say)
+- `path` (string): the file's path, or `None` for a database given as contents
+- `name` (string): the file's name without its directory; for a database given as contents, the `name` passed to `open_readonly`, or `"(in memory)"` if none was
+- `close()`: close the database, releasing the memory of one given as contents
+
+A record's attributes cannot be changed; `asdict()` returns them as a `dict`. Methods return `None` (or an empty list) for something not in the file.
+
+#### db.pilotrun_history(pilotrun_or_id)
+The RSSI history of a pilot run, decoded. Works with live pilot runs and with records from `db.open_readonly`. Returns `tuple` of `(values, times)`, each a `list` (empty if the run has no history), or `None` if no live pilot run has the given ID.
+- `pilotrun_or_id` (SavedPilotRace|DatabaseRecord|int): pilot run, or ID of a live pilot run
+
 
 ## Data input/output
 
@@ -1552,7 +1668,7 @@ These methods are accessed via `RHAPI.interface`
 
 #### interface.seats
 _Read only_
-Hardware interface information. Returns `list[Node]`.
+Hardware interface information. Returns `list[Node]`. Each seat's `provider_type` is the `InterfaceType` of the interface it belongs to (see `interface.seat_provider_type`), and `provider` is that interface object.
 
 #### interface.seat_enter_at_set(seat_index, level)
 Set the EnterAt level of a seat on the live node, as the Settings page does: the level is stored in the current profile and broadcast to all clients. No return value.
@@ -1567,6 +1683,42 @@ Set the ExitAt level of a seat on the live node, as the Settings page does: the 
 #### interface.seat_crossing_end(seat_index)
 End a crossing in progress on a seat, as the server does at race start and stop, so the node reports the pass. Has no effect on nodes whose firmware does not support it. No return value.
 - `seat_index` (int): seat whose crossing to end
+
+#### interface.seat_provider_type(seat_index)
+The kind of interface a seat belongs to. Returns `InterfaceType` (`from interface_mapper import InterfaceType`): `InterfaceType.MOCK` (0) for a mock (simulated) seat, `InterfaceType.RH` (1) for a seat on RotorHazard node hardware, or `InterfaceType.RHAPI` (2) for a seat on an interface a plugin added with `interface.add`.
+- `seat_index` (int): seat to check
+
+#### interface.is_mock_only()
+Whether every seat is a mock seat, so no timing hardware is in use. Returns `False` when there are no seats. Returns `boolean`.
+
+#### interface.register_mock_signal(name, label, provider)
+Register a signal source for mock (simulated) seats. It is listed under "Mock Node Signal" on the Advanced Settings page, and when chosen there (the `GENERAL` / `MOCK_NODE_SIGNAL` setting holds its `name`), the mock interface reads every mock seat's signal from it. Returns `True` if registered, or `False` if the name is already taken or is a number (numbers are the built-in signals: `0` None, `1` Replay `mock_data_[n].csv`, `2` Simulated, `3` Simulated - Pass Peak Only, `4` Simulated - Pass Peak Only (+RSSI)).
+- `name` (string): internal identifier, stored in the setting
+- `label` (string): name shown on the Advanced Settings page; it is passed through translation
+- `provider` (MockSignalProvider): the signal source; subclass `MockSignalProvider` from `MockSignal` (`from MockSignal import MockSignalProvider, SignalSample`) and override:
+  - `read(node, now)`: return a `SignalSample` for the seat (`node` is the seat object, as in `interface.seats`; `now` is the monotonic read time), a list of them in time order, or `None` for no reading this update. Called for each mock seat with a frequency on every update of the mock interface: every 0.5 s by default, set by the `GENERAL` / `MOCK_UPDATE_INTERVAL` setting ("Mock Node Update Interval" on the Advanced Settings page), or by the `RH_UPDATE_INTERVAL` environment variable, which overrides it. To replay readings more often than that, return the ones due since the last update as a list, each with its `read_time`; their crossings and passes are handled one reading at a time.
+  - `start()` and `stop()` _(optional)_: called when the provider becomes, or stops being, the active signal.
+  - `on_race_status(status)` _(optional)_: called with each `RaceStatus` change while the provider is active.
+  - `marshal_type` _(optional)_: class or instance attribute giving the `MarshalType` of the seats it drives (default `MarshalType.FULL_RSSI`).
+  - `label_detail` _(optional)_: text shown after the label.
+
+All provider methods run in the mock interface's update greenlet, so they must not block (no blocking I/O or long computation; use `gevent` to do slow work elsewhere). An exception from `read` is logged once and treated as no reading. If the setting names a signal that is not registered (for example when its plugin is not loaded), the seats get no signal until it is registered.
+
+`SignalSample` holds one reading as a node reports it:
+- `lap_id` (int): count of passes completed; a change records a pass
+- `rssi` (int): current RSSI
+- `cross_flag` (boolean): whether a crossing is in progress
+- `ms_val` _(optional)_ (int): milliseconds between the pass and this reading
+- `node_peak_rssi`, `pass_peak_rssi`, `pass_nadir_rssi`, `node_nadir_rssi`, `loop_time` _(optional)_ (int): node statistics
+- `peak_rssi`, `peak_first_time`, `peak_last_time`, `nadir_rssi`, `nadir_first_time`, `nadir_last_time` _(optional)_ (int): peak and nadir since the previous reading, recorded as RSSI history; times are milliseconds before this reading
+- `history_flag` _(optional)_ (boolean): `False` records no RSSI history, as pass-peak-only hardware does (default `True`)
+- `read_time` _(optional)_ (float): monotonic time of the reading, for one taken earlier than the update it is returned in; pass and history times are taken from it (default: the update's read time)
+
+The built-in "Replay" signal reads `mock_data_[n].csv` (n is the seat number) from the data directory, in the format the hardware interface logs node data. When a file's first column (the read time) rises steadily, readings are replayed at their recorded spacing; otherwise one line is used per update, as before. Malformed lines are skipped and counted in the log.
+
+#### interface.mock_signals
+_Read only_
+Registered mock signal sources. Returns `list[dict]` with `name` and `label`.
 
 
 

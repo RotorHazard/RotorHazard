@@ -85,6 +85,7 @@ class Config:
         self.config['GENERAL']['SERIAL_PORTS'] = []
         self.config['GENERAL']['MOCK_NODES'] = 0
         self.config['GENERAL']['MOCK_NODE_SIGNAL'] = 0
+        self.config['GENERAL']['MOCK_UPDATE_INTERVAL'] = 0.5  # seconds between mock node readings
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = 0
 
         self.config['SECRETS']['ADMIN_USERNAME'] = 'admin'

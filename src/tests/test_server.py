@@ -4,8 +4,10 @@ import os
 import re
 import sys
 import json
+import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 import gevent
 from datetime import datetime
 from flask import render_template_string
@@ -337,6 +339,19 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
         self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
 
+    def test_ui_panel_order(self):
+        for name, order in (('order_a', 500), ('order_b', None), ('order_c', 150), ('order_d', 500), ('order_e', -1)):
+            server.RHAPI.ui.register_panel(name, name, 'order_page', order)
+        server.RHAPI.ui.register_panel('order_other', 'order_other', 'other_page', 1)
+        self.assertIsNone(next(p for p in server.RHAPI.ui.panels if p.name == 'order_b').order)
+
+        # sent by order, then as registered, with no order last
+        self.client.get_received()
+        server.RaceContext.rhui.emit_ui('order_page')
+        msg = [resp['args'][0] for resp in self.client.get_received() if resp['name'] == 'ui'][-1]
+        self.assertEqual([(p['panel']['name'], p['panel']['order']) for p in msg['panels']],
+                         [('order_e', -1), ('order_c', 150), ('order_a', 500), ('order_d', 500), ('order_b', None)])
+
     def test_ui_api(self):
         panels = server.RHAPI.ui.register_panel('test_panel', "Test Panel", 'test_page', 1)
         self.assertEqual(panels, server.RHAPI.ui.panels)
@@ -539,6 +554,110 @@ class ServerTest(unittest.TestCase):
         result_flag = server.RHAPI.db.heat_delete(new_heat.id)
         self.assertEqual(result_flag, True)
         self.assertEqual(len(server.RHAPI.db.heats), num_heats)
+
+    def make_readonly_test_db(self):
+        # saves a race, then copies the database to a scratch file in WAL mode, as the server keeps it
+        pilot = server.RHAPI.db.pilot_add()
+        heat = server.RHAPI.db.heat_add()
+        slots = server.RHAPI.db.slots_by_heat(heat.id)
+        server.RHAPI.db.slot_alter(slots[0].id, pilot=pilot.id)
+        server.RHAPI.race.heat = heat.id
+        server.RaceContext.race.stage(immediate=True)
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+        self.addCleanup(server.RHAPI.db.races_clear)  # leaves the heat, pilot and format deletable by later tests
+        tmp_dir = tempfile.mkdtemp(prefix='rh_test_ro_')
+        path = os.path.join(tmp_dir, 'copy.db')
+        def remove_db():
+            for name in (path, path + '-wal', path + '-shm'):
+                if os.path.exists(name):
+                    os.remove(name)
+            os.rmdir(tmp_dir)
+        self.addCleanup(remove_db)
+        source = sqlite3.connect(server.RaceContext.rhdata._DB_FILE_NAME)
+        target = sqlite3.connect(path)
+        source.backup(target)
+        source.close()
+        target.execute('PRAGMA journal_mode=WAL')
+        target.close()
+        return path
+
+    def readonly_db_contents(self, reader):
+        return {
+            'races': [race.asdict() for race in reader.races],
+            'pilotruns': [run.asdict() for run in reader.pilotruns],
+            'history': [server.RHAPI.db.pilotrun_history(run) for run in reader.pilotruns],
+            'laps': [[lap.asdict() for lap in reader.laps_by_pilotrun(run.id)] for run in reader.pilotruns],
+        }
+
+    def test_database_open_readonly_bytes(self):
+        path = self.make_readonly_test_db()
+        with open(path, 'rb') as db_file:
+            data = db_file.read()
+        self.assertEqual(data[18:20], b'\x02\x02')  # WAL mode
+        with server.RHAPI.db.open_readonly(path) as from_file:
+            self.assertEqual(from_file.path, path)
+            self.assertEqual(from_file.name, 'copy.db')
+            expected = self.readonly_db_contents(from_file)
+        self.assertGreater(len(expected['races']), 0)
+        self.assertGreater(len(expected['pilotruns']), 0)
+        for source in (data, bytearray(data), memoryview(data)):
+            with server.RHAPI.db.open_readonly(source, 'upload.db') as reader:
+                self.assertIsNone(reader.path)
+                self.assertEqual(reader.name, 'upload.db')
+                self.assertEqual(reader.server_api, server.RaceContext.rhdata.server_api)
+                self.assertEqual(self.readonly_db_contents(reader), expected)
+        reader = server.RHAPI.db.open_readonly(data)
+        self.assertEqual(reader.name, '(in memory)')
+        with self.assertRaises(sqlite3.OperationalError):
+            reader._conn.execute('DELETE FROM saved_race_meta')
+        reader.close()
+        self.assertIsNone(reader._conn)
+        with self.assertRaises(ValueError):
+            reader.races
+
+    def test_database_open_readonly_bad_bytes(self):
+        for data in (b'', bytearray(), memoryview(b''), b'not a database' * 100):
+            with self.assertRaises(ValueError):
+                server.RHAPI.db.open_readonly(data, 'bad.db')
+        empty_db = sqlite3.connect(':memory:')
+        empty_db.execute('CREATE TABLE other (id INTEGER)')
+        with self.assertRaises(ValueError):
+            server.RHAPI.db.open_readonly(empty_db.serialize())
+        empty_db.close()
+        path = self.make_readonly_test_db()
+        conn = sqlite3.connect(path)
+        conn.execute("UPDATE global_settings SET option_value = ? WHERE option_name = 'server_api'",
+                     (str(server.RaceContext.rhdata.server_api + 1),))
+        conn.commit()
+        conn.close()
+        with open(path, 'rb') as db_file:
+            data = db_file.read()
+        with self.assertRaisesRegex(ValueError, 'newer'):
+            server.RHAPI.db.open_readonly(data)
+
+    def test_database_open_readonly_bytes_fallback(self):
+        import util.DatabaseReader as DatabaseReader  # as RHAPI imports it
+        path = self.make_readonly_test_db()
+        with open(path, 'rb') as db_file:
+            data = db_file.read()
+        with server.RHAPI.db.open_readonly(path) as from_file:
+            expected = self.readonly_db_contents(from_file)
+        temp_dir = tempfile.mkdtemp(prefix='rh_test_ro_tmp_')
+        self.addCleanup(os.rmdir, temp_dir)
+        with mock.patch.object(DatabaseReader, '_HAS_DESERIALIZE', False), \
+                mock.patch.object(tempfile, 'tempdir', temp_dir), \
+                mock.patch.object(tempfile, 'NamedTemporaryFile', wraps=tempfile.NamedTemporaryFile) as named_temp:
+            with server.RHAPI.db.open_readonly(data, 'upload.db') as reader:
+                self.assertEqual(os.listdir(temp_dir), [])
+                self.assertEqual(reader.name, 'upload.db')
+                self.assertEqual(self.readonly_db_contents(reader), expected)
+                with self.assertRaises(sqlite3.OperationalError):
+                    reader._conn.execute('DELETE FROM saved_race_meta')
+            with self.assertRaises(ValueError):
+                server.RHAPI.db.open_readonly(b'not a database' * 100)
+            self.assertEqual(named_temp.call_count, 2)
+        self.assertEqual(os.listdir(temp_dir), [])
 
     def test_race_api(self):
         server.RHAPI.db.heat_add()

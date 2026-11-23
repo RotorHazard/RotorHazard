@@ -182,9 +182,14 @@ var rhui = {
 					.text(opt.label);
 				field.append(opt_el);
 			}
-			if (!settings.value) {
-				settings.value = settings.options[0].name;
+			if (!settings.value && settings.options && settings.options.length) {
+				settings.value = settings.options[0].value;
 			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'status') {
+			var field = $('<output>')
+				.addClass('uifield-status');
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'checkbox') {
@@ -309,6 +314,8 @@ var rhui = {
 
 		if (settings.field_type == 'checkbox') {
 			element.prop('checked', settings.value);
+		} else if (settings.field_type == 'status') {
+			element.text(settings.value == null ? '' : settings.value);
 		} else {
 			element.val(settings.value);
 		}
@@ -331,6 +338,197 @@ var rhui = {
 		}
 
 		return value;
+	},
+	_markdownConverter: null,
+	markdownToHtml: function(text) {
+		if (!this._markdownConverter) {
+			this._markdownConverter = new showdown.Converter({
+				ghCodeBlocks: true,
+				ghCompatibleHeaderId: true,
+				literalMidWordUnderscores: true,
+				simpleLineBreaks: true,
+				headerLevelStart: 3
+			});
+		}
+		return this._markdownConverter.makeHtml(text);
+	},
+	placePanel: function(panel_el, order) {
+		// puts a plugin panel before the first page panel with a higher order, or after the page's panels with no order
+		var end_el = $('#custom-ui');
+		if (order === null || order === undefined) {
+			end_el.append(panel_el);
+			return;
+		}
+		panel_el.attr('data-order', order);
+		var next_el = end_el.siblings('[data-order]').filter(function() {
+			return Number($(this).attr('data-order')) > order;
+		}).first();
+		panel_el.insertBefore(next_el.length ? next_el : end_el);
+	},
+	buildPanels: function(msg, page) {
+		// builds the plugin panels of a 'ui' message for this page
+		this.listenPanelUpdates(page);
+		if (msg.page != page) {
+			return;
+		}
+		if (msg.replace_panels !== false) {
+			$('#custom-ui').empty();
+			$('.plugin-panel').remove();
+		}
+
+		for (var i in msg.panels) {
+			var panel = msg.panels[i];
+
+			if (msg.replace_panels === false) {
+				var panel_el = $('#ui-custom-' + panel.panel.name);
+				var panel_content_el = panel_el.children('.panel-content');
+				panel_content_el.empty();
+			} else {
+				var panel_el = $('<div class="panel collapsing active plugin-panel">');
+				panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+				var panel_header_el = $('<div class="panel-header">');
+				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+				var panel_content_el = $('<div class="panel-content">');
+				panel_el.append(panel_header_el);
+
+				// panel open/close
+				if (panel.panel.open) {
+					panel_el.addClass('open');
+					panel_content_el.show();
+				} else {
+					panel_el.removeClass('open');
+					panel_content_el.hide();
+				}
+			}
+
+			// add markdown content
+			for (var md_idx in panel.markdowns) {
+				var md_element = $('<div class="ui-md-el">')
+					.attr('data-md-name', panel.markdowns[md_idx].name)
+					.html(this.markdownToHtml(panel.markdowns[md_idx].desc));
+				panel_content_el.append(md_element);
+			}
+
+			var form_el = $('<ol class="form">');
+
+			for (var f_idx in panel.settings) {
+				var settings = { ...panel.settings[f_idx] };
+
+				settings.wrapperEl = 'li';
+				settings.fieldClass = 'set_ui_option';
+				settings.id = 'genericOption_' + settings.name;
+				settings.data = {
+					field: settings.name,
+					section: settings.section
+				}
+
+				form_el.append(this.buildField(settings));
+			}
+
+			for (var f_idx in panel.fn_binds) {
+				var settings = { ...panel.fn_binds[f_idx] };
+
+				settings.wrapperEl = 'li';
+				settings.fieldClass = 'set_ui_binding_value';
+				settings.id = 'genericBinding_' + settings.name;
+				settings.data = {
+					field: settings.name,
+				}
+
+				form_el.append(this.buildField(settings));
+			}
+
+			panel_content_el.append(form_el);
+			panel_content_el.append(this.buildQuickbuttons(panel.quickbuttons));
+
+			panel_el.append(panel_content_el);
+
+			this.placePanel(panel_el, panel.panel.order);
+		}
+
+		// load panel state
+		for (var panel_id in rotorhazard.panelstates) {
+			var panel_obj = $('#' + panel_id);
+			var panelstate = rotorhazard.panelstates[panel_id];
+
+			if (panelstate) {
+				panel_obj.addClass('open');
+				panel_obj.children('.panel-content').stop().slideDown();
+			} else {
+				panel_obj.removeClass('open');
+				panel_obj.children('.panel-content').stop().slideUp();
+			}
+		}
+	},
+	_panelUpdatesPage: null,
+	listenPanelUpdates: function(page) {
+		// applies single field and markdown changes to this page's plugin panels
+		if (this._panelUpdatesPage !== null) {
+			return;
+		}
+		this._panelUpdatesPage = page;
+		var rhuiObj = this;
+		socket.on('ui_field_update', function (msg) {
+			if (msg.page == page) {
+				rhuiObj.applyFieldUpdate(msg);
+			}
+		});
+		socket.on('ui_markdown_update', function (msg) {
+			if (msg.page == page) {
+				rhuiObj.applyMarkdownUpdate(msg);
+			}
+		});
+	},
+	applyFieldUpdate: function(msg) {
+		var panel_el = $('#ui-custom-' + msg.panel);
+		var field = panel_el.find('[id="genericOption_' + msg.name + '"], [id="genericBinding_' + msg.name + '"]').first();
+		if (!field.length) {
+			return;
+		}
+		if (msg.options) {
+			var current = field.val();
+			field.empty();
+			for (var opt_id in msg.options) {
+				$('<option>')
+					.attr('value', msg.options[opt_id].value)
+					.text(msg.options[opt_id].label)
+					.appendTo(field);
+			}
+			if (field.find('option').filter(function () { return this.value == current; }).length) {
+				field.val(current);
+			}
+		}
+		if ('value' in msg) {
+			if (field.is('output')) {
+				field.text(msg.value == null ? '' : msg.value);
+			} else if (field.attr('type') == 'checkbox') {
+				field.prop('checked', Boolean(msg.value));
+			} else if (!field.is(':focus')) {  // leave a value the user is typing
+				field.val(msg.value);
+				if (field.attr('type') == 'range') {
+					this.updateRangeValue(field);
+				}
+			}
+		}
+	},
+	applyMarkdownUpdate: function(msg) {
+		var panel_content_el = $('#ui-custom-' + msg.panel).children('.panel-content');
+		if (!panel_content_el.length) {
+			return;
+		}
+		var md_element = panel_content_el.children('.ui-md-el').filter(function () {
+			return $(this).attr('data-md-name') == msg.name;
+		});
+		if (!md_element.length) {
+			md_element = $('<div class="ui-md-el">').attr('data-md-name', msg.name);
+			var last_md = panel_content_el.children('.ui-md-el').last();
+			if (last_md.length) {
+				last_md.after(md_element);
+			} else {
+				panel_content_el.prepend(md_element);
+			}
+		}
+		md_element.html(this.markdownToHtml(msg.desc));
 	},
 	buildQuickbuttons: function(btn_list) {
 		var btn_list_el = $('<div class="control-set">');
@@ -358,5 +556,34 @@ $(document).ready(function () {
 			namespace: 'quickbutton'
 		};
 		socket.emit('dispatch_event', data);
+	});
+
+	$(document).on('change', '.set_ui_option', function (event) {
+		var field = $(this).data('field');
+		var section = $(this).data('section');
+		var value = rhui.getFieldVal(this);
+
+		if (section) {
+			var data = {
+				section: section,
+				key: field,
+				value: value
+			};
+			socket.emit('set_config', data);
+		} else {
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
+		}
+	});
+
+	$(document).on('change', '.set_ui_binding_value', function (event) {
+		var data = {
+			name: $(this).data('field'),
+			value: rhui.getFieldVal(this)
+		};
+		socket.emit('set_ui_binding_value', data);
 	});
 });

@@ -98,120 +98,14 @@
 			rotorhazard.nodes[i] = new nodeModel();
 		}
 
-		// set up markdown converter
-		var panel_converter = new showdown.Converter({
-			ghCodeBlocks: true,
-			ghCompatibleHeaderId: true,
-			literalMidWordUnderscores: true,
-			simpleLineBreaks: true,
-			headerLevelStart: 3
-		});
-
 		socket.on('ui', function (msg) {
-			if (msg.page == 'format') {
-				if (msg.replace_panels !== false) {
-					$('#custom-ui').empty();
-				}
-
-				for (var i in msg.panels) {
-					var panel = msg.panels[i];
-
-					if (msg.replace_panels === false) {
-						var panel_el = $('#ui-custom-' + panel.panel.name);
-						var panel_content_el = panel_el.children('.panel-content');
-						panel_content_el.empty();
-					} else {
-						var panel_el = $('<div class="panel collapsing active">');
-						panel_el.attr('id', 'ui-custom-' + panel.panel.name);
-						var panel_header_el = $('<div class="panel-header">');
-						panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-						var panel_content_el = $('<div class="panel-content">');
-						panel_el.append(panel_header_el);
-
-						// panel open/close
-						if (panel.panel.open) {
-							panel_el.addClass('open');
-							panel_content_el.show();
-						} else {
-							panel_el.removeClass('open');
-							panel_content_el.hide();
-						}
-					}
-
-					// add markdown content
-					for (var md_idx in panel.markdowns) {
-						md_content = panel.markdowns[md_idx].desc;
-						md_output = panel_converter.makeHtml(md_content);
-						md_element = $('<div class="ui-md-el">').html(md_output);
-						panel_content_el.append(md_element);
-					}
-
-					var form_el = $('<ol class="form">');
-
-					for (var f_idx in panel.settings) {
-						var settings = { ...panel.settings[f_idx] };
-
-						settings.wrapperEl = 'li';
-						settings.fieldClass = 'set_ui_option';
-						settings.id = 'genericOption_' + settings.name;
-						settings.data = {
-							field: settings.name,
-						}
-
-						var field = rhui.buildField(settings);
-
-						form_el.append(field);
-					}
-					panel_content_el.append(form_el);
-					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
-
-					panel_el.append(panel_header_el);
-					panel_el.append(panel_content_el);
-
-					$('#custom-ui').append(panel_el);
-				}
-
-				// load panel state
-				for (var panel in rotorhazard.panelstates) {
-					var panel_obj = $('#' + panel);
-					var panelstate = rotorhazard.panelstates[panel];
-
-					if (panelstate) {
-						panel_obj.addClass('open');
-						panel_obj.children('.panel-content').stop().slideDown();
-					} else {
-						panel_obj.removeClass('open');
-						panel_obj.children('.panel-content').stop().slideUp();
-					}
-				}
-			}
+			rhui.buildPanels(msg, 'format');
 		});
 
 		socket.on('option_update', function (msg) {
 			for (var key in msg.options) {
 				var val = msg.options[key];
 				$('.set-option[data-option="' + key + '"]').val(val);
-			}
-		});
-
-		$(document).on('change', '.set_ui_option', function (event) {
-			var field = $(this).data('field');
-			var section = $(this).data('section');
-			var value = rhui.getFieldVal(this);
-
-			if (section) {
-				var data = {
-					section: section,
-					key: field,
-					value: value
-				};
-				socket.emit('set_config', data);
-			} else {
-				var data = {
-					option: field,
-					value: value
-				};
-				socket.emit('set_option', data);
 			}
 		});
 
@@ -3709,7 +3603,7 @@
 <main class="page-format">
 
 <!--Event Overview-->
-<div class="panel collapsing" id="event-details">
+<div data-order="100" class="panel collapsing" id="event-details">
 	<div class="panel-header">
 		<h2>{{ __('Event') }}</h2>
 	</div>
@@ -3837,7 +3731,7 @@
 </div>
 
 <!--Pilots list for editing-->
-<div class="panel collapsing" id="pilot_list">
+<div data-order="200" class="panel collapsing" id="pilot_list">
 	<div class="panel-header">
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
@@ -3874,7 +3768,7 @@
 </div>
 
 <!--Class and Race Program-->
-<div class="panel collapsing" id="classes_and_heats">
+<div data-order="300" class="panel collapsing" id="classes_and_heats">
 	<div class="panel-header">
 		<h2>{{ __('Classes and Heats') }}</h2>
 	</div>
@@ -3918,7 +3812,7 @@
 </div>
 
 <!--Generators-->
-<div id="heat_generator" class="panel collapsing">
+<div data-order="400" id="heat_generator" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Generators') }}</h2>
 	</div>
@@ -3957,7 +3851,7 @@
 </div>
 
 <!--Race Format-->
-<div id="race_format" class="panel collapsing">
+<div data-order="500" id="race_format" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Race Formats') }}</h2>
 	</div>
@@ -4108,7 +4002,7 @@
 </div>
 
 <!--Data Management-->
-<div class="panel collapsing" id="data-management">
+<div data-order="600" class="panel collapsing" id="data-management">
 	<div class="panel-header">
 		<h2>{{ __('Data Management') }}</h2>
 	</div>

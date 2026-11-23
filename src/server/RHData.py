@@ -50,6 +50,28 @@ class RHData():
     def __(self, *args, **kwargs):
         return self._racecontext.language.__(*args, **kwargs)
 
+    @property
+    def server_api(self):
+        return self._SERVER_API
+
+    @property
+    def backup_dir(self):
+        return self._DB_BKP_DIR_NAME
+
+    def list_backup_files(self):
+        '''Returns sorted list of database files in the backup directory, or None if it does not exist'''
+        if not os.path.exists(self._DB_BKP_DIR_NAME):
+            return None
+
+        files = []
+        for (_, _, filenames) in os.walk(self._DB_BKP_DIR_NAME):
+            files.extend(filenames)
+            break
+
+        files.sort(key=str.casefold)
+
+        return list(filter(lambda x: x.endswith(".db"), files))
+
     # Integrity Checking
     def check_integrity(self):
         try:

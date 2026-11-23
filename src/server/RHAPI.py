@@ -1,6 +1,8 @@
 ''' Class to access race functions and details '''
 import functools
+import os
 from Database import LapSource
+import util.DatabaseReader as DatabaseReader
 
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 12
@@ -73,20 +75,35 @@ class UserInterfaceAPI():
     def panels(self):
         return self._racecontext.rhui.ui_panels
 
-    def register_panel(self, name, label, page, order=0, open = False):
+    def register_panel(self, name, label, page, order=None, open = False):
         return self._racecontext.rhui.register_ui_panel(name, label, page, order, open)
 
     # Quick button
-    def register_quickbutton(self, panel, name, label, function, args=None):
-        return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
+    def register_quickbutton(self, panel, name, label, function, args=None, requires_auth=False, client_context=False):
+        return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args, requires_auth, client_context)
 
     # Markdown
     def register_markdown(self, panel, name, desc):
         return self._racecontext.rhui.register_markdown(panel, name, desc)
 
+    def update_field(self, panel, name, value):
+        return self._racecontext.rhui.update_field(panel, name, value)
+
+    def update_field_options(self, panel, name, options):
+        return self._racecontext.rhui.update_field_options(panel, name, options)
+
+    def update_markdown(self, panel, name, desc):
+        return self._racecontext.rhui.update_markdown(panel, name, desc)
+
     # Blueprint
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)
+
+    def register_script(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'script')
+
+    def register_stylesheet(self, page, url):
+        return self._racecontext.rhui.register_page_asset(page, url, 'stylesheet')
 
     # Messaging
     def message_speak(self, message):
@@ -102,11 +119,14 @@ class UserInterfaceAPI():
         self._racecontext.rhui.emit_clear_priority_messages()
 
     # Socket
-    def socket_listen(self, message, handler, requires_auth=False):
-        self._racecontext.rhui.socket_listen(message, handler, requires_auth)
+    def socket_listen(self, message, handler, requires_auth=False, client_context=False):
+        self._racecontext.rhui.socket_listen(message, handler, requires_auth, client_context)
 
     def socket_send(self, message, data):
         self._racecontext.rhui.socket_send(message, data)
+
+    def socket_send_to(self, sid, message, data):
+        self._racecontext.rhui.socket_send_to(sid, message, data)
 
     def socket_broadcast(self, message, data):
         self._racecontext.rhui.socket_broadcast(message, data)
@@ -204,8 +224,10 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
-    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
-        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order)
+    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0,
+                                  client_context=False):
+        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order,
+                                                          client_context)
 
 #
 # Database Access
@@ -918,6 +940,24 @@ class DatabaseAPI():
     def options(self):
         return self._racecontext.rhdata.get_options()
 
+    @property
+    def backup_dir(self):
+        return os.path.abspath(self._racecontext.rhdata.backup_dir)
+
+    def backup_list(self):
+        return self._racecontext.rhdata.list_backup_files() or []
+
+    def open_readonly(self, source, name=None):
+        return DatabaseReader.DatabaseReader(source, self._racecontext.rhdata.server_api, name)
+
+    @callWithDatabaseWrapper
+    def pilotrun_history(self, pilotrun_or_id):
+        pilotrun = self._racecontext.rhdata.get_savedPilotRace(pilotrun_or_id) \
+            if isinstance(pilotrun_or_id, int) else pilotrun_or_id
+        if not pilotrun:
+            return None
+        return DatabaseReader.decode_history(pilotrun)
+
     @callWithDatabaseWrapper
     def option(self, name, default=False, as_int=False):
         # Deprecation of options migrated to config
@@ -1393,6 +1433,25 @@ class HardwareInterfaceAPI():
 
     def seat_crossing_end(self, seat_index):
         return self._racecontext.interface.force_end_crossing(seat_index)
+
+    def seat_provider_type(self, seat_index):
+        return self._racecontext.interface.nodes[seat_index].provider_type
+
+    def is_mock_only(self):
+        nodes = self._racecontext.interface.nodes
+        return bool(nodes) and all(node.provider_type == InterfaceType.MOCK for node in nodes)
+
+    def register_mock_signal(self, name, label, provider):
+        import MockSignal  # the interface dir is on the path only after this module is loaded
+        if str(name).isdigit():
+            logger.warning("Mock signal name '{}' rejected; numbers are reserved for built-in signals".format(name))
+            return False
+        return MockSignal.register_signal(name, label, provider)
+
+    @property
+    def mock_signals(self):
+        import MockSignal
+        return [{'name': entry.name, 'label': entry.label} for entry in MockSignal.get_signals()]
 
 #
 # Server Config

@@ -149,15 +149,6 @@
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
-		// set up markdown converter
-		var panel_converter = new showdown.Converter({
-			ghCodeBlocks: true,
-			ghCompatibleHeaderId: true,
-			literalMidWordUnderscores: true,
-			simpleLineBreaks: true,
-			headerLevelStart: 3
-		});
-
 		socket.on('update_server_messages', function (str) {
 			$('#server_messages').html(str);
 		});
@@ -170,129 +161,7 @@
 		});
 
 		socket.on('ui', function (msg) {
-			if (msg.page == 'settings') {
-				if (msg.replace_panels !== false) {
-					$('#custom-ui').empty();
-				}
-
-				for (var i in msg.panels) {
-					var panel = msg.panels[i];
-
-					if (msg.replace_panels === false) {
-						var panel_el = $('#ui-custom-' + panel.panel.name);
-						var panel_content_el = panel_el.children('.panel-content');
-						panel_content_el.empty();
-					} else {
-						var panel_el = $('<div class="panel collapsing active">');
-						panel_el.attr('id', 'ui-custom-' + panel.panel.name);
-						var panel_header_el = $('<div class="panel-header">');
-						panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-						var panel_content_el = $('<div class="panel-content">');
-						panel_el.append(panel_header_el);
-
-						// panel open/close
-						if (panel.panel.open) {
-							panel_el.addClass('open');
-							panel_content_el.show();
-						} else {
-							panel_el.removeClass('open');
-							panel_content_el.hide();
-						}
-					}
-
-					// add markdown content
-					for (var md_idx in panel.markdowns) {
-						md_content = panel.markdowns[md_idx].desc;
-						md_output = panel_converter.makeHtml(md_content);
-						md_element = $('<div class="ui-md-el">').html(md_output);
-						panel_content_el.append(md_element);
-					}
-
-					var form_el = $('<ol class="form">');
-
-					for (var f_idx in panel.settings) {
-						var settings = { ...panel.settings[f_idx] };
-
-						settings.wrapperEl = 'li';
-						settings.fieldClass = 'set_ui_option';
-						settings.data = {
-							field: settings.name,
-							section: settings.section
-						}
-
-						var field = rhui.buildField(settings);
-						form_el.append(field);
-					}
-
-					for (var f_idx in panel.fn_binds) {
-						var settings = { ...panel.fn_binds[f_idx] };
-
-						settings.wrapperEl = 'li';
-						settings.fieldClass = 'set_ui_binding_value';
-						settings.data = {
-							field: settings.name,
-						}
-
-						var field = rhui.buildField(settings);
-						form_el.append(field);
-					}
-
-					panel_content_el.append(form_el);
-					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
-
-					panel_el.append(panel_header_el);
-					panel_el.append(panel_content_el);
-
-					$('#custom-ui').append(panel_el);
-				}
-
-				// load panel state
-				for (var panel in rotorhazard.panelstates) {
-					var panel_obj = $('#' + panel);
-					var panelstate = rotorhazard.panelstates[panel];
-
-					if (panelstate) {
-						panel_obj.addClass('open');
-						panel_obj.children('.panel-content').stop().slideDown();
-					} else {
-						panel_obj.removeClass('open');
-						panel_obj.children('.panel-content').stop().slideUp();
-					}
-				}
-			}
-		});
-
-		$(document).on('change', '.set_ui_option', function (event) {
-			var field = $(this).data('field');
-			var section = $(this).data('section');
-			var value = rhui.getFieldVal(this);
-
-			if (section) {
-				var data = {
-					section: section,
-					key: field,
-					value: value
-				};
-				socket.emit('set_config', data);
-			} else {
-				var data = {
-					option: field,
-					value: value
-				};
-				socket.emit('set_option', data);
-			}
-		});
-
-		$(document).on('change', '.set_ui_binding_value', function (event) {
-			var field = $(this).data('field');
-			var section = $(this).data('section');
-			var value = rhui.getFieldVal(this);
-
-			var data = {
-				name: field,
-				value: value
-			};
-			socket.emit('set_ui_binding_value', data);
+			rhui.buildPanels(msg, 'settings');
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -2684,7 +2553,7 @@
 </div>
 
 <!--Frequency Setup-->
-<div class="panel collapsing">
+<div data-order="100" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Frequency Setup') }}</h2>
 	</div>
@@ -2737,7 +2606,7 @@
 </div>
 
 <!--Sensor Tuning-->
-<div class="panel collapsing">
+<div data-order="200" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Sensor Tuning') }}</h2>
 	</div>
@@ -2844,7 +2713,7 @@
 </div>
 
 <!--Voice Settings-->
-<div class="panel collapsing">
+<div data-order="300" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Audio Control') }}</h2>
 	</div>
@@ -3092,7 +2961,7 @@
 </div>
 
 <!--Event Actions-->
-<div class="panel collapsing">
+<div data-order="400" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Event Actions') }}</h2>
 	</div>
@@ -3108,7 +2977,7 @@
 
 <!--LED controls-->
 {% if led_events_enabled %}
-<div class="panel collapsing">
+<div data-order="500" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
@@ -3119,7 +2988,7 @@
 {% endif %}
 
 {% if led_enabled %}
-<div class="panel collapsing">
+<div data-order="600" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
@@ -3158,7 +3027,7 @@
 
 <!--VRx Control-->
 {% if vrx_enabled %}
-<div class="panel collapsing">
+<div data-order="700" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('VRx Control') }}</h2>
 	</div>
@@ -3171,7 +3040,7 @@
 {% endif %}
 
 <!-- Plugins -->
-<div class="panel collapsing">
+<div data-order="800" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Plugins') }}</h2>
 	</div>
@@ -3208,7 +3077,7 @@
 </div>
 
 <!-- System -->
-<div class="panel collapsing">
+<div data-order="900" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('System') }}</h2>
 	</div>
@@ -3359,7 +3228,7 @@
 </div>
 
 <!-- Cluster -->
-<div class="panel collapsing">
+<div data-order="1000" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Secondary Timers') }}</h2>
 	</div>
@@ -3377,7 +3246,7 @@
 </div>
 
 <!-- Sensors -->
-<div class="panel collapsing">
+<div data-order="1100" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Environment Sensors') }}</h2>
 	</div>
@@ -3394,7 +3263,7 @@
 </div>
 
 <!-- Save/Load Settings -->
-<div class="panel collapsing">
+<div data-order="1200" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Backup/Restore Settings') }}</h2>
 	</div>
