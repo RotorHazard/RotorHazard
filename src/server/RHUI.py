@@ -30,6 +30,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+IMDTABLER_MAX_FREQS = 99  # upper bound on frequencies accepted for an IMDTabler query
+
 from FlaskAppObj import APP
 APP.app_context().push()
 
@@ -2054,19 +2056,35 @@ class RHUI():
         if callouts:
             emit('callouts', json.loads(callouts))
 
-    def emit_imdtabler_page(self, IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, **_params):
+    @staticmethod
+    def imdtabler_freq_args(fs_list):
+        '''Returns the given frequencies as a list of validated integer strings.'''
+        freq_args = []
+        for val in fs_list:
+            try:
+                freq_val = int(val)  # ignore any value that is not a number
+            except (TypeError, ValueError):
+                continue
+            if freq_val > 0:  # drop any zero or negative entries
+                freq_args.append(str(freq_val))
+        if len(freq_args) > IMDTABLER_MAX_FREQS:  # output size grows with the square of the count
+            logger.info('Limiting IMDTabler query from {0} to {1} frequencies'.format(len(freq_args), IMDTABLER_MAX_FREQS))
+            freq_args = freq_args[:IMDTABLER_MAX_FREQS]
+        return freq_args
+
+    def emit_imdtabler_page(self, IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, **params):
         '''Emits IMDTabler page, using current profile frequencies.'''
         if Use_imdtabler_jar_flag:
             try:                          # get IMDTabler version string
                 imdtabler_ver = subprocess.check_output( \
-                                    'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).decode("utf-8").rstrip()
+                                    ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).decode("utf-8").rstrip()
                 profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
                 fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:self._racecontext.race.num_nodes]))  # remove duplicates
                 fs_list = []
                 for val in fi_list:  # convert list of integers to list of strings
                     if val > 0:      # drop any zero entries
                         fs_list.append(str(val))
-                self.emit_imdtabler_data(IMDTABLER_JAR_NAME, fs_list, imdtabler_ver)
+                self.emit_imdtabler_data(IMDTABLER_JAR_NAME, fs_list, imdtabler_ver, **params)
             except Exception:
                 logger.exception('emit_imdtabler_page exception')
 
@@ -2074,9 +2092,10 @@ class RHUI():
         '''Emits IMDTabler data for given frequencies.'''
         try:
             imdtabler_data = None
+            fs_list = self.imdtabler_freq_args(fs_list)  # only pass through validated frequency values
             if len(fs_list) > 2:  # if 3+ then invoke jar; get response
                 imdtabler_data = subprocess.check_output( \
-                            'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True).decode("utf-8")
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list).decode("utf-8")
         except Exception:
             imdtabler_data = None
             logger.exception('emit_imdtabler_data exception')
@@ -2102,7 +2121,7 @@ class RHUI():
                     fs_list.append(str(val))
             if len(fs_list) > 2:
                 imd_val = subprocess.check_output(  # invoke jar; get response
-                            'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).decode("utf-8").rstrip()
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).decode("utf-8").rstrip()
         except Exception:
             imd_val = None
             logger.exception('emit_imdtabler_rating exception')

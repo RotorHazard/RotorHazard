@@ -1463,6 +1463,24 @@ main.page-home {
 	margin-top: 0;
 }
 
+.page-imdtabler table {
+	min-width: 0;  /* size tables to their content, not the full page width */
+}
+
+.page-imdtabler .freq-entry table,
+.page-imdtabler .freq-entry th,
+.page-imdtabler .freq-entry td {
+	border: none;  /* plain layout table for the entry row, not a data table */
+}
+
+.page-imdtabler .freq-entry td {
+	vertical-align: middle;  /* center the label and button on the entry field */
+}
+
+.page-imdtabler .freq-entry td:first-child {
+	padding-left: 0;  /* line the label up with the text above it */
+}
+
 /* results page: cell text linking to the marshal page or a race, styled as plain text where there is a mouse pointer */
 .cell-link,
 .cell-link:hover {

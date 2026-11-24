@@ -3464,7 +3464,8 @@ def get_callout_text(data):
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
     ''' Update IMDTabler page with new frequencies list '''
-    RaceContext.rhui.emit_imdtabler_data(IMDTABLER_JAR_NAME, data['freq_list'].replace(',',' ').split())
+    if Use_imdtabler_jar_flag:  # only invoke the jar if it was found at startup
+        RaceContext.rhui.emit_imdtabler_data(IMDTABLER_JAR_NAME, data['freq_list'].replace(',',' ').split(), nobroadcast=True)
 
 @SOCKET_IO.on('clean_cache')
 @requires_socketio_auth
@@ -5008,7 +5009,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # Import IMDTabler
         if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             try:
-                java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
+                java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT).decode("utf-8")
                 logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
             except:
                 java_ver = None
@@ -5017,8 +5018,8 @@ def rh_program_initialize(reg_endpoints_flag=True):
             if java_ver:
                 try:
                     chk_imdtabler_ver = subprocess.check_output( \
-                        'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
-                        stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
+                        ['java', '-jar', IMDTABLER_JAR_NAME, '-v'], \
+                        stderr=subprocess.STDOUT).decode("utf-8").rstrip()
                     global Use_imdtabler_jar_flag
                     Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
                     logger.debug('Found installed: ' + chk_imdtabler_ver)
