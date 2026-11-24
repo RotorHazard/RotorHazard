@@ -1151,6 +1151,14 @@ Apply a marshalled correction to an existing `SavedPilotRace`: enter/exit calibr
 Suggest EnterAt/ExitAt values for a saved pilot run from its stored RSSI history, as the Marshal page's "Auto Adjust" does: the widest range of EnterAt over which the crossing count holds steady is taken as the gate band, and ExitAt is placed where the recalculated laps are cleanest. Nothing is changed; pass the values to `pilotrun_alter` to apply them. Returns `dict` with `enter_at`, `exit_at` and `lap_count` (the laps a recalculation with those values gives), or `None` if the run has no usable RSSI history or no gate passes stand out.
 - `pilotrace_id` (int): ID of pilot run record
 
+#### db.pilotrun_auto_adjust(pilotrace_id)
+Apply the Marshal page's "Auto Adjust" to a saved pilot run and save it: the suggested EnterAt/ExitAt (as from `pilotrun_suggest_calibration`) are stored with the run, and its laps are replaced by the laps recalculated with those values plus the run's existing manual and API laps. The run's node also gets the suggested EnterAt/ExitAt, saved to the current profile; if a race is running and the node is crossing the gate, they are set when the crossing ends. A priority message reporting the new values is shown, result caches are rebuilt, the levels are re-tuned if adaptive calibration is on, and `Evt.LAPS_RESAVE` is triggered, as for a save on the Marshal page. The previous values and laps, and the node's previous EnterAt/ExitAt, are kept for `pilotrun_auto_adjust_undo`. Returns `dict` with `enter_at`, `exit_at`, `mode` (`'replace'`), `lap_count` (counted laps after the change), `laps_added` (change in the number of counted laps) and `recovered_laps` (always empty here; see `race.seat_auto_adjust`), or `None` if nothing was changed.
+- `pilotrace_id` (int): ID of pilot run record
+
+#### db.pilotrun_auto_adjust_undo(pilotrace_id)
+Restore a saved pilot run's EnterAt/ExitAt and laps to what they were before its last `pilotrun_auto_adjust`, and put the node's previous EnterAt/ExitAt back, saved to the current profile, with the same follow-up as that call. Kept values are held in memory until used or the server restarts. Returns `True` if restored, `False` if there was nothing to undo.
+- `pilotrace_id` (int): ID of pilot run record
+
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.
 
@@ -1546,6 +1554,35 @@ Add a lap record to the current race. Laps must be entered sequentially. No retu
 Replace all laps of a seat in the current race, as the Marshal page does for the current race: laps are renumbered, results recalculated and the lap list broadcast to all clients, and `Evt.RACE_LAPS_REPLACE` is triggered. No return value.
 - `seat_index` (int): seat whose laps to replace
 - `laps` (list[dict]): replacement lap list, in order; each item requires `lap_time_stamp` and `lap_time` (both in milliseconds), and may also include `source` (default `LapSource.API`) and `deleted` (default `False`)
+
+#### race.lap_insert(seat_index, lap_time_stamp, source=LapSource.API, peak=None)
+Insert a lap into the current race (running or stopped) at its place by time stamp, for a pass the seat missed. Unlike `lap_add`, the lap need not be the latest. Later laps are renumbered, lap times and finished flags recalculated, later splits moved up a lap, the win condition and leader rechecked and the lap list broadcast to all clients, and `Evt.LAP_INSERT` is triggered with `node_index` and `lap_index`. Minimum lap rules are not applied. Returns the index of the new lap in the seat's lap list, or `None` if the race is not running or stopped.
+- `seat_index` (int): seat on which to insert the lap
+- `lap_time_stamp` (int): time stamp of the lap, in milliseconds since the race start
+- `source` _(optional)_ (int): `LapSource` of the lap
+- `peak` _(optional)_ (int): peak RSSI of the pass, stored with the lap
+
+#### race.seat_suggest_calibration(seat_index)
+Suggest EnterAt/ExitAt values for a seat of the current race from its RSSI history so far, as `db.pilotrun_suggest_calibration` does for a saved run. Nothing is changed. Returns `dict` with `enter_at`, `exit_at` and `lap_count`, or `None` if the seat has no usable RSSI history or no gate passes stand out.
+- `seat_index` (int): seat to suggest values for
+
+#### race.seat_auto_adjust(seat_index)
+Apply the Marshal page's "Auto Adjust" to a seat of the current race. When a pass is recovered, or once the race is stopped, the suggested EnterAt/ExitAt are set on the node and saved to the current profile.
+- While the race is running (`'recover'` mode), only passes the seat has no lap for are added, with `race.lap_insert`, as recalculated laps; existing laps are kept. Passes still in progress or ending within the last few seconds, passes within a second of an existing (or deleted) lap, and, unless the minimum lap behavior is "Highlight", passes closer than the minimum lap time to a counted lap are skipped. If the node is crossing the gate, the new levels are set when the crossing ends. If no pass is added, nothing is changed: EnterAt/ExitAt are left as they were, no undo is kept (an earlier one stays available), and `None` is returned.
+- Once the race is stopped (`'replace'` mode), the seat's laps are replaced by the recalculated laps plus its existing manual and API laps, as with `laps_replace`.
+
+The previous values (and, once stopped, laps) are kept for `seat_auto_adjust_undo`. Returns `dict` with `enter_at`, `exit_at`, `mode`, `lap_count` (counted laps after the change), `laps_added` (change in the number of counted laps) and `recovered_laps`, or `None` if nothing was changed, including when no race is running or stopped.
+
+`recovered_laps` lists the laps added in `'recover'` mode that are still present, in time stamp order, and is empty in `'replace'` mode. Each is a `dict` with:
+- `lap_number` (int): lap number as the Run page shows it (`-1` for a late lap)
+- `lap_time` (int): the lap's own lap time in ms, from the previous crossing
+- `lap_time_formatted` (string): the lap time as the Run page shows it
+- `lap_time_stamp` (int): the lap's time stamp in ms from the race start
+- `seat_index` (int): seat to adjust
+
+#### race.seat_auto_adjust_undo(seat_index)
+Undo the seat's last `seat_auto_adjust` in the current race: EnterAt/ExitAt are set back and saved to the profile, and the laps it added are deleted (`'recover'` mode) or its previous laps put back (`'replace'` mode). Laps recorded since the adjustment are kept in `'recover'` mode. Returns `True` if undone, `False` if there was nothing to undo in the current race.
+- `seat_index` (int): seat to restore
 
 #### race.last_race
 _Read only_
