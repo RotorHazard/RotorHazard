@@ -837,6 +837,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set-debug-mode">{{ __('Server Debug Mode') }}</label>
+					<div class="desc">{{ __('Enable developer features (some need restart)') }}</div>
 				</div>
 				<select id="set-debug-mode" class="set-config" data-section="GENERAL" data-key="DEBUG" data-type="boolean">
 					<option value="true" {{'selected' if getConfig('GENERAL', 'DEBUG')==true}}>{{ __('Debug') }}</option>
