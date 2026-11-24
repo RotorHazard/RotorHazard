@@ -42,7 +42,7 @@ def heartbeat_thread_function():
 gevent.spawn(heartbeat_thread_function)
 
 APP = Flask(__name__, static_url_path='/static')
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=None)  # None allows same-origin only
 
 def __(s):
     return s
@@ -57,7 +57,7 @@ def start(port_val = 5080):
         webbrowser.open('http://127.0.0.1:'+str(port_val))
     gevent.spawn(openWindow)
     try:
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=False, use_reloader=False)
     except KeyboardInterrupt:
         print("Server terminated by keyboard interrupt")
     except Exception as ex:

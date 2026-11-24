@@ -3790,7 +3790,8 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
 
     try:
         # the following fn does not return until the server is shutting down
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, \
+                      debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'), use_reloader=False)
         logger.info("Server is shutting down")
     except KeyboardInterrupt:
         logger.info("Server terminated by keyboard interrupt")
