@@ -3516,6 +3516,24 @@
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
 
+		$('#set_recent_heats_count').change(function (event) {
+			var data = {
+				option: 'recentHeatsCount',
+				value: $(this).val()
+			};
+			// refresh recent heat lists once the server has stored the new value
+			// (if classes are not loaded yet, lists are fetched when they are built)
+			socket.emit('set_option', data, function () {
+				if (!rotorhazard.event.classes) {
+					return;
+				}
+				socket.emit('get_class_recents', {'class_id': null});
+				for (var idx in rotorhazard.event.classes) {
+					socket.emit('get_class_recents', {'class_id': rotorhazard.event.classes[idx].id});
+				}
+			});
+		});
+
 		$(document).on('change', '.set-option', function (event) {
 			var data = {
 				option: $(this).data('option'),
@@ -3631,6 +3649,13 @@
 					<p class="desc">{{ __('Used in results calculations') }}</p>
 				</div>
 				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ get_optionInt('consecutivesCount') }}" placeholder="3">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_recent_heats_count">{{ __('Recent Heats Shown') }}</label>
+					<p class="desc">{{ __('Number of recent heats listed per class') }}</p>
+				</div>
+				<input type="number" id="set_recent_heats_count" min="1" max="999" value="{{ get_optionInt('recentHeatsCount', 6) }}" placeholder="6">
 			</li>
 			<li>
 				<div class="label-block">
