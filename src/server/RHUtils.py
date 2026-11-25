@@ -10,6 +10,7 @@ import subprocess
 import glob
 import socket
 import random
+import string
 import numbers
 import functools
 import traceback
@@ -332,6 +333,15 @@ def findPrefixedSubstring(dataStr, prefixStr, maxTextSize):
         if ePos > sPos and ePos - sPos <= maxTextSize:
             return dataStr[sPos:ePos].decode()
     return None
+
+# Returns a random string for use as a secret key, preferring the system CSPRNG.
+def generateSecretKeyStr(num_chars=50):
+    try:
+        import secrets
+        return ''.join(secrets.choice(string.ascii_letters) for _ in range(num_chars))
+    except Exception:
+        logger.error("Unable to use 'secrets' for key generation; falling back to 'random' (key will be weaker)")
+        return ''.join(random.choice(string.ascii_letters) for _ in range(num_chars))
 
 # Wrapper to be used as a decorator on thread functions, etc, so their exception
 # details are sent to the log file (instead of 'stderr').

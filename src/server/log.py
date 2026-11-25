@@ -2,6 +2,7 @@ import io
 import sys
 import os
 import glob
+import json
 import logging
 import logging.handlers
 import platform
@@ -466,6 +467,39 @@ def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
     return num_del, err_str
 
 
+REDACTED_SECRET_KEY_STR = "xxxxxxxxxxxxxxxxxREDACTEDxxxxxxxxxxxxxxxxxxxxxxxxx"
+REDACTED_PASSWORD_STR = "-REDACTED-"
+
+def redact_config_values(cfg_obj):
+    '''Returns a copy of the given config data with secret values replaced, leaving empty values as they are.'''
+    if isinstance(cfg_obj, dict):
+        out_dict = {}
+        for key, val in cfg_obj.items():
+            if isinstance(val, (dict, list)):
+                out_dict[key] = redact_config_values(val)
+            elif val and 'SECRET_KEY' in key.upper():
+                out_dict[key] = REDACTED_SECRET_KEY_STR
+            elif val and 'PASSWORD' in key.upper():
+                out_dict[key] = REDACTED_PASSWORD_STR
+            else:
+                out_dict[key] = val
+        return out_dict
+    if isinstance(cfg_obj, list):
+        return [redact_config_values(item) for item in cfg_obj]
+    return cfg_obj
+
+def add_redacted_config_to_zip(logger, zip_file_obj, cfg_file_path):
+    '''Adds a copy of the given config file to the .zip file, with its secret values redacted.'''
+    try:
+        with open(cfg_file_path, 'r') as file_obj:  # same as how the server reads config files
+            cfg_data = json.load(file_obj)
+    except Exception:
+        logger.warning("Not adding unreadable or non-JSON config file to .zip file: {0}".format(cfg_file_path))
+        return
+    zip_info = zipfile.ZipInfo.from_file(cfg_file_path)  # keep the name and timestamp of the original
+    zip_info.compress_type = zipfile.ZIP_DEFLATED
+    zip_file_obj.writestr(zip_info, json.dumps(redact_config_values(cfg_data), indent=2))
+
 def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=None, boot_config_file="/boot/firmware/config.txt", \
                          alt_boot_config_file="/boot/config.txt", cfg_bkp_dir_name="cfg_bkp"):
     zip_file_obj = None
@@ -486,7 +520,7 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
             try:
                 # include configuration, database, .bashrc, OS boot-config files, etc
                 if config_file and os.path.isfile(config_file):
-                    zip_file_obj.write(config_file)
+                    add_redacted_config_to_zip(logger, zip_file_obj, config_file)
                 if db_file and os.path.isfile(db_file):
                     # Checkpoint WAL to flush all changes into main DB file before adding to zip
                     try:
@@ -521,7 +555,7 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                     for root, dirs, files in os.walk(cfg_bkp_dir_name):  #pylint: disable=unused-variable
                         if root == cfg_bkp_dir_name:  # don't include sub-directories
                             for fname in files:
-                                zip_file_obj.write(os.path.join(root, fname))
+                                add_redacted_config_to_zip(logger, zip_file_obj, os.path.join(root, fname))
             except Exception:
                 logger.exception("Error adding configuration backup files to .zip file")
             try:
