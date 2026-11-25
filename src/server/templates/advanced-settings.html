@@ -637,6 +637,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set-cors-hosts">{{ __('CORS Allowed Hosts') }}</label>
+					<div class="desc">{{ __('Set to * to allow external access') }}</div>
 				</div>
 				<input type="text" id="set-cors-hosts" class="set-config" data-section="GENERAL" data-key="CORS_ALLOWED_HOSTS" value="{{ getConfig('GENERAL', 'CORS_ALLOWED_HOSTS') }}">
 			</li>
