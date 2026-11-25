@@ -505,6 +505,13 @@ def shutdown_session(exception=None):
     if Database.DB_session:
         Database.DB_session.remove()
 
+@APP.after_request
+def add_security_headers(response):
+    '''Adds response headers that harden the pages without changing how they are used.'''
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('Referrer-Policy', 'same-origin')
+    return response
+
 #
 # Routes
 #
