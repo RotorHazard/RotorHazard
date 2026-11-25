@@ -1088,7 +1088,10 @@ def on_load_data(data):
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
-            log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
+            if AdminAuth.socketio_auth_ok(RaceContext):  # log contents and forwarding are admin-only
+                log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
+            else:
+                logger.warning("Ignoring 'hardware_log_init' request from unauthenticated client")
         else:
             logger.warning('Called undefined load type: {}'.format(load_type))
 
