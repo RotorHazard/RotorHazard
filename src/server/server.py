@@ -1610,6 +1610,13 @@ def on_backup_database(*args):
             })
     on_list_backups()
 
+def get_db_bkp_file_path(file_name):
+    '''Returns the path to the given file in the database-backup directory, or None if the name is not a plain file name.'''
+    if not file_name or file_name in ('.', '..') or os.path.basename(file_name) != file_name:
+        logger.warning("Ignoring database-backup file name that is not a plain file name: {0}".format(file_name))
+        return None
+    return os.path.join(DB_BKP_DIR_NAME, file_name)
+
 @SOCKET_IO.on('download_database')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
@@ -1618,7 +1625,9 @@ def on_download_database(data):
     if type(data) is dict:
         db_file = data.get('event_file')
         if db_file and db_file!= '-':
-            download_database(os.path.join(DB_BKP_DIR_NAME, db_file))
+            bkp_path = get_db_bkp_file_path(db_file)
+            if bkp_path:
+                download_database(bkp_path)
 
 def download_database(db_file):
     # read DB data and convert to Base64
@@ -1699,9 +1708,9 @@ def on_restore_database(data):
     success = None
     if 'backup_file' in data:
         backup_file = data['backup_file']
-        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+        backup_path = get_db_bkp_file_path(backup_file)
 
-        if os.path.exists(backup_path):
+        if backup_path and os.path.exists(backup_path):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
             success = restore_database_file(backup_path)
             Events.trigger(Evt.DATABASE_RESTORE, {
@@ -1724,9 +1733,9 @@ def on_delete_database_file(data):
     '''Restore database.'''
     if 'backup_file' in data:
         backup_file = data['backup_file']
-        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+        backup_path = get_db_bkp_file_path(backup_file)
 
-        if os.path.exists(backup_path):
+        if backup_path and os.path.exists(backup_path):
             logger.info('Deleting backup file {0}'.format(backup_file))
             os.remove(backup_path)
 
