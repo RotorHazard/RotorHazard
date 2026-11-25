@@ -169,7 +169,6 @@ Database.initialize(_DB_URI)
 
 import socket
 import random
-import string
 import json
 import html
 from pathlib import Path
@@ -4543,7 +4542,7 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
         RaceContext.serverconfig.save_config()
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
         if not RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY'):
-            new_key = ''.join(random.choice(string.ascii_letters) for _ in range(50))
+            new_key = RHUtils.generateSecretKeyStr()
             RaceContext.serverconfig.set_item('SECRETS', 'SECRET_KEY', new_key)
 
         APP.config['SECRET_KEY'] = RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY')
