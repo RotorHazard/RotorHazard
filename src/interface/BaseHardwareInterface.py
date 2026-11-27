@@ -220,10 +220,10 @@ class BaseHardwareInterface(object):
                 new_freq = node.frequency + node.scan_interval
                 if new_freq < node.min_scan_frequency or new_freq > node.max_scan_frequency:
                     new_freq = node.min_scan_frequency
-                    node.scan_interval /= node.scan_zoom
+                    node.scan_interval //= node.scan_zoom
                     if node.scan_interval < node.min_scan_interval:
                         node.scan_interval = node.max_scan_interval
-                self.set_frequency(i, new_freq)
+                self.set_frequency(i, int(new_freq))
         return json
 
     def get_calibration_threshold_json(self):
