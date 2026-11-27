@@ -291,7 +291,9 @@ if __name__ == '__main__' and len(sys.argv) > 1:
             sys.exit(1)
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=RaceContext.serverconfig.get_item('GENERAL', 'CORS_ALLOWED_HOSTS'), max_http_buffer_size=5e7)
+CORS_ALLOWED_HOSTS_VAL = RaceContext.serverconfig.get_item('GENERAL', 'CORS_ALLOWED_HOSTS')
+# need to pass an empty 'CORS_ALLOWED_HOSTS' value as None for "same-origin only" (empty = disable check)
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=(CORS_ALLOWED_HOSTS_VAL if CORS_ALLOWED_HOSTS_VAL else None), max_http_buffer_size=5e7)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
