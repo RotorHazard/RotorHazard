@@ -118,13 +118,13 @@ class RacePointsMethod():
 
 class LapInfo():
     class race:
-        total_pilots: None
-        lap_max: None
-        consecutives_base: None
+        total_pilots = None
+        lap_max = None
+        consecutives_base = None
         win_condition = None
-        best_lap: None
-        best_lap_callsign: None
-        split_count: None
+        best_lap = None
+        best_lap_callsign = None
+        split_count = None
 
     class current:
         pilot_id = None
@@ -1333,13 +1333,24 @@ def get_gap_info(racecontext, seat_index):
     pass_info = LapInfo()
 
     # Race
-    #TODO pass_info.race.total_pilots = None
-    #TODO pass_info.race.lap_max = None
+    pass_info.race.total_pilots = len(leaderboard)
+    pass_info.race.lap_max = None
+    if win_condition == WinCondition.FIRST_TO_LAP_X and racecontext.race.format.number_laps_win:
+        pass_info.race.lap_max = int(racecontext.race.format.number_laps_win)
     pass_info.race.consecutives_base = consecutivesCount
     pass_info.race.win_condition = win_condition
-    #TODO pass_info.race.best_lap = None
-    #TODO pass_info.race.best_lap_callsign = None
-    #TODO pass_info.race.split_count = None
+
+    best_lap_result = min(
+        (r for r in leaderboard if r['fastest_lap_raw']),
+        key=lambda r: r['fastest_lap_raw'],
+        default=None
+    )
+    if best_lap_result:
+        pass_info.race.best_lap = int(round(best_lap_result['fastest_lap_raw'], 0))
+        pass_info.race.best_lap_callsign = str(best_lap_result['callsign'])
+
+    cluster = racecontext.cluster
+    pass_info.race.split_count = sum(1 for s in cluster.secondaries if s.isSplitMode) if cluster else 0
 
     # Current pilot
     pass_info.current.lap_list = racecontext.race.get_lap_results()['node_index'][seat_index]
