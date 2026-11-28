@@ -26,8 +26,90 @@ try:
 except ImportError:
     SERIAL_PORT_ERRORS = (IOError,)
 
+#
+# Network nodes: a SERIAL_PORTS entry may be a pyserial URL such as "socket://192.168.1.51:2217"
+# (a node behind a TCP-to-serial bridge) instead of a device path.
+#
+NET_CONNECT_TIMEOUT_SECS = 1.0  # limit for a TCP connect check (reachability of a network node)
+NET_NO_DATA_LIMIT = 8  # consecutive reads with no reply after which a network port counts as lost,
+NET_NO_DATA_SECS = 2.0  #  once it has also sent nothing for this long
+NET_KEEPALIVE_IDLE_SECS = 5  # TCP keepalive: idle time before the first probe,
+NET_KEEPALIVE_INTVL_SECS = 1  #  time between probes,
+NET_KEEPALIVE_COUNT = 3  #  and failed probes after which the connection is dropped
+
+def is_url_port(port):
+    '''Returns True if the given port is a pyserial URL (e.g. "socket://host:port") rather than a device'''
+    return isinstance(port, str) and '://' in port
+
+def url_port_address(port):
+    '''Returns (host, port) for a "socket://" or "rfc2217://" URL, or None'''
+    try:
+        from urllib.parse import urlsplit
+        parts = urlsplit(port.strip())
+        if parts.scheme.lower() in ('socket', 'rfc2217') and parts.hostname and parts.port:
+            return (parts.hostname, parts.port)
+    except Exception:
+        pass
+    return None
+
+def url_port_reachable(port, timeout=NET_CONNECT_TIMEOUT_SECS):
+    '''Returns True if a TCP connection to the given URL port can be made (it is closed again at once).
+       Cooperative under gevent's monkey patching, so it does not block other greenlets.'''
+    addr = url_port_address(port)
+    if not addr:
+        return False
+    try:
+        import socket
+        sock = socket.create_connection(addr, timeout=timeout)
+        sock.close()
+        return True
+    except (OSError, ValueError):
+        return False
+
+def tune_socket(ser):
+    '''Sets up the TCP socket of an open URL port: no Nagle delay (the node protocol sends small requests,
+       some without a reply, so Nagle plus delayed ACKs would stall them 40-200 ms), and keepalive
+       so that a dead connection is noticed'''
+    sock = getattr(ser, '_socket', None)  # pyserial's socket:// and rfc2217:// port objects
+    if sock is None:
+        return
+    import socket
+    try:
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    except OSError as ex:
+        logger.warning("Unable to set TCP_NODELAY on '{}': {}".format(ser.port, ex))
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if hasattr(socket, 'TCP_KEEPIDLE'):  # Linux
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, NET_KEEPALIVE_IDLE_SECS)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, NET_KEEPALIVE_INTVL_SECS)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, NET_KEEPALIVE_COUNT)
+        elif hasattr(socket, 'SIO_KEEPALIVE_VALS'):  # Windows
+            sock.ioctl(socket.SIO_KEEPALIVE_VALS, (1, NET_KEEPALIVE_IDLE_SECS * 1000, NET_KEEPALIVE_INTVL_SECS * 1000))
+        elif hasattr(socket, 'TCP_KEEPALIVE'):  # macOS
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPALIVE, NET_KEEPALIVE_IDLE_SECS)
+    except (OSError, ValueError) as ex:
+        logger.debug("Unable to set TCP keepalive on '{}': {}".format(ser.port, ex))
+
+def new_port_obj(comm, baudrate):
+    '''Returns an unopened serial object for the given device path or URL port'''
+    if is_url_port(comm):
+        return serial.serial_for_url(comm, do_not_open=True, baudrate=baudrate, timeout=0.25, \
+                                     write_timeout=SERIAL_WRITE_TIMEOUT_SECS)
+    ser = serial.Serial(port=None, baudrate=baudrate, timeout=0.25, write_timeout=SERIAL_WRITE_TIMEOUT_SECS)
+    ser.setDTR(0)  # clear in case line is tied to node-processor reset
+    ser.setRTS(0)
+    ser.setPort(comm)
+    return ser
+
 def open_serial_port(ser):
     '''Opens the serial port on a worker thread so that a slow open (e.g. Bluetooth serial port) does not block the server'''
+    if is_url_port(ser.port):
+        # a network port is opened here: its gevent socket must belong to this thread's hub, and the
+        # connect is cooperative anyway
+        ser.open()
+        tune_socket(ser)
+        return
     def do_open():
         try:
             ser.open()
@@ -72,6 +154,8 @@ class SerialNode(Node):
         if now < getattr(ser, 'rh_next_reopen_time', 0):
             return False
         ser.rh_next_reopen_time = now + REOPEN_INTERVAL_SECS
+        if is_url_port(ser.port) and not self._url_port_probe(ser):
+            return False
         try:
             open_serial_port(ser)
         except (IOError, ValueError):
@@ -83,6 +167,44 @@ class SerialNode(Node):
             self.multi_curnode_index_holder[0] = -1  # current multi-node index on processor is unknown
         self.node_log(interface, "Reopened serial port '{}'".format(ser.port))
         return False
+
+    def _url_port_probe(self, ser):
+        '''For a lost network port: returns True if a background connect check found it reachable,
+           otherwise starts such a check (if none is running) and returns False. The check runs on its
+           own greenlet because this is called with the node I/O lock held, and a connect to an absent
+           node would otherwise stall every node for the length of its timeout.'''
+        if getattr(ser, 'rh_probe_ok', False):
+            ser.rh_probe_ok = False
+            return True
+        probe = getattr(ser, 'rh_probe_greenlet', None)
+        if probe is None or probe.dead:
+            def do_probe():
+                ser.rh_probe_ok = url_port_reachable(ser.port)
+                if ser.rh_probe_ok:
+                    ser.rh_next_reopen_time = 0  # reopen on the next I/O attempt
+            ser.rh_probe_greenlet = gevent.spawn(do_probe)
+        return False
+
+    def _url_port_silent(self, interface, data):
+        '''Counts consecutive reads with no reply on a network port. A connection whose far end is gone
+           without closing it (cable pulled, bridge powered off) gives no I/O error, only timeouts, so
+           after NET_NO_DATA_LIMIT of them, with nothing received for NET_NO_DATA_SECS, the port is
+           closed as lost (and reopened later); returns True then.'''
+        ser = self.serial
+        now = monotonic()
+        if data:
+            ser.rh_no_data_count = 0
+            ser.rh_last_data_time = now
+            return False
+        ser.rh_no_data_count = getattr(ser, 'rh_no_data_count', 0) + 1
+        # both a run of empty reads and a quiet time, so that a node that just doesn't answer
+        # one command (its retries) is not taken for a lost connection
+        if ser.rh_no_data_count < NET_NO_DATA_LIMIT or \
+                now - getattr(ser, 'rh_last_data_time', 0) < NET_NO_DATA_SECS:
+            return False
+        ser.rh_no_data_count = 0
+        self.handle_port_error(interface, 'no response from network node')
+        return True
 
     def handle_port_error(self, interface, err):
         '''Closes the serial port after an I/O error (logged once) so that it gets reopened later'''
@@ -126,6 +248,8 @@ class SerialNode(Node):
                     self.serial.write(bytearray([command]))
                     data = bytearray(self.serial.read(size + 1))
                     self.io_response = monotonic()
+                    if interface and is_url_port(self.serial.port) and self._url_port_silent(interface, data):
+                        break  # network port closed as lost; it is reopened when the node is reachable again
                     if validate_checksum(data):
                         if len(data) == size + 1:
                             success = True
@@ -330,30 +454,36 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, ports=None, **kwarg
         node_serial_obj = None
         for index, comm in enumerate(config_ser_ports):
             try:
+                # network node ("socket://host:port"): nothing resets it on connect, and the baud rate
+                # means nothing; an unreachable one is skipped at once (it is opened later if it appears)
+                url_flag = is_url_port(comm)
+                if url_flag and not url_port_reachable(comm):
+                    logger.log(fail_log_level, "Network node at '{}' not reachable".format(comm))
+                    continue
                 # if serial port is USB type then don't treat as S32_BPill (may need bootloader chill-time delay)
                 s32_port_flag = isS32BPillFlag if not (isinstance(comm, str) and "USB" in comm.upper()) else False
+                no_chill_flag = s32_port_flag or url_flag
                 # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
-                baud_rates_list = SERIAL_BAUD_RATES if s32_port_flag else SERIAL_BAUD_RATES[::-1]
+                if url_flag:
+                    baud_rates_list = SERIAL_BAUD_RATES[-1:]
+                else:
+                    baud_rates_list = SERIAL_BAUD_RATES if s32_port_flag else SERIAL_BAUD_RATES[::-1]
                 rev_val = None
                 baud_idx = 0
                 while (not rev_val) and baud_idx < len(baud_rates_list):
-                    attempt_delay_secs = 0.0625
+                    attempt_delay_secs = 0.25 if url_flag else 0.0625  # (2 attempts for a network node)
                     # if opening port fails then do retries; with exponential delay, but less than 1 second
                     while (not rev_val) and attempt_delay_secs < 0.9:
                         attempt_delay_secs *= 2
                         logger.debug("Attempting connection to serial node at {}, {} baud".\
                                      format(comm, baud_rates_list[baud_idx]))
-                        node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25, \
-                                                        write_timeout=SERIAL_WRITE_TIMEOUT_SECS)
-                        node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
-                        node_serial_obj.setRTS(0)
-                        node_serial_obj.setPort(comm)
-                        if ports is not None:  # port added at runtime; open without blocking the server
+                        node_serial_obj = new_port_obj(comm, baud_rates_list[baud_idx])
+                        if ports is not None or url_flag:  # port added at runtime; open without blocking the server
                             open_serial_port(node_serial_obj)  # open port (now that DTR is configured for no change)
                         else:
                             node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                        node_serial_obj.rh_reopen_delay_secs = REOPEN_S32_DELAY_SECS if s32_port_flag else BOOTLOADER_CHILL_TIME
-                        if (not s32_port_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                        node_serial_obj.rh_reopen_delay_secs = REOPEN_S32_DELAY_SECS if no_chill_flag else BOOTLOADER_CHILL_TIME
+                        if (not no_chill_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
                             logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
                             gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
                         else:

@@ -28,6 +28,15 @@ On a Windows computer, an attached USB node will be referenced with a serial por
 
 The RotorHazard node code will need to be uploaded (flashed) to the Arduino using [the "standard" method](https://github.com/RotorHazard/RotorHazard/blob/main/src/node/readme_Arduino.md) (via the Arduino IDE). The NODE_NUMBER value (in "src/node/config.h") is ignored for USB nodes; it can be left at 0.
 
+#### Network Nodes
+
+A node may also be connected over the network, through a bridge that passes the node's serial data to and from a TCP port (for example ser2net, an ESP32-based Ethernet-to-serial bridge, or a script on another computer). Enter its address as a port, in the form `socket://host:port`; for instance `socket://192.168.1.51:2217` or `socket://gate1.local:2217`. The server then talks to the node exactly as it does to a USB node.
+
+* The server connects with Nagle's algorithm off (TCP_NODELAY). The bridge should also forward each byte as soon as it arrives, and set TCP_NODELAY on its side: the node protocol sends many small requests, and buffering them adds tens of milliseconds to each one.
+* Use a wired network. Each node is polled with many short request/reply exchanges, so Wi-Fi delays slow down every update.
+* A network node that stops answering for about 2 seconds (cable pulled, bridge powered off) is treated like an unplugged USB node: the server retries the connection and restores the node's settings when it answers again. A configured network node that is not reachable when the server starts is opened once it becomes reachable.
+* The `List Ports` button shows configured network nodes, and whether they can be reached.
+
 <br/>
 
 -----------------------------

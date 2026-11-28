@@ -24,11 +24,59 @@ LINUX_ALIAS_DIRS = ('/dev/serial/by-id', '/dev/serial/by-path')
 POSIX_TTY_PREFIXES = ('tty', 'cu.', 'rfcomm', 'serial')
 
 
+URL_PRESENT_TIMEOUT_SECS = 0.5  # limit for the TCP connect check of a network port
+URL_PRESENT_CACHE_SECS = 2.0  # how long the result of that check is reused
+
+
+def is_url_port(port):
+    '''Returns True if the given port is a pyserial URL (e.g. "socket://host:port" for a network node).'''
+    return isinstance(port, str) and '://' in port
+
+
+def _url_address(port):
+    '''Returns (host, port) for a "socket://" or "rfc2217://" URL, or None.'''
+    try:
+        from urllib.parse import urlsplit
+        parts = urlsplit(port.strip())
+        if parts.scheme.lower() in ('socket', 'rfc2217') and parts.hostname and parts.port:
+            return (parts.hostname, parts.port)
+    except Exception:
+        pass
+    return None
+
+
+_url_present_cache = {}  # {url key: (monotonic time, present)}
+
+def _url_port_present(port):
+    '''Returns True if a TCP connection to the network port can be made (cached for a short time).
+       Cooperative under gevent's monkey patching.'''
+    from time import monotonic
+    key = _norm_key(port)
+    now = monotonic()
+    cached = _url_present_cache.get(key)
+    if cached and now - cached[0] < URL_PRESENT_CACHE_SECS:
+        return cached[1]
+    present = False
+    addr = _url_address(port)
+    if addr:
+        try:
+            import socket
+            sock = socket.create_connection(addr, timeout=URL_PRESENT_TIMEOUT_SECS)
+            sock.close()
+            present = True
+        except (OSError, ValueError):
+            present = False
+    _url_present_cache[key] = (monotonic(), present)
+    return present
+
+
 def _norm_key(path):
     '''Returns a key for comparing port names (resolves symlinks on POSIX).'''
     if not path:
         return ''
     path = str(path).strip()
+    if is_url_port(path):  # network port: compared as given (not a file path)
+        return path.lower()
     if IS_WINDOWS:
         path = path.upper()
         if path.startswith('\\\\.\\'):
@@ -128,7 +176,10 @@ def _comports():
 
 
 def port_present(port):
-    '''Returns True if the given serial port currently exists (without opening it).'''
+    '''Returns True if the given serial port currently exists (without opening it). A network port
+       ("socket://host:port") exists while a TCP connection to it can be made.'''
+    if is_url_port(port):
+        return _url_port_present(port)
     if not IS_WINDOWS:
         return bool(port) and os.path.exists(str(port).strip())
     try:
@@ -229,6 +280,28 @@ def list_serial_ports(configured_ports=None):
                 ports.append(make_entry(target))
 
     ports.sort(key=lambda p: p['device'])
+
+    # configured network ports, listed after the local ones (missing while not reachable)
+    for cfg_key, cfg in configured_keys.items():
+        if is_url_port(cfg) and cfg_key not in seen:
+            seen.add(cfg_key)
+            present = _url_port_present(cfg)
+            ports.append({
+                'device': cfg,
+                'aliases': [],
+                'description': 'Network node' if present else 'Network node (not reachable)',
+                'hwid': None,
+                'manufacturer': None,
+                'product': None,
+                'serial_number': None,
+                'vid': None,
+                'pid': None,
+                'location': None,
+                'access': 'ok' if present else 'missing',
+                'recommended': cfg,
+                'configured': cfg,
+            })
+
     result['ports'] = ports
     result['configured_missing'] = [cfg for cfg_key, cfg in configured_keys.items() if cfg_key not in seen]
     return result
